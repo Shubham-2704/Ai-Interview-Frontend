@@ -63,6 +63,7 @@ const Signup = ({ onChangePage }) => {
         localStorage.setItem("token", token);
         updateUser(response.data);
         navigate("/dashboard");
+        toast.success("Account created successfully!");
       }
     } catch (error) {
       if (error.response && error.response.data.message) {

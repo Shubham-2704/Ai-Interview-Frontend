@@ -48,6 +48,7 @@ const Login = ({ onChangePage }) => {
         localStorage.setItem("token", token);
         updateUser(response.data);
         navigate("/dashboard");
+        toast.success("Logged in successfully!");
       }
     } catch (error) {
       if (error.response && error.response.data.message) {

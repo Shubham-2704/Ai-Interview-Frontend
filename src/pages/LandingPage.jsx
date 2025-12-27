@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-import HERO_IMG from "../assets/hero-img.png";
+import HERO_IMG from "../assets/hero.png";
 import { Button } from "@/components/ui/button";
 import { Sparkles } from "lucide-react";
 import { APP_FEATURES } from "@/utils/data";
