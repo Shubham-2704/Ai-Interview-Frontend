@@ -16,6 +16,8 @@ export const API_PATHS = {
   AI: {
     GENERATE_QUESTIONS: "/ai/generate-questions", // Generate interview questions and answers using Gemini
     GENERATE_EXPLANATION: "/ai/generate-explanation", // Generate concept explanation using Gemini
+    ADD_API_KEY: "/ai/api-key", // Add API key
+    DELETE_API_KEY: "/ai/api-key", // Delete API key
   },
 
   SESSION: {

@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
+
 
 import {
   Field,
@@ -17,11 +18,18 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { sessionSchema } from "@/lib/schema";
 import { toast } from "sonner";
+import { UserContext } from "@/context/UserContext";
+
 
 const CreateSessionForm = () => {
   const [loading, setLoading] = useState(false);
 
+
+  const { user, openApiKeyModal } = useContext(UserContext);
+
+
   const navigate = useNavigate();
+
 
   const form = useForm({
     resolver: zodResolver(sessionSchema),
@@ -33,7 +41,15 @@ const CreateSessionForm = () => {
     },
   });
 
+
   async function onSubmit(data) {
+    if (!user?.hasGeminiKey) {
+      // toast.error("Please add your Gemini API key first");
+      openApiKeyModal();
+      return;
+    }
+
+
     setLoading(true);
     try {
       // Call AI API to generate questions
@@ -47,13 +63,16 @@ const CreateSessionForm = () => {
         }
       );
 
+
       // Should be an array like [{question, answer}, ...]
       const generatedQuestions = aiResponse.data;
+
 
       const response = await axiosInstance.post(API_PATHS.SESSION.CREATE, {
         ...data,
         questions: generatedQuestions,
       });
+
 
       if (response.data?.session?._id) {
         navigate(`/interview-prep/${response.data.session._id}`);
@@ -68,6 +87,7 @@ const CreateSessionForm = () => {
       setLoading(false);
     }
   }
+
 
   return (
     <div>
@@ -151,6 +171,7 @@ const CreateSessionForm = () => {
             )}
           />
 
+
           <Button
             type="submit"
             className="bg-black hover:bg-primary hover:text-primary-foreground transition-colors"
@@ -166,6 +187,7 @@ const CreateSessionForm = () => {
             )}
           </Button>
 
+
           {/* <FieldDescription>
             Don&apos;t have an account?{" "}
             <span
@@ -180,5 +202,6 @@ const CreateSessionForm = () => {
     </div>
   );
 };
+
 
 export default CreateSessionForm;
