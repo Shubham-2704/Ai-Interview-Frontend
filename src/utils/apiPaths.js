@@ -7,6 +7,7 @@ export const API_PATHS = {
     REGISTER: "/auth/register", // Signup
     LOGIN: "/auth/login", // Authenticate user & return JWT token
     GET_PROFILE: "/auth/profile", // Get logged-in user details
+    UPDATE_PROFILE: "/auth/profile", // Update logged-in user details
   },
 
   IMAGE: {

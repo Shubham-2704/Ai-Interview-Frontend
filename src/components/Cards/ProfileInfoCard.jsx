@@ -1,24 +1,29 @@
-import React, { useContext } from "react";
+import React, { useContext, useState } from "react";
 import { UserContext } from "@/context/UserContext";
 import { useNavigate } from "react-router-dom";
-
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Item,
   ItemActions,
   ItemContent,
-  ItemDescription,
-  ItemFooter,
-  ItemHeader,
-  ItemMedia,
   ItemTitle,
+  ItemMedia,
 } from "@/components/ui/item";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 
+import EditProfileModal from "../EditProfileModal";
+
 const ProfileInfoCard = () => {
   const { user, clearUser } = useContext(UserContext);
-
   const navigate = useNavigate();
+
+  const [open, setOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -26,31 +31,53 @@ const ProfileInfoCard = () => {
     navigate("/");
   };
 
+  if (!user) return null;
+
   return (
-    user && (
+    <>
       <Item className="p-0 gap-2">
-        <ItemMedia variant="image" className="size-11">
-          <Avatar className="size-11 bg-gray-300">
-            <AvatarImage src={user.profileImageUrl} alt={user.name} />
-            <AvatarFallback>{user.name[0].toUpperCase()}</AvatarFallback>
-          </Avatar>
-        </ItemMedia>
-        <div className="flex flex-col">
+        {/* CLICK → OPEN EDIT PROFILE MODAL */}
+        <div
+          className="flex items-center gap-2 cursor-pointer"
+          onClick={() => setOpen(true)}
+        >
+          <ItemMedia variant="image" className="size-11">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Avatar className="size-11 bg-gray-300">
+                  <AvatarImage src={user.profileImageUrl} alt={user.name} />
+                  <AvatarFallback>
+                    {user.name?.[0]?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </TooltipTrigger>
+              <TooltipContent>Click to edit profile</TooltipContent>
+            </Tooltip>
+          </ItemMedia>
+
           <ItemContent>
-            <ItemTitle className="font-bold">{user.name || ""}</ItemTitle>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ItemTitle className="font-bold">{user.name}</ItemTitle>
+              </TooltipTrigger>
+              <TooltipContent>Click to edit profile</TooltipContent>
+            </Tooltip>
+            <ItemActions>
+              <Button
+                variant="link"
+                onClick={handleLogout}
+                className="p-0 h-4 font-semibold"
+              >
+                Logout
+              </Button>
+            </ItemActions>
           </ItemContent>
-          <ItemActions>
-            <Button
-              variant={"link"}
-              onClick={handleLogout}
-              className="p-0 h-4 font-semibold"
-            >
-              Logout
-            </Button>
-          </ItemActions>
         </div>
       </Item>
-    )
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal open={open} setOpen={setOpen} />
+    </>
   );
 };
 

@@ -1,10 +1,10 @@
 import React, { useRef, useState } from "react";
 
-import { Trash, Upload, User } from "lucide-react";
+import { Edit, Trash, Upload, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-const ProfilePhotoSelector = ({ image, setImage }) => {
+const ProfilePhotoSelector = ({ image, setImage, name }) => {
   const inputRef = useRef(null);
   const [previewUrl, setPreviewUrl] = useState(null);
 
@@ -25,6 +25,10 @@ const ProfilePhotoSelector = ({ image, setImage }) => {
     setPreviewUrl(null);
   };
 
+  const handleEditImage = () => {
+    inputRef.current.click();
+  };
+
   const onChooseFile = () => {
     inputRef.current.click();
   };
@@ -43,20 +47,37 @@ const ProfilePhotoSelector = ({ image, setImage }) => {
         <div className="w-20 h-20 bg-primary-foreground rounded-full flex items-center justify-center cursor-pointer relative">
           <User className="size-9 text-primary" />
           <Button
+            type="button"
             onClick={onChooseFile}
             className="w-8 h-8 rounded-full absolute -bottom-1 -right-1"
           >
             <Upload />
           </Button>
         </div>
+      ) : name === "profileImage" ? (
+        <div className="relative">
+          <img
+            src={previewUrl || image}
+            alt="profile photo"
+            className="w-20 h-20 rounded-full object-cover border p-1 border-primary"
+          />
+          <Button
+            type="button"
+            onClick={handleEditImage}
+            className="w-8 h-8 rounded-full absolute -bottom-1 -right-1"
+          >
+            <Edit />
+          </Button>
+        </div>
       ) : (
         <div className="relative">
           <img
-            src={previewUrl}
+            src={previewUrl || image}
             alt="profile photo"
             className="w-20 h-20 rounded-full object-cover"
           />
           <Button
+            type="button"
             onClick={handleRemoveImage}
             className="w-8 h-8 bg-red-500 hover:bg-red-600 rounded-full absolute -bottom-1 -right-1"
           >
