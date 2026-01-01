@@ -2,9 +2,9 @@ import React, { useContext, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "@/lib/schema";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "@/context/UserContext";
-
+import ForgotPasswordDialog from "./ForgotPasswordPage";
 import {
   Field,
   FieldDescription,
@@ -23,7 +23,7 @@ import { toast } from "sonner";
 const Login = ({ onChangePage }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
+  const [showForgot, setShowForgot] = useState(false);
   const navigate = useNavigate();
 
   const { updateUser } = useContext(UserContext);
@@ -88,7 +88,17 @@ const Login = ({ onChangePage }) => {
             control={form.control}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                <div className="flex justify-between items-center -mb-2">
+                  <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="p-1 text-sm"
+                    onClick={() => setShowForgot(true)}
+                  >
+                    Forgot password?
+                  </Button>
+                </div>
                 <div className="relative">
                   <Input
                     {...field}
@@ -142,6 +152,7 @@ const Login = ({ onChangePage }) => {
           </FieldDescription>
         </FieldGroup>
       </form>
+      <ForgotPasswordDialog open={showForgot} onOpenChange={setShowForgot} />
     </div>
   );
 };
