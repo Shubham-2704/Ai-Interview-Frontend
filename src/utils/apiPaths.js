@@ -8,6 +8,10 @@ export const API_PATHS = {
     LOGIN: "/auth/login", // Authenticate user & return JWT token
     GET_PROFILE: "/auth/profile", // Get logged-in user details
     UPDATE_PROFILE: "/auth/profile", // Update logged-in user details
+    FORGOT_PASSWORD: `/auth/forgot-password`, // Send OTP to email
+    VERIFY_RESET_OTP: `/auth/verify-reset-otp`, // Verify OTP for password reset
+    RESET_PASSWORD: `/auth/reset-password`, // Reset password using verified OTP
+
   },
 
   IMAGE: {
