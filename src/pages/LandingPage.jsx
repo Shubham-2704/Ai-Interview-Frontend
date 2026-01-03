@@ -42,9 +42,7 @@ const LandingPage = () => {
         <div className="container mx-auto px-4 pt-6 pb-[200px] relative z-10">
           {/* Header */}
           <header className="flex justify-between items-center mb-16">
-            <div className="text-xl font-bold text-black">
-              Interview Prep AI
-            </div>
+            <div className="text-3xl font-bold text-black ">Intervia</div>
 
             <Dialog open={openAuthModel} onOpenChange={setOpenAuthModel}>
               <DialogTrigger asChild>
