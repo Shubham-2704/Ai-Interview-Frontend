@@ -23,6 +23,7 @@ export const API_PATHS = {
     GENERATE_EXPLANATION: "/ai/generate-explanation", // Generate concept explanation using Gemini
     ADD_API_KEY: "/ai/api-key", // Add API key
     DELETE_API_KEY: "/ai/api-key", // Delete API key
+    FOLLOWUP_CHAT: "/ai/followup-chat", // Follow-up chat for concept explanation
   },
 
   SESSION: {

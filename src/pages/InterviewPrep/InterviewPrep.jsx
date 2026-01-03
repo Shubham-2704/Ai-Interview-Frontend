@@ -18,6 +18,76 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import SkeletonLoader from "@/components/Loader/SkeletonLoader";
 
+// Storage utility functions
+const STORAGE_KEYS = {
+  EXPLANATION_DATA: (explanationId) => `exp_${explanationId}_data`,
+  TIMESTAMP: (explanationId) => `exp_${explanationId}_ts`,
+};
+
+const isStorageAvailable = () => {
+  try {
+    const testKey = "__storage_test__";
+    localStorage.setItem(testKey, testKey);
+    localStorage.removeItem(testKey);
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
+
+const saveExplanationToStorage = (explanationId, explanationData) => {
+  if (!isStorageAvailable()) return false;
+
+  try {
+    const storageData = {
+      data: explanationData,
+      timestamp: Date.now(),
+      expiry: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+    };
+    const dataKey = STORAGE_KEYS.EXPLANATION_DATA(explanationId);
+    const tsKey = STORAGE_KEYS.TIMESTAMP(explanationId);
+
+    localStorage.setItem(dataKey, JSON.stringify(storageData));
+    localStorage.setItem(tsKey, JSON.stringify({ timestamp: Date.now() }));
+
+    return true;
+  } catch (error) {
+    console.error("Error saving to localStorage:", error);
+    return false;
+  }
+};
+
+const loadExplanationFromStorage = (explanationId) => {
+  if (!isStorageAvailable()) return null;
+
+  try {
+    const key = STORAGE_KEYS.EXPLANATION_DATA(explanationId);
+    const stored = localStorage.getItem(key);
+    if (!stored) return null;
+
+    const { data, timestamp, expiry } = JSON.parse(stored);
+
+    // Check if expired
+    if (Date.now() > expiry) {
+      // Clear all related data
+      localStorage.removeItem(key);
+      localStorage.removeItem(STORAGE_KEYS.TIMESTAMP(explanationId));
+      localStorage.removeItem(`exp_${explanationId}_chat`);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error loading from localStorage:", error);
+    return null;
+  }
+};
+
+// Create explanation ID from question
+const createExplanationId = (question) => {
+  return btoa(question).replace(/[^a-zA-Z0-9]/g, "_");
+};
+
 const InterviewPrep = () => {
   const { sessionId } = useParams();
 
@@ -27,14 +97,14 @@ const InterviewPrep = () => {
   const [openLearnMoreDrawer, setOpenLearnMoreDrawer] = useState(false);
   const [explanation, setExplanation] = useState(null);
 
-  // const [isPageLoading, setIsPageLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdateLoader, setIsUpdateLoader] = useState(false);
+  const [lastQuestion, setLastQuestion] = useState(null);
+  const [explanationId, setExplanationId] = useState(null);
 
   // Fetch session data by sessionId
   const fetchSessionDetailsById = useCallback(async () => {
     try {
-      // setIsPageLoading(true);
       const response = await axiosInstance.get(
         API_PATHS.SESSION.GET_ONE(sessionId)
       );
@@ -45,33 +115,47 @@ const InterviewPrep = () => {
     } catch (error) {
       console.error("Error fetching session data:", error);
     }
-    // finally {
-    //   setIsPageLoading(false);
-    // }
   }, [sessionId]);
 
-  // Generate Concept Explanation
+  // Generate Concept Explanation with local storage check
   const generateConceptExplanation = async (question) => {
     try {
       setErrorMsg("");
       setExplanation(null);
-      setIsLoading(true);
+      setLastQuestion(question);
+
+      const expId = createExplanationId(question);
+      setExplanationId(expId);
+
       setOpenLearnMoreDrawer(true);
+
+      // First, check if we have cached explanation
+      const cachedExplanation = loadExplanationFromStorage(expId);
+
+      if (cachedExplanation) {
+        // Use cached data
+        setExplanation(cachedExplanation);
+        toast.success("Loaded from cache");
+        return;
+      }
+
+      // If not in cache, call API
+      setIsLoading(true);
 
       const response = await axiosInstance.post(
         API_PATHS.AI.GENERATE_EXPLANATION,
-        {
-          question,
-        }
+        { question }
       );
 
       if (response.data) {
         setExplanation(response.data);
+        // Save to local storage for future use
+        saveExplanationToStorage(expId, response.data);
+        toast.success("Explanation generated successfully!");
       }
     } catch (error) {
       setExplanation(null);
-      setErrorMsg("Failed to generate explanation, Try again later.");
-      // toast.error("Failed to generate explanation, Try again later.");
+      setErrorMsg("Server are too busy, Please try again later.");
       console.error("Error generating concept explanation:", error);
     } finally {
       setIsLoading(false);
@@ -79,24 +163,27 @@ const InterviewPrep = () => {
   };
 
   // Pin Question
-  const toggleQuestionPinStatus = async (questionId) => {
-    try {
-      const response = await axiosInstance.post(
-        API_PATHS.QUESTION.PIN(questionId)
-      );
-
-      if (response.data && response.data?.question) {
-        fetchSessionDetailsById();
-        toast.success(
-          `Question ${
-            response.data.question.isPinned ? "Pinned" : "Unpinned"
-          } successfully!`
+  const toggleQuestionPinStatus = useCallback(
+    async (questionId) => {
+      try {
+        const response = await axiosInstance.post(
+          API_PATHS.QUESTION.PIN(questionId)
         );
+
+        if (response.data && response.data?.question) {
+          fetchSessionDetailsById();
+          toast.success(
+            `Question ${
+              response.data.question.isPinned ? "Pinned" : "Unpinned"
+            } successfully!`
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching session data:", error);
       }
-    } catch (error) {
-      console.error("Error fetching session data:", error);
-    }
-  };
+    },
+    [fetchSessionDetailsById]
+  );
 
   // Add more questions to a session
   const uploadMoreQuestions = async () => {
@@ -140,6 +227,79 @@ const InterviewPrep = () => {
     }
   };
 
+  const handleCloseDrawer = () => {
+    setOpenLearnMoreDrawer(false);
+  };
+
+  const askFollowupQuestion = async ({ question }) => {
+    const response = await axiosInstance.post(API_PATHS.AI.FOLLOWUP_CHAT, {
+      context: explanation?.explanation,
+      question,
+    });
+
+    return response.data?.answer;
+  };
+
+  // Refresh cached explanation
+  const refreshExplanation = async () => {
+    if (!lastQuestion || !explanationId) return;
+
+    try {
+      setIsLoading(true);
+      setErrorMsg("");
+
+      const response = await axiosInstance.post(
+        API_PATHS.AI.GENERATE_EXPLANATION,
+        { question: lastQuestion }
+      );
+
+      if (response.data) {
+        setExplanation(response.data);
+        saveExplanationToStorage(explanationId, response.data);
+        toast.success("Explanation refreshed");
+      }
+    } catch (error) {
+      setErrorMsg("Failed to refresh. Please try again.");
+      console.error("Error refreshing explanation:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Clear cached explanation (and all related data)
+  const clearCachedExplanation = () => {
+    if (!explanationId || !isStorageAvailable()) return;
+
+    try {
+      // Clear ALL related data for this explanation
+      localStorage.removeItem(STORAGE_KEYS.EXPLANATION_DATA(explanationId));
+      localStorage.removeItem(STORAGE_KEYS.TIMESTAMP(explanationId));
+      localStorage.removeItem(`exp_${explanationId}_chat`);
+
+      // Clear state
+      setExplanation(null);
+      toast.success("Explanation cache and chat history cleared");
+      handleCloseDrawer();
+    } catch (error) {
+      console.error("Error clearing cache:", error);
+      toast.error("Failed to clear cache");
+    }
+  };
+
+  // Clear only chat history
+  const clearChatHistory = () => {
+    if (!explanationId || !isStorageAvailable()) return;
+
+    try {
+      // Clear only chat history
+      localStorage.removeItem(`exp_${explanationId}_chat`);
+      toast.success("Chat history cleared");
+    } catch (error) {
+      console.error("Error clearing chat history:", error);
+      toast.error("Failed to clear chat history");
+    }
+  };
+
   useEffect(() => {
     fetchSessionDetailsById();
   }, [fetchSessionDetailsById, sessionId]);
@@ -176,19 +336,13 @@ const InterviewPrep = () => {
                 {sessionData?.questions?.map((question, index) => {
                   return (
                     <motion.div
+                      layout="position"
                       key={question._id || index}
                       initial={{ opacity: 0, y: -20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{
-                        duration: 0.4,
-                        type: "spring",
-                        stiffness: 100,
-                        delay: index * 0.1,
-                        damping: 15,
-                      }}
-                      layout // This is the key prop that animates position changes
-                      layoutId={`question-${question._id || index}`} // Helps framer track specific items
+                      transition={{ duration: 0.3 }}
+                      layoutId={`question-${question._id || index}`}
                     >
                       <>
                         <QuestionCard
@@ -233,20 +387,17 @@ const InterviewPrep = () => {
           <div>
             <Drawer
               isOpen={openLearnMoreDrawer}
-              onClose={() => setOpenLearnMoreDrawer(false)}
+              onClose={handleCloseDrawer}
               title={!isLoading && explanation?.title}
-            >
-              {errorMsg && (
-                <p className="flex items-center gap-2 text-sm text-primary font-medium">
-                  <CircleAlert />
-                  {errorMsg}
-                </p>
-              )}
-              {isLoading && <SkeletonLoader />}
-              {!isLoading && explanation && (
-                <AIResponsePreview content={explanation?.explanation} />
-              )}
-            </Drawer>
+              isLoading={isLoading}
+              explanation={explanation}
+              errorMsg={errorMsg}
+              onAskFollowup={askFollowupQuestion}
+              onRefresh={refreshExplanation}
+              onClearExplanationCache={clearCachedExplanation}
+              onClearChatHistory={clearChatHistory}
+              explanationId={explanationId}
+            />
           </div>
         </Card>
       </>

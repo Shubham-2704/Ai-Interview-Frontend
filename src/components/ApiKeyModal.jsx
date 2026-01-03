@@ -14,6 +14,7 @@ import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 import { UserContext } from "@/context/UserContext";
 import { toast } from "sonner";
+import { Spinner } from "./ui/spinner";
 
 
 // { open, onClose, onApiKeySubmit, className }
@@ -32,6 +33,8 @@ const ApiKeyModal = () => {
 
   // only for input field
   const [inputKey, setInputKey] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
 
   useEffect(() => {
@@ -47,28 +50,31 @@ const ApiKeyModal = () => {
   }, [showApiKeyModal, user?.geminiKeyMasked]);
 
 
-  const handleSaveApiKey = async () => {
-    // console.log("handleSaveApiKey triggered with key:", inputKey);
+const handleSaveApiKey = async () => {
+  if (!inputKey) return;
 
+  try {
+    setSaving(true);
 
-    try {
-      const response = await axiosInstance.post(API_PATHS.AI.ADD_API_KEY, {
-        apiKey: inputKey,
-      });
+    const response = await axiosInstance.post(API_PATHS.AI.ADD_API_KEY, {
+      apiKey: inputKey,
+    });
 
+    toast.success(response.data.message);
+    updateApiKey(response.data?.geminiKeyMasked);
+    closeApiKeyModal();
+  } catch (error) {
+    toast.error(error.response?.data?.message || "Failed to save API key");
+  } finally {
+    setSaving(false);
+  }
+};
 
-      toast.success(response.data.message);
-      updateApiKey(response.data?.geminiKeyMasked);
-      // setOpen(false);
-      closeApiKeyModal();
-    } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to save API key");
-    }
-  };
 
 
   const handleDeleteApiKey = async () => {
     try {
+      setDeleting(true);
       await axiosInstance.delete(API_PATHS.AI.DELETE_API_KEY);
 
 
@@ -78,6 +84,9 @@ const ApiKeyModal = () => {
       closeApiKeyModal();
     } catch {
       toast.error("Failed to delete API key");
+    }
+    finally {
+      setDeleting(false);
     }
   };
 
@@ -114,15 +123,29 @@ const ApiKeyModal = () => {
 
         <div className="flex justify-end gap-2">
           {user?.hasGeminiKey && (
-            <Button variant="destructive" onClick={handleDeleteApiKey}>
-              Remove
+            <Button variant="destructive" onClick={handleDeleteApiKey} disabled={deleting}>
+              {deleting ? (
+                <>
+                  <Spinner />
+                  Removing...
+                </>
+              ) : (
+                "Remove"
+              )}
             </Button>
           )}
           <Button
             onClick={handleSaveApiKey}
-            disabled={!inputKey || inputKey === user?.geminiKeyMasked}
+            disabled={saving || !inputKey || inputKey === user?.geminiKeyMasked}
           >
-            Save
+           {saving ? (
+            <>
+              <Spinner />
+              Saving...
+            </>
+          ) : (
+            "Save"
+          )}
           </Button>
         </div>
       </DialogContent>
