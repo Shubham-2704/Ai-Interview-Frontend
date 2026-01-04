@@ -52,6 +52,7 @@ const saveExplanationToStorage = (explanationId, explanationData) => {
 
     return true;
   } catch (error) {
+    toast.error("Failed to save explanation to local storage");
     console.error("Error saving to localStorage:", error);
     return false;
   }
@@ -135,7 +136,7 @@ const InterviewPrep = () => {
       if (cachedExplanation) {
         // Use cached data
         setExplanation(cachedExplanation);
-        toast.success("Loaded from cache");
+        toast.success("Loaded explanation & chat from history!");
         return;
       }
 
@@ -278,11 +279,11 @@ const InterviewPrep = () => {
 
       // Clear state
       setExplanation(null);
-      toast.success("Explanation cache and chat history cleared");
+      toast.success("Explanation & chat history cleared");
       handleCloseDrawer();
     } catch (error) {
-      console.error("Error clearing cache:", error);
-      toast.error("Failed to clear cache");
+      console.error("Error clearing explanation & chat history:", error);
+      toast.error("Failed to clear explanation & chat history");
     }
   };
 
