@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef, memo } from "react";
 import { useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
@@ -13,10 +13,8 @@ import { toast } from "sonner";
 import InterviewPrepSkeleton from "./components/InterviewPrepSkeleton";
 import Drawer from "@/components/Drawer";
 import { CircleAlert, ListCollapse } from "lucide-react";
-import AIResponsePreview from "./components/AIResponsePreview";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import SkeletonLoader from "@/components/Loader/SkeletonLoader";
 
 // Storage utility functions
 const STORAGE_KEYS = {
@@ -89,7 +87,7 @@ const createExplanationId = (question) => {
   return btoa(question).replace(/[^a-zA-Z0-9]/g, "_");
 };
 
-const InterviewPrep = () => {
+const InterviewPrep = memo(() => {
   const { sessionId } = useParams();
 
   const [sessionData, setSessionData] = useState(null);
@@ -103,6 +101,10 @@ const InterviewPrep = () => {
   const [lastQuestion, setLastQuestion] = useState(null);
   const [explanationId, setExplanationId] = useState(null);
 
+  // Use refs for better performance
+  const processingRef = useRef(false);
+  const sessionDataRef = useRef(null);
+
   // Fetch session data by sessionId
   const fetchSessionDetailsById = useCallback(async () => {
     try {
@@ -111,7 +113,9 @@ const InterviewPrep = () => {
       );
 
       if (response.data?.session) {
-        setSessionData(response.data.session);
+        const newSessionData = response.data.session;
+        setSessionData(newSessionData);
+        sessionDataRef.current = newSessionData;
       }
     } catch (error) {
       console.error("Error fetching session data:", error);
@@ -119,30 +123,38 @@ const InterviewPrep = () => {
   }, [sessionId]);
 
   // Generate Concept Explanation with local storage check
-  const generateConceptExplanation = async (question) => {
+  const generateConceptExplanation = useCallback(async (question) => {
+    if (processingRef.current) return;
+
+    processingRef.current = true;
+
     try {
       setErrorMsg("");
       setExplanation(null);
       setLastQuestion(question);
 
+      // Set loading IMMEDIATELY
+      setIsLoading(true);
+
       const expId = createExplanationId(question);
       setExplanationId(expId);
 
+      // Open drawer after setting loading
       setOpenLearnMoreDrawer(true);
 
-      // First, check if we have cached explanation
+      // Check localStorage
       const cachedExplanation = loadExplanationFromStorage(expId);
 
       if (cachedExplanation) {
-        // Use cached data
+        // Small delay for UX consistency
+        await new Promise((resolve) => setTimeout(resolve, 100));
         setExplanation(cachedExplanation);
+        setIsLoading(false);
         toast.success("Loaded explanation & chat from history!");
         return;
       }
 
       // If not in cache, call API
-      setIsLoading(true);
-
       const response = await axiosInstance.post(
         API_PATHS.AI.GENERATE_EXPLANATION,
         { question }
@@ -150,7 +162,6 @@ const InterviewPrep = () => {
 
       if (response.data) {
         setExplanation(response.data);
-        // Save to local storage for future use
         saveExplanationToStorage(expId, response.data);
         toast.success("Explanation generated successfully!");
       }
@@ -160,12 +171,19 @@ const InterviewPrep = () => {
       console.error("Error generating concept explanation:", error);
     } finally {
       setIsLoading(false);
+      setTimeout(() => {
+        processingRef.current = false;
+      }, 500);
     }
-  };
+  }, []);
 
   // Pin Question
   const toggleQuestionPinStatus = useCallback(
     async (questionId) => {
+      if (processingRef.current) return;
+
+      processingRef.current = true;
+
       try {
         const response = await axiosInstance.post(
           API_PATHS.QUESTION.PIN(questionId)
@@ -181,28 +199,33 @@ const InterviewPrep = () => {
         }
       } catch (error) {
         console.error("Error fetching session data:", error);
+      } finally {
+        setTimeout(() => {
+          processingRef.current = false;
+        }, 300);
       }
     },
     [fetchSessionDetailsById]
   );
 
   // Add more questions to a session
-  const uploadMoreQuestions = async () => {
-    try {
-      setIsUpdateLoader(true);
+  const uploadMoreQuestions = useCallback(async () => {
+    if (processingRef.current || !sessionDataRef.current) return;
 
-      // Call AI API to generate questions
+    processingRef.current = true;
+    setIsUpdateLoader(true);
+
+    try {
       const aiResponse = await axiosInstance.post(
         API_PATHS.AI.GENERATE_QUESTIONS,
         {
-          role: sessionData.role,
-          experience: sessionData.experience,
-          topicsToFocus: sessionData.topicsToFocus,
+          role: sessionDataRef.current.role,
+          experience: sessionDataRef.current.experience,
+          topicsToFocus: sessionDataRef.current.topicsToFocus,
           numberOfQuestions: 10,
         }
       );
 
-      // Should be an array like ({question, answer}, ...)
       const generatedQuestions = aiResponse.data;
 
       const response = await axiosInstance.post(
@@ -225,25 +248,38 @@ const InterviewPrep = () => {
       }
     } finally {
       setIsUpdateLoader(false);
+      setTimeout(() => {
+        processingRef.current = false;
+      }, 500);
     }
-  };
+  }, [sessionId, fetchSessionDetailsById]);
 
-  const handleCloseDrawer = () => {
+  const handleCloseDrawer = useCallback(() => {
     setOpenLearnMoreDrawer(false);
-  };
+  }, []);
 
-  const askFollowupQuestion = async ({ question }) => {
-    const response = await axiosInstance.post(API_PATHS.AI.FOLLOWUP_CHAT, {
-      context: explanation?.explanation,
-      question,
-    });
+  const askFollowupQuestion = useCallback(
+    async ({ question, history }) => {
+      try {
+        const response = await axiosInstance.post(API_PATHS.AI.FOLLOWUP_CHAT, {
+          context: explanation?.explanation,
+          question,
+        });
 
-    return response.data?.answer;
-  };
+        return response.data?.answer;
+      } catch (error) {
+        console.error("Error asking followup:", error);
+        throw error;
+      }
+    },
+    [explanation?.explanation]
+  );
 
   // Refresh cached explanation
-  const refreshExplanation = async () => {
-    if (!lastQuestion || !explanationId) return;
+  const refreshExplanation = useCallback(async () => {
+    if (!lastQuestion || !explanationId || processingRef.current) return;
+
+    processingRef.current = true;
 
     try {
       setIsLoading(true);
@@ -264,11 +300,14 @@ const InterviewPrep = () => {
       console.error("Error refreshing explanation:", error);
     } finally {
       setIsLoading(false);
+      setTimeout(() => {
+        processingRef.current = false;
+      }, 500);
     }
-  };
+  }, [lastQuestion, explanationId]);
 
   // Clear cached explanation (and all related data)
-  const clearCachedExplanation = () => {
+  const clearCachedExplanation = useCallback(() => {
     if (!explanationId || !isStorageAvailable()) return;
 
     try {
@@ -285,10 +324,10 @@ const InterviewPrep = () => {
       console.error("Error clearing explanation & chat history:", error);
       toast.error("Failed to clear explanation & chat history");
     }
-  };
+  }, [explanationId, handleCloseDrawer]);
 
   // Clear only chat history
-  const clearChatHistory = () => {
+  const clearChatHistory = useCallback(() => {
     if (!explanationId || !isStorageAvailable()) return;
 
     try {
@@ -299,15 +338,23 @@ const InterviewPrep = () => {
       console.error("Error clearing chat history:", error);
       toast.error("Failed to clear chat history");
     }
-  };
+  }, [explanationId]);
 
   useEffect(() => {
     fetchSessionDetailsById();
   }, [fetchSessionDetailsById, sessionId]);
 
-  return !sessionData ? (
-    <InterviewPrepSkeleton />
-  ) : (
+  useEffect(() => {
+    return () => {
+      processingRef.current = false;
+    };
+  }, []);
+
+  if (!sessionData) {
+    return <InterviewPrepSkeleton />;
+  }
+
+  return (
     <DashboardLayout>
       <>
         <RoleInfoHeader
@@ -356,13 +403,14 @@ const InterviewPrep = () => {
                           onTogglePin={() =>
                             toggleQuestionPinStatus(question._id)
                           }
+                          isLoading={isLoading}
                         />
 
                         {!isLoading &&
                           sessionData?.questions?.length === index + 1 && (
                             <div className="flex items-center justify-center">
                               <Button
-                                className="bg-black hover:bg-primary"
+                                className="bg-black hover:bg-primary transition-colors duration-150"
                                 disabled={isUpdateLoader || isLoading}
                                 onClick={uploadMoreQuestions}
                               >
@@ -404,6 +452,6 @@ const InterviewPrep = () => {
       </>
     </DashboardLayout>
   );
-};
+});
 
 export default InterviewPrep;
