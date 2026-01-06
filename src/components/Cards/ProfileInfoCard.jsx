@@ -26,7 +26,7 @@ const ProfileInfoCard = () => {
   const [open, setOpen] = useState(false);
 
   const handleLogout = () => {
-    localStorage.clear();
+    // localStorage.clear();
     clearUser();
     navigate("/");
   };
