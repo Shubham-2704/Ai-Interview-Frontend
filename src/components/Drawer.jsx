@@ -20,6 +20,7 @@ import {
   BotMessageSquare,
   RefreshCw,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import AIResponsePreview from "@/pages/InterviewPrep/components/AIResponsePreview";
 import { Input } from "./ui/input";
@@ -28,7 +29,14 @@ import { Avatar } from "./ui/avatar";
 import { UserContext } from "@/context/UserContext";
 import { AvatarFallback, AvatarImage } from "@radix-ui/react-avatar";
 import { toast } from "sonner";
-import { Trash2Icon } from "./Trash2Icon";
+import { Trash2Icon } from "./ui/Trash2Icon";
+import MaximizeButton from "@/components/MaximizeButton";
+// import { fixGrammar } from "@/utils/helper";
+import axiosInstance from "@/utils/axiosInstance";
+import { API_PATHS } from "@/utils/apiPaths";
+import { set } from "zod";
+import { is } from "zod/v4/locales";
+
 // ---- Storage Utility Functions ----
 const STORAGE_KEYS = {
   CHAT_HISTORY: (explanationId) => `exp_${explanationId}_chat`,
@@ -171,6 +179,29 @@ const ChatInput = memo(({ onAskQuestion, isChatLoading }) => {
     [handleSubmit]
   );
 
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [skeletonText, setSkeletonText] = useState("");
+
+  const fixGrammar = useCallback(async (text) => {
+    if (!localInput.trim() || isEnhancing) return;
+
+    setIsEnhancing(true);
+    setSkeletonText(localInput); // preserve for skeleton shimmer
+    setLocalInput(""); // hide old text
+
+    try {
+      const response = await axiosInstance.post(API_PATHS.AI.CORRECT_GRAMMAR, {
+        text,
+      });
+      setLocalInput(response.data.correctedText || text);
+    } catch (e) {
+      // on failure restore original text
+      setLocalInput(skeletonText);
+    } finally {
+      setIsEnhancing(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (inputRef.current) {
       setTimeout(() => inputRef.current.focus(), 100);
@@ -179,17 +210,48 @@ const ChatInput = memo(({ onAskQuestion, isChatLoading }) => {
 
   return (
     <div className="flex gap-2 mt-3">
-      <Input
-        ref={inputRef}
-        placeholder="Ask something about this explanation…"
-        value={localInput}
-        onChange={(e) => setLocalInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={isChatLoading}
-        className="flex-1"
-      />
+      <div className="relative w-full">
+        <Input
+          ref={inputRef}
+          placeholder="Ask something about this explanation…"
+          value={isEnhancing ? "" : localInput}
+          onChange={(e) => setLocalInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isChatLoading || isEnhancing}
+          className="pr-24"
+        />
+
+        {/* Skeleton overlay while enhancing */}
+        {isEnhancing && (
+          <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+            <div className="w-full h-4 rounded-md animate-pulse bg-muted mr-4" />
+          </div>
+        )}
+
+        {/* Grammar Fix inside input */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="none"
+              disabled={isEnhancing || !localInput.trim()}
+              className="absolute right-0 top-1/2 -translate-y-1/2"
+              onClick={() => fixGrammar(localInput)}
+            >
+              {isEnhancing ? (
+                <Loader2 className="animate-spin text-black" />
+              ) : (
+                <Sparkles className="text-black" />
+              )}
+            </Button>
+          </TooltipTrigger>
+
+          <TooltipContent>Enhanced Grammar</TooltipContent>
+        </Tooltip>
+      </div>
+
       <Button
-        disabled={isChatLoading || !localInput.trim()}
+        disabled={isChatLoading || !localInput}
         onClick={handleSubmit}
         className="bg-primary text-primary-foreground hover:bg-primary/90"
       >
@@ -528,6 +590,12 @@ const Drawer = ({
                   Ask a question about this concept
                 </h4>
                 <div className="flex items-center gap-2">
+                  <MaximizeButton
+                    chatHistory={chatHistory}
+                    onSendMessage={handleAskQuestion}
+                    explanationTitle={title}
+                    isLoading={isChatLoading || isLoadingChat}
+                  />
                   {chatHistory.length > 0 && !isLoadingChat && (
                     <Tooltip>
                       <TooltipTrigger asChild>
