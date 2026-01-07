@@ -7,7 +7,13 @@ import RoleInfoHeader from "./components/RoleInfoHeader";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import QuestionCard from "@/components/Cards/QuestionCard";
 import { toast } from "sonner";
 import InterviewPrepSkeleton from "./components/InterviewPrepSkeleton";
@@ -98,6 +104,7 @@ const InterviewPrep = memo(() => {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isUpdateLoader, setIsUpdateLoader] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastQuestion, setLastQuestion] = useState(null);
   const [explanationId, setExplanationId] = useState(null);
 
@@ -167,7 +174,10 @@ const InterviewPrep = memo(() => {
       }
     } catch (error) {
       setExplanation(null);
-      setErrorMsg("Server are too busy, Please try again later.");
+      setErrorMsg(
+        error.response?.data?.message ||
+          "Server are too busy, Please try again later."
+      );
       console.error("Error generating concept explanation:", error);
     } finally {
       setIsLoading(false);
@@ -277,14 +287,13 @@ const InterviewPrep = memo(() => {
 
   // Refresh cached explanation
   const refreshExplanation = useCallback(async () => {
-    if (!lastQuestion || !explanationId || processingRef.current) return;
+    if (!lastQuestion || !explanationId) return;
 
-    processingRef.current = true;
+    // Set refreshing state IMMEDIATELY
+    setIsRefreshing(true);
+    setErrorMsg("");
 
     try {
-      setIsLoading(true);
-      setErrorMsg("");
-
       const response = await axiosInstance.post(
         API_PATHS.AI.GENERATE_EXPLANATION,
         { question: lastQuestion }
@@ -296,13 +305,14 @@ const InterviewPrep = memo(() => {
         toast.success("Explanation refreshed");
       }
     } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          "Server are too busy, Please try again later."
+      );
       setErrorMsg("Failed to refresh. Please try again.");
       console.error("Error refreshing explanation:", error);
     } finally {
-      setIsLoading(false);
-      setTimeout(() => {
-        processingRef.current = false;
-      }, 500);
+      setIsRefreshing(false); // Reset refreshing state
     }
   }, [lastQuestion, explanationId]);
 
@@ -372,7 +382,9 @@ const InterviewPrep = memo(() => {
 
         <Card className="shadow-none border-none container mx-auto px-4 md:px-0">
           <CardHeader>
-            <CardTitle className="text-lg">Interview Q & A</CardTitle>
+            <div className="md:w-[815px] flex items-center justify-between">
+              <CardTitle className="text-lg">Interview Q & A</CardTitle>
+            </div>
           </CardHeader>
           <CardContent className="grid grid-cols-12 gap-4">
             <div
@@ -439,6 +451,7 @@ const InterviewPrep = memo(() => {
               onClose={handleCloseDrawer}
               title={!isLoading && explanation?.title}
               isLoading={isLoading}
+              isRefreshing={isRefreshing}
               explanation={explanation}
               errorMsg={errorMsg}
               onAskFollowup={askFollowupQuestion}

@@ -34,8 +34,7 @@ import MaximizeButton from "@/components/MaximizeButton";
 // import { fixGrammar } from "@/utils/helper";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
-import { set } from "zod";
-import { is } from "zod/v4/locales";
+import { z } from "zod";
 
 // ---- Storage Utility Functions ----
 const STORAGE_KEYS = {
@@ -181,26 +180,48 @@ const ChatInput = memo(({ onAskQuestion, isChatLoading }) => {
 
   const [isEnhancing, setIsEnhancing] = useState(false);
   const [skeletonText, setSkeletonText] = useState("");
+  const [grammarError, setGrammarError] = useState(null);
 
-  const fixGrammar = useCallback(async (text) => {
-    if (!localInput.trim() || isEnhancing) return;
+  const GrammarErrorSchema = z.object({
+    message: z.string(),
+  });
 
-    setIsEnhancing(true);
-    setSkeletonText(localInput); // preserve for skeleton shimmer
-    setLocalInput(""); // hide old text
+  const fixGrammar = useCallback(
+    async (text) => {
+      if (!localInput.trim() || isEnhancing) return;
 
-    try {
-      const response = await axiosInstance.post(API_PATHS.AI.CORRECT_GRAMMAR, {
-        text,
-      });
-      setLocalInput(response.data.correctedText || text);
-    } catch (e) {
-      // on failure restore original text
-      setLocalInput(skeletonText);
-    } finally {
-      setIsEnhancing(false);
-    }
-  }, []);
+      setIsEnhancing(true);
+      setGrammarError(null); // clear old error
+      setSkeletonText(localInput);
+      setLocalInput("");
+
+      try {
+        const response = await axiosInstance.post(
+          API_PATHS.AI.CORRECT_GRAMMAR,
+          { text }
+        );
+
+        setLocalInput(response.data?.correctedText || text);
+      } catch (err) {
+        console.error("Grammar enhance failed:", err);
+
+        // Validate via Zod (prevents crashes)
+        const parsed = GrammarErrorSchema.safeParse(err?.response?.data);
+
+        if (parsed.success) {
+          setGrammarError(parsed?.data?.message);
+        } else {
+          setGrammarError("Something went wrong while enhancing grammar.");
+        }
+
+        // restore original text
+        setLocalInput(skeletonText);
+      } finally {
+        setIsEnhancing(false);
+      }
+    },
+    [localInput, isEnhancing, skeletonText]
+  );
 
   useEffect(() => {
     if (inputRef.current) {
@@ -210,48 +231,56 @@ const ChatInput = memo(({ onAskQuestion, isChatLoading }) => {
 
   return (
     <div className="flex gap-2 mt-3">
-      <div className="relative w-full">
-        <Input
-          ref={inputRef}
-          placeholder="Ask something about this explanation…"
-          value={isEnhancing ? "" : localInput}
-          onChange={(e) => setLocalInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isChatLoading || isEnhancing}
-          className="pr-24"
-        />
+      <div className="w-full">
+        {/* input + sparkle locked together */}
+        <div className="relative w-full">
+          <Input
+            ref={inputRef}
+            placeholder="Ask something about this explanation…"
+            value={isEnhancing ? "" : localInput}
+            onChange={(e) => {
+              setLocalInput(e.target.value);
+              setGrammarError(null);
+            }}
+            onKeyDown={handleKeyDown}
+            disabled={isChatLoading || isEnhancing}
+            className="pr-10"
+          />
 
-        {/* Skeleton overlay while enhancing */}
-        {isEnhancing && (
-          <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
-            <div className="w-full h-4 rounded-md animate-pulse bg-muted mr-4" />
-          </div>
+          {isEnhancing && (
+            <div className="absolute inset-0 flex items-center px-3 pointer-events-none">
+              <div className="w-full h-4 rounded-md animate-pulse bg-muted mr-4" />
+            </div>
+          )}
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="none"
+                disabled={isEnhancing || !localInput.trim()}
+                className="absolute right-0 top-1/2 -translate-y-1/2"
+                onClick={() => fixGrammar(localInput)}
+              >
+                {isEnhancing ? (
+                  <Loader2 className="animate-spin text-black" />
+                ) : (
+                  <Sparkles className="text-black" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Enhanced Grammar</TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* error text OUTSIDE — no layout shift */}
+        {grammarError && (
+          <p className="mt-1 ml-1 text-xs text-red-500">{grammarError}</p>
         )}
-
-        {/* Grammar Fix inside input */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="none"
-              disabled={isEnhancing || !localInput.trim()}
-              className="absolute right-0 top-1/2 -translate-y-1/2"
-              onClick={() => fixGrammar(localInput)}
-            >
-              {isEnhancing ? (
-                <Loader2 className="animate-spin text-black" />
-              ) : (
-                <Sparkles className="text-black" />
-              )}
-            </Button>
-          </TooltipTrigger>
-
-          <TooltipContent>Enhanced Grammar</TooltipContent>
-        </Tooltip>
       </div>
 
       <Button
-        disabled={isChatLoading || !localInput}
+        disabled={isChatLoading || !localInput.trim()}
         onClick={handleSubmit}
         className="bg-primary text-primary-foreground hover:bg-primary/90"
       >
@@ -270,6 +299,7 @@ const Drawer = ({
   onClose,
   title,
   isLoading,
+  isRefreshing,
   explanation,
   errorMsg,
   onAskFollowup,
@@ -400,7 +430,9 @@ const Drawer = ({
         },
       ]);
     } catch (error) {
-      toast.error("Failed to get response. Please try again.");
+      toast.error(
+        error?.response?.data?.message || "Error getting AI response"
+      );
       console.error("Error asking followup:", error);
     } finally {
       setIsChatLoading(false);
@@ -518,12 +550,14 @@ const Drawer = ({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={onRefresh}
-                      disabled={isLoading || isLoadingChat}
-                      className="h-7 w-7 p-0 hover:text-primary"
+                      onClick={() => {
+                        if (onRefresh) onRefresh();
+                      }}
+                      disabled={isRefreshing || isLoadingChat}
+                      className="h-7 w-8 p-0 hover:text-primary"
                     >
-                      {isLoading ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
+                      {isRefreshing ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-primary" />
                       ) : (
                         <RefreshCw className="h-3 w-3" />
                       )}
@@ -539,7 +573,7 @@ const Drawer = ({
                     size="sm"
                     onClick={clearExplanationCacheLocal}
                     disabled={isLoadingChat || isLoading}
-                    className="h-7 text-xs hover:text-destructive flex items-center gap-1"
+                    className="h-7 w-8 text-xs hover:text-destructive flex items-center gap-1"
                   >
                     <Trash2Icon className="h-3 w-3" />
                   </Button>
@@ -553,10 +587,10 @@ const Drawer = ({
           <Button
             variant="outline"
             onClick={handleClose}
-            className="h-8 w-8 p-0 hover:bg-muted hover:text-destructive"
+            className="h-7 w-8 p-0 hover:bg-muted hover:text-destructive"
             disabled={isLoadingChat}
           >
-            <X className="h-4 w-4" />
+            <X className="h-3 w-3" />
           </Button>
         </div>
       </div>
