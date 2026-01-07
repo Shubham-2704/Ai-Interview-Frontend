@@ -16,9 +16,7 @@ import { UserContext } from "@/context/UserContext";
 import { toast } from "sonner";
 import { Spinner } from "./ui/spinner";
 
-
 // { open, onClose, onApiKeySubmit, className }
-
 
 const ApiKeyModal = () => {
   // const [open, setOpen] = useState(false);
@@ -30,16 +28,13 @@ const ApiKeyModal = () => {
     setShowApiKeyModal,
   } = useContext(UserContext);
 
-
   // only for input field
   const [inputKey, setInputKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-
   useEffect(() => {
     // console.log("useEffect triggered");
-
 
     if (showApiKeyModal) {
       // console.log("open is true");
@@ -49,50 +44,43 @@ const ApiKeyModal = () => {
     }
   }, [showApiKeyModal, user?.geminiKeyMasked]);
 
+  const handleSaveApiKey = async () => {
+    if (!inputKey) return;
 
-const handleSaveApiKey = async () => {
-  if (!inputKey) return;
+    try {
+      setSaving(true);
 
-  try {
-    setSaving(true);
+      const response = await axiosInstance.post(API_PATHS.AI.ADD_API_KEY, {
+        apiKey: inputKey,
+      });
 
-    const response = await axiosInstance.post(API_PATHS.AI.ADD_API_KEY, {
-      apiKey: inputKey,
-    });
-
-    toast.success(response.data.message);
-    updateApiKey(response.data?.geminiKeyMasked);
-    closeApiKeyModal();
-  } catch (error) {
-    toast.error(error.response?.data?.message || "Failed to save API key");
-  } finally {
-    setSaving(false);
-  }
-};
-
-
+      toast.success(response.data.message);
+      updateApiKey(response.data?.geminiKeyMasked);
+      closeApiKeyModal();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to save API key");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDeleteApiKey = async () => {
     try {
       setDeleting(true);
-      await axiosInstance.delete(API_PATHS.AI.DELETE_API_KEY);
-
+      const response = await axiosInstance.delete(API_PATHS.AI.DELETE_API_KEY);
 
       updateApiKey(null);
-      toast.success("API key removed successfully!");
+      toast.success(response.data?.message);
       // setOpen(false);
       closeApiKeyModal();
     } catch {
       toast.error("Failed to delete API key");
-    }
-    finally {
+    } finally {
       setDeleting(false);
     }
   };
 
-
   // console.log("Rendering ApiKeyModal with user:", user);
-
 
   return (
     <Dialog open={showApiKeyModal} onOpenChange={setShowApiKeyModal}>
@@ -101,7 +89,6 @@ const handleSaveApiKey = async () => {
           {user?.hasGeminiKey ? "Edit API Key" : "Add API Key"}
         </Button>
       </DialogTrigger>
-
 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -113,17 +100,19 @@ const handleSaveApiKey = async () => {
           </DialogDescription>
         </DialogHeader>
 
-
         <Input
           placeholder="Enter new API key"
           value={inputKey}
           onChange={(e) => setInputKey(e.target.value)}
         />
 
-
         <div className="flex justify-end gap-2">
           {user?.hasGeminiKey && (
-            <Button variant="destructive" onClick={handleDeleteApiKey} disabled={deleting}>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteApiKey}
+              disabled={deleting}
+            >
               {deleting ? (
                 <>
                   <Spinner />
@@ -138,20 +127,19 @@ const handleSaveApiKey = async () => {
             onClick={handleSaveApiKey}
             disabled={saving || !inputKey || inputKey === user?.geminiKeyMasked}
           >
-           {saving ? (
-            <>
-              <Spinner />
-              Saving...
-            </>
-          ) : (
-            "Save"
-          )}
+            {saving ? (
+              <>
+                <Spinner />
+                Saving...
+              </>
+            ) : (
+              "Save"
+            )}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
   );
 };
-
 
 export default ApiKeyModal;
