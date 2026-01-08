@@ -67,7 +67,7 @@ const Dashboard = () => {
       {loading ? (
         <DashboardSkeleton />
       ) : (
-        <div className="container mx-auto py-4">
+        <div className="container mx-auto py-4 px-4 md:px-4">
           {sessions.length === 0 ? (
             <p className="text-lg text-gray-600 flex items-center justify-center h-[50vh]">
               No sessions found. Create a new one to get started!
@@ -122,10 +122,10 @@ export default Dashboard;
 //     <DashboardSkeleton />
 //   ) : (
 //     <DashboardLayout>
-//       <div className="container mx-auto py-4">
+//       <div className="container mx-auto py-4 px-4 md:px-6">
 //         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-7 pt-1 pb-6 px-4 md:px-0">
 //           {sessions.length === 0 ? (
-//             <div className="container mx-auto py-4">
+//             <div className="container mx-auto py-4 px-4 md:px-6">
 //               <div className="flex flex-col items-center justify-center h-[50vh]">
 //                 <p className="text-lg text-gray-600">
 //                   No sessions found. Create a new one to get started!

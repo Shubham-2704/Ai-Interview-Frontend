@@ -39,4 +39,8 @@ export const API_PATHS = {
     PIN: (id) => `/questions/${id}/pin`, // Pin or unpin a question
     UPDATE_NOTE: (id) => `/questions/${id}/note`, // Update/Add note to a question
   },
+
+  PDF: {
+    EXPORT_SESSION_QNA: (sessionId) => `/sessions/${sessionId}/download-pdf`,
+  },
 };

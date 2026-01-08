@@ -21,6 +21,8 @@ import Drawer from "@/components/Drawer";
 import { CircleAlert, ListCollapse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { DownloadIcon } from "@/components/ui/DownloadIcon";
+import { TooltipContent, TooltipTrigger, Tooltip } from "@/components/ui/tooltip";
 
 // Storage utility functions
 const STORAGE_KEYS = {
@@ -350,6 +352,53 @@ const InterviewPrep = memo(() => {
     }
   }, [explanationId]);
 
+  // Download PDF of session Q&A
+   const downloadSessionPdf = useCallback(async () => {
+    try {
+    toast.info("Downloading PDF of Q&A Session...");
+
+      const response = await axiosInstance.get(
+        API_PATHS.PDF.EXPORT_SESSION_QNA(sessionId),
+        {
+          responseType: "blob",
+        }
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+
+      let filename = `${sessionData?.role || "Interview"}-Q&A.pdf`;
+
+      const contentDisposition = response.headers["content-disposition"];
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?(.+)"?/);
+        if (match?.[1]) filename = match[1];
+      }
+
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error("PDF download failed:", error);
+      toast.error(
+        error.response?.data?.detail ||
+          "Failed to export PDF. Please try after some time."
+      );
+    }
+  }, [sessionId, sessionData?.role]);
+
+
   useEffect(() => {
     fetchSessionDetailsById();
   }, [fetchSessionDetailsById, sessionId]);
@@ -382,8 +431,21 @@ const InterviewPrep = memo(() => {
 
         <Card className="shadow-none border-none container mx-auto px-4 md:px-0">
           <CardHeader>
-            <div className="md:w-[815px] flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="text-lg">Interview Q & A</CardTitle>
+              <Tooltip>
+                <TooltipTrigger>
+              <CardAction className="ml-auto">
+                <Button onClick={downloadSessionPdf} className="flex items-center gap-2">
+                  <DownloadIcon />
+                  <span className="hidden sm:inline">Download Q&A</span>
+                </Button>
+              </CardAction>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Download PDF of Q&A Session
+                </TooltipContent>
+              </Tooltip>
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-12 gap-4">
