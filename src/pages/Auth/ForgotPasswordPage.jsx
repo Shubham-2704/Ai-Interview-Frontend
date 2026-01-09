@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -30,9 +29,15 @@ const ForgotPasswordDialog = ({ open, onOpenChange }) => {
     e?.preventDefault();
     setResendLoading(true);
 
+    if (!email) {
+      toast.error("Please enter your email");
+      setResendLoading(false);
+      return;
+    }
+
     try {
       const res = await axiosInstance.post(API_PATHS.AUTH.FORGOT_PASSWORD, {
-        email,
+        email: email.toLowerCase().trim(),
       });
       toast.success("OTP sent to your email");
       setTimeLeft(res.data.expiresIn || 600);
