@@ -40,7 +40,10 @@ const Login = ({ onChangePage }) => {
     setLoading(true);
 
     try {
-      const response = await axiosInstance.post(API_PATHS.AUTH.LOGIN, data);
+      const response = await axiosInstance.post(API_PATHS.AUTH.LOGIN, {
+        email: data.email.toLowerCase().trim(),
+        password: data.password,
+      });
 
       const { token } = response.data;
 

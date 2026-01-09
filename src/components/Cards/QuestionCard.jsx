@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, Pin, PinOff, Sparkles } from "lucide-react";
 import AIResponsePreview from "@/pages/InterviewPrep/components/AIResponsePreview";
 import { Spinner } from "../ui/spinner";
+import { Play, Pause } from "lucide-react";
+import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
+import { extractSpeakableText } from "@/utils/stripCodeFromMarkdown";
 
 const QuestionCard = React.memo(
   ({ question, answer, onLearnMore, isPinned, onTogglePin, isLoading }) => {
@@ -25,6 +28,20 @@ const QuestionCard = React.memo(
     // Animation frame refs
     const animationFrameLearnMoreRef = useRef(null);
     const animationFrameExpandRef = useRef(null);
+
+    const speakableText = React.useMemo(
+      () => extractSpeakableText(answer),
+      [answer]
+    );
+    const {
+      status: speechStatus,
+      speak,
+      pause,
+      resume,
+      stop,
+      activeSentenceIndex,
+      sentences,
+    } = useSpeechSynthesis(speakableText);
 
     // Optimized click handlers
     const handleLearnMore = useCallback(() => {
@@ -59,6 +76,12 @@ const QuestionCard = React.memo(
         isProcessingLearnMore.current = false;
       }
     }, [isLoading, isLocalLoading]);
+
+    useEffect(() => {
+      if (!isExpanded) {
+        stop();
+      }
+    }, [isExpanded, stop]);
 
     const handleTogglePin = useCallback(() => {
       onTogglePin(); // Direct call
@@ -177,6 +200,48 @@ const QuestionCard = React.memo(
             ref={contentRef}
             className="mt-4 text-gray-700 bg-gray-50 px-5 py-5 rounded-lg"
           >
+            <div className="flex items-center justify-between mb-3">
+              {/* Left: Listening */}
+              {speechStatus === "playing" ? (
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-green-600" />
+                  </span>
+                  <span className="text-xs text-green-600 font-medium">
+                    Listening
+                  </span>
+                </div>
+              ) : (
+                <div />
+              )}
+
+              {/* Right: Buttons */}
+              <div className="flex gap-2">
+                {speechStatus === "idle" && (
+                  <Button size="sm" variant="outline" onClick={speak}>
+                    <Play className="size-4 mr-1" />
+                    Listen
+                  </Button>
+                )}
+
+                {speechStatus === "playing" && (
+                  <Button size="sm" variant="outline" onClick={pause}>
+                    <Pause className="size-4 mr-1" />
+                    Pause
+                  </Button>
+                )}
+
+                {speechStatus === "paused" && (
+                  <Button size="sm" variant="outline" onClick={resume}>
+                    <Play className="size-4 mr-1" />
+                    Resume
+                  </Button>
+                )}
+              </div>
+            </div>
+
+
             <AIResponsePreview {...previewProps} />
           </div>
         </div>

@@ -10,8 +10,8 @@ import ApiKeyModal from "../ApiKeyModal";
 
 const Navbar = () => {
   return (
-    <NavigationMenu className="h-16 max-w-full justify-normal border border-b border-gray-200/50 backdrop-blur-sm py-2.5 px-4 sticky top-0 z-50">
-      <div className="container mx-auto flex items-center justify-between gap-5">
+    <NavigationMenu className="h-16 max-w-full justify-normal border border-b border-gray-200/50 backdrop-blur-sm py-2.5 sticky top-0 z-50">
+      <div className="container mx-auto px-4 flex items-center justify-between gap-5">
         <NavigationMenuItem
           className="text-lg md:text-2xl font-medium leading-5"
           asChild

@@ -22,7 +22,11 @@ import { CircleAlert, ListCollapse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { DownloadIcon } from "@/components/ui/DownloadIcon";
-import { TooltipContent, TooltipTrigger, Tooltip } from "@/components/ui/tooltip";
+import {
+  TooltipContent,
+  TooltipTrigger,
+  Tooltip,
+} from "@/components/ui/tooltip";
 
 // Storage utility functions
 const STORAGE_KEYS = {
@@ -353,9 +357,9 @@ const InterviewPrep = memo(() => {
   }, [explanationId]);
 
   // Download PDF of session Q&A
-   const downloadSessionPdf = useCallback(async () => {
+  const downloadSessionPdf = useCallback(async () => {
     try {
-    toast.info("Downloading PDF of Q&A Session...");
+      toast.info("Downloading PDF of Q&A Session...");
 
       const response = await axiosInstance.get(
         API_PATHS.PDF.EXPORT_SESSION_QNA(sessionId),
@@ -398,7 +402,6 @@ const InterviewPrep = memo(() => {
     }
   }, [sessionId, sessionData?.role]);
 
-
   useEffect(() => {
     fetchSessionDetailsById();
   }, [fetchSessionDetailsById, sessionId]);
@@ -434,17 +437,17 @@ const InterviewPrep = memo(() => {
             <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="text-lg">Interview Q & A</CardTitle>
               <Tooltip>
-                <TooltipTrigger>
-              <CardAction className="ml-auto">
-                <Button onClick={downloadSessionPdf} className="flex items-center gap-2">
-                  <DownloadIcon />
-                  <span className="hidden sm:inline">Download Q&A</span>
-                </Button>
-              </CardAction>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={downloadSessionPdf}
+                    className="flex items-center gap-2 ml-auto"
+                  >
+                    <DownloadIcon />
+                    <span className="hidden sm:inline">Download Q&A</span>
+                  </Button>
                 </TooltipTrigger>
-                <TooltipContent>
-                  Download PDF of Q&A Session
-                </TooltipContent>
+
+                <TooltipContent>Download PDF of Q&A Session</TooltipContent>
               </Tooltip>
             </div>
           </CardHeader>

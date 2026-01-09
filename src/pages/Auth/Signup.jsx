@@ -53,7 +53,7 @@ const Signup = ({ onChangePage }) => {
 
       const response = await axiosInstance.post(API_PATHS.AUTH.REGISTER, {
         name: data.fullName,
-        email: data.email,
+        email: data.email.toLowerCase().trim(),
         password: data.password,
         profileImageUrl,
       });
