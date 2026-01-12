@@ -208,7 +208,7 @@ const QuestionCard = React.memo(
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-green-600" />
                   </span>
-                  <span className="text-xs text-green-600 font-medium">
+                  <span className="hidden sm:inline text-xs text-green-600 font-medium">
                     Listening
                   </span>
                 </div>
@@ -220,22 +220,22 @@ const QuestionCard = React.memo(
               <div className="flex gap-2">
                 {speechStatus === "idle" && (
                   <Button size="sm" variant="outline" onClick={speak}>
-                    <Play className="size-4 mr-1" />
-                    Listen
+                    <Play className="size-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Listen</span>
                   </Button>
                 )}
 
                 {speechStatus === "playing" && (
                   <Button size="sm" variant="outline" onClick={pause}>
-                    <Pause className="size-4 mr-1" />
-                    Pause
+                    <Pause className="size-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Pause</span>
                   </Button>
                 )}
 
                 {speechStatus === "paused" && (
                   <Button size="sm" variant="outline" onClick={resume}>
-                    <Play className="size-4 mr-1" />
-                    Resume
+                    <Play className="size-4 sm:mr-1" />
+                    <span className="hidden sm:inline">Resume</span>
                   </Button>
                 )}
               </div>
