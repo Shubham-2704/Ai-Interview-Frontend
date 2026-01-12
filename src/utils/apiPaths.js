@@ -43,4 +43,12 @@ export const API_PATHS = {
   PDF: {
     EXPORT_SESSION_QNA: (sessionId) => `/sessions/${sessionId}/download-pdf`,
   },
+
+  STUDY_MATERIALS: {
+    GENERATE: (questionId) => `/study-materials/question/${questionId}`,
+    GET_BY_QUESTION: (questionId) => `/study-materials/question/${questionId}`,
+    GET_BY_SESSION: (sessionId) => `/study-materials/session/${sessionId}`,
+    REFRESH: (materialId) => `/study-materials/${materialId}/refresh`,
+    DELETE: (materialId) => `/study-materials/${materialId}`,
+  },
 };
