@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, memo } from "react";
 import {
   Item,
   ItemActions,
@@ -6,28 +6,49 @@ import {
   ItemHeader,
 } from "@/components/ui/item";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, Pin, PinOff, Sparkles } from "lucide-react";
+import {
+  ChevronDown,
+  Pin,
+  PinOff,
+  Sparkles,
+  BookOpen,
+  ExternalLink,
+} from "lucide-react";
 import AIResponsePreview from "@/pages/InterviewPrep/components/AIResponsePreview";
 import { Spinner } from "../ui/spinner";
 import { Play, Pause } from "lucide-react";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { extractSpeakableText } from "@/utils/stripCodeFromMarkdown";
 
-const QuestionCard = React.memo(
-  ({ question, answer, onLearnMore, isPinned, onTogglePin, isLoading }) => {
+const QuestionCard = memo(
+  ({
+    question,
+    answer,
+    onLearnMore,
+    onStudyMaterials,
+    isPinned,
+    onTogglePin,
+    isLoading,
+    studyMaterialsLoading,
+    questionId,
+  }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [height, setHeight] = useState(0);
     const contentRef = useRef(null);
 
-    // LOCAL loading state for immediate feedback
+    // LOCAL loading states
     const [isLocalLoading, setIsLocalLoading] = useState(false);
+    const [isLocalMaterialsLoading, setIsLocalMaterialsLoading] =
+      useState(false);
 
     // Separate refs for each button
     const isProcessingLearnMore = useRef(false);
+    const isProcessingStudyMaterials = useRef(false);
 
     // Animation frame refs
     const animationFrameLearnMoreRef = useRef(null);
     const animationFrameExpandRef = useRef(null);
+    const animationFrameStudyMaterialsRef = useRef(null);
 
     const speakableText = React.useMemo(
       () => extractSpeakableText(answer),
@@ -48,14 +69,10 @@ const QuestionCard = React.memo(
       if (isProcessingLearnMore.current || isLoading) return;
 
       isProcessingLearnMore.current = true;
-
-      // 1. Show loading IMMEDIATELY
       setIsLocalLoading(true);
 
-      // 2. Expand the card
       setIsExpanded(true);
 
-      // 3. Call the parent handler
       animationFrameLearnMoreRef.current = requestAnimationFrame(() => {
         onLearnMore();
       });
@@ -69,13 +86,61 @@ const QuestionCard = React.memo(
       }, 1000);
     }, [onLearnMore, isLoading]);
 
-    // Effect to sync local loading with parent loading
+    const handleStudyMaterials = useCallback(() => {
+      // Prevent multiple clicks while processing
+      if (isProcessingStudyMaterials.current) return;
+
+      console.log("📞 Study Materials clicked, calling parent function...");
+
+      // 1️⃣ IMMEDIATELY set local loading state
+      setIsLocalMaterialsLoading(true);
+      isProcessingStudyMaterials.current = true;
+
+      // 2️⃣ Expand card if not expanded
+      if (!isExpanded) {
+        setIsExpanded(true);
+      }
+
+      // 3️⃣ Call parent function on the next tick
+      requestAnimationFrame(() => {
+        console.log("📞 Calling onStudyMaterials from parent...");
+        onStudyMaterials();
+      });
+
+      // Fallback reset - but parent should handle clearing via useEffect
+      setTimeout(() => {
+        if (!studyMaterialsLoading && isLocalMaterialsLoading) {
+          setIsLocalMaterialsLoading(false);
+          isProcessingStudyMaterials.current = false;
+        }
+      }, 2000);
+    }, [onStudyMaterials, isExpanded, studyMaterialsLoading]);
+
+    // Effect to sync local loading states with parent
     useEffect(() => {
+      console.log("🔄 Parent loading states changed:", {
+        isLoading,
+        studyMaterialsLoading,
+        isLocalLoading,
+        isLocalMaterialsLoading,
+      });
+
       if (!isLoading && isLocalLoading) {
         setIsLocalLoading(false);
         isProcessingLearnMore.current = false;
       }
-    }, [isLoading, isLocalLoading]);
+
+      if (!studyMaterialsLoading && isLocalMaterialsLoading) {
+        console.log("✅ Parent finished loading, clearing local loading...");
+        setIsLocalMaterialsLoading(false);
+        isProcessingStudyMaterials.current = false;
+      }
+    }, [
+      isLoading,
+      studyMaterialsLoading,
+      isLocalLoading,
+      isLocalMaterialsLoading,
+    ]);
 
     useEffect(() => {
       if (!isExpanded) {
@@ -84,7 +149,7 @@ const QuestionCard = React.memo(
     }, [isExpanded, stop]);
 
     const handleTogglePin = useCallback(() => {
-      onTogglePin(); // Direct call
+      onTogglePin();
     }, [onTogglePin]);
 
     const toggleExpand = useCallback(() => {
@@ -119,14 +184,19 @@ const QuestionCard = React.memo(
         if (animationFrameExpandRef.current) {
           cancelAnimationFrame(animationFrameExpandRef.current);
         }
+        if (animationFrameStudyMaterialsRef.current) {
+          cancelAnimationFrame(animationFrameStudyMaterialsRef.current);
+        }
       };
     }, []);
 
     // Memoize the AIResponsePreview props
     const previewProps = React.useMemo(() => ({ content: answer }), [answer]);
 
-    // Determine button state - show loading immediately on click
-    const showLoading = isLocalLoading || isLoading;
+    // Determine button states - USE PARENT'S LOADING STATE DIRECTLY
+    const showLearnMoreLoading = isLocalLoading || isLoading;
+    const showStudyMaterialsLoading =
+      isLocalMaterialsLoading || studyMaterialsLoading;
 
     return (
       <div className="bg-white rounded-lg mb-4 overflow-hidden py-4 px-5 shadow-xl shadow-gray-100/70 border border-gray-100/60 group">
@@ -146,11 +216,12 @@ const QuestionCard = React.memo(
                 isExpanded ? "md:flex" : "md:hidden group-hover:flex"
               }`}
             >
+              {/* Pin Button */}
               <Button
                 variant={"ghost"}
                 onClick={handleTogglePin}
-                disabled={showLoading}
-                className="text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border border-indigo-50 hover:border-indigo-200 transition-colors duration-150"
+                disabled={showLearnMoreLoading || showStudyMaterialsLoading}
+                className="text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border transition-colors duration-150"
               >
                 {isPinned ? (
                   <PinOff className="size-3.5" />
@@ -159,13 +230,34 @@ const QuestionCard = React.memo(
                 )}
               </Button>
 
+              {/* Study Materials Button */}
+              <Button
+                variant="ghost"
+                onClick={handleStudyMaterials}
+                disabled={showStudyMaterialsLoading}
+                className="text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border"
+              >
+                {showStudyMaterialsLoading ? (
+                  <span className="flex items-center">
+                    <Spinner className="mr-2 size-3.5" />
+                    Loading...
+                  </span>
+                ) : (
+                  <>
+                    <BookOpen className="size-3.5" />
+                    <span className="hidden md:block">Resources</span>
+                  </>
+                )}
+              </Button>
+
+              {/* Learn More Button */}
               <Button
                 variant={"ghost"}
                 onClick={handleLearnMore}
-                disabled={showLoading || isProcessingLearnMore.current}
-                className="text-cyan-800 bg-cyan-50 hover:bg-cyan-100 border border-cyan-50 hover:border-cyan-200 text-xs text-nowrap transition-colors duration-150"
+                disabled={showLearnMoreLoading}
+                className="text-cyan-800 bg-cyan-50 hover:bg-cyan-100 border text-xs text-nowrap transition-colors duration-150"
               >
-                {showLoading ? (
+                {showLearnMoreLoading ? (
                   <span className="flex items-center">
                     <Spinner className="mr-2 size-3.5" />
                     Loading...
@@ -181,7 +273,7 @@ const QuestionCard = React.memo(
             <Button
               variant={"ghost"}
               onClick={toggleExpand}
-              disabled={showLoading} // Disable expand button when loading
+              disabled={showLearnMoreLoading || showStudyMaterialsLoading}
               className="text-gray-400 hover:text-gray-500 transition-colors duration-150"
             >
               <ChevronDown
@@ -241,7 +333,6 @@ const QuestionCard = React.memo(
               </div>
             </div>
 
-
             <AIResponsePreview {...previewProps} />
           </div>
         </div>
@@ -254,7 +345,9 @@ const QuestionCard = React.memo(
       prevProps.question === nextProps.question &&
       prevProps.answer === nextProps.answer &&
       prevProps.isPinned === nextProps.isPinned &&
-      prevProps.isLoading === nextProps.isLoading
+      prevProps.isLoading === nextProps.isLoading &&
+      prevProps.studyMaterialsLoading === nextProps.studyMaterialsLoading &&
+      prevProps.questionId === nextProps.questionId
     );
   }
 );
