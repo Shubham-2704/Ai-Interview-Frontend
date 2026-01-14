@@ -14,6 +14,7 @@ import {
   BookOpen,
   ExternalLink,
 } from "lucide-react";
+import { Eye } from "lucide-react";
 import AIResponsePreview from "@/pages/InterviewPrep/components/AIResponsePreview";
 import { Spinner } from "../ui/spinner";
 import { Play, Pause } from "lucide-react";
@@ -238,9 +239,9 @@ const QuestionCard = memo(
                 className="text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border"
               >
                 {showStudyMaterialsLoading ? (
-                  <span className="flex items-center">
-                    <Spinner className="mr-2 size-3.5" />
-                    Loading...
+                  <span className="flex items-center gap-2">
+                    <Spinner />
+                    <p className="hidden md:block">Loading...</p>
                   </span>
                 ) : (
                   <>
@@ -258,9 +259,9 @@ const QuestionCard = memo(
                 className="text-cyan-800 bg-cyan-50 hover:bg-cyan-100 border text-xs text-nowrap transition-colors duration-150"
               >
                 {showLearnMoreLoading ? (
-                  <span className="flex items-center">
-                    <Spinner className="mr-2 size-3.5" />
-                    Loading...
+                  <span className="flex items-center gap-2">
+                    <Spinner />
+                    <p className="hidden md:block">Loading...</p>
                   </span>
                 ) : (
                   <>
@@ -353,3 +354,4 @@ const QuestionCard = memo(
 );
 
 export default QuestionCard;
+
