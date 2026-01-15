@@ -10,16 +10,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  AlertCircle,
+  ExternalLink,
+  HelpCircle,
+} from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 import { UserContext } from "@/context/UserContext";
 import { toast } from "sonner";
 import { Spinner } from "./ui/spinner";
 
-// { open, onClose, onApiKeySubmit, className }
-
 const ApiKeyModal = () => {
-  // const [open, setOpen] = useState(false);
   const {
     user,
     updateApiKey,
@@ -28,18 +30,14 @@ const ApiKeyModal = () => {
     setShowApiKeyModal,
   } = useContext(UserContext);
 
-  // only for input field
   const [inputKey, setInputKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    // console.log("useEffect triggered");
-
     if (showApiKeyModal) {
-      // console.log("open is true");
       setTimeout(() => {
-        setInputKey(user?.geminiKeyMasked || ""); // Initialize with an empty string if masked key is null or undefined
+        setInputKey(user?.geminiKeyMasked || "");
       }, 0);
     }
   }, [showApiKeyModal, user?.geminiKeyMasked]);
@@ -49,11 +47,9 @@ const ApiKeyModal = () => {
 
     try {
       setSaving(true);
-
       const response = await axiosInstance.post(API_PATHS.AI.ADD_API_KEY, {
         apiKey: inputKey,
       });
-
       toast.success(response.data.message);
       updateApiKey(response.data?.geminiKeyMasked);
       closeApiKeyModal();
@@ -68,10 +64,8 @@ const ApiKeyModal = () => {
     try {
       setDeleting(true);
       const response = await axiosInstance.delete(API_PATHS.AI.DELETE_API_KEY);
-
       updateApiKey(null);
       toast.success(response.data?.message);
-      // setOpen(false);
       closeApiKeyModal();
     } catch {
       toast.error("Failed to delete API key");
@@ -79,8 +73,6 @@ const ApiKeyModal = () => {
       setDeleting(false);
     }
   };
-
-  // console.log("Rendering ApiKeyModal with user:", user);
 
   return (
     <Dialog open={showApiKeyModal} onOpenChange={setShowApiKeyModal}>
@@ -95,16 +87,45 @@ const ApiKeyModal = () => {
           <DialogTitle>
             {user?.hasGeminiKey ? "Update API Key" : "Add API Key"}
           </DialogTitle>
-          <DialogDescription>
-            Your API key is stored securely and never shown again.
+          <DialogDescription className="flex items-center gap-1">
+            <span>Your API key is stored securely and never shown again.</span>
           </DialogDescription>
         </DialogHeader>
 
-        <Input
-          placeholder="Enter new API key"
-          value={inputKey}
-          onChange={(e) => setInputKey(e.target.value)}
-        />
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="api-key" className="text-sm">
+              Enter your API key (starts with AIza...)
+            </Label>
+            <Input
+              id="api-key"
+              placeholder="Paste your Gemini API key here"
+              value={inputKey}
+              onChange={(e) => setInputKey(e.target.value)}
+              className="mt-1"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Paste the API key you copied from Google AI Studio
+            </p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">Don't have a key?</p>
+                <Button
+                  variant="link"
+                  className="p-0 h-auto text-xs"
+                  onClick={() => window.open("https://aistudio.google.com/api-keys", '_blank')}
+                >
+                  <ExternalLink className="h-3 w-3 mr-1" />
+                  Get your free Gemini API key
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="flex justify-end gap-2">
           {user?.hasGeminiKey && (
