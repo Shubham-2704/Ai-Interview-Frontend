@@ -1,5 +1,5 @@
-import React, { useContext, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import React, { useContext, useState, useEffect } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema } from "@/lib/schema";
 import { useNavigate } from "react-router-dom";
@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff } from "lucide-react";
+import { 
+  Eye, 
+  EyeOff, 
+  Check, 
+  X,
+  AlertCircle
+} from "lucide-react";
 import ProfilePhotoSelector from "@/components/Inputs/ProfilePhotoSelector";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
@@ -26,9 +32,15 @@ const Signup = ({ onChangePage }) => {
   const [profilePic, setProfilePic] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false,
+  });
 
   const navigate = useNavigate();
-
   const { updateUser } = useContext(UserContext);
 
   const form = useForm({
@@ -38,7 +50,36 @@ const Signup = ({ onChangePage }) => {
       email: "",
       password: "",
     },
+    mode: "onChange",
   });
+
+  // Watch password field for real-time validation
+  const password = useWatch({
+    control: form.control,
+    name: "password",
+  });
+
+  // Update validation states when password changes
+  useEffect(() => {
+    if (!password) {
+      setPasswordValidation({
+        length: false,
+        uppercase: false,
+        lowercase: false,
+        number: false,
+        special: false,
+      });
+      return;
+    }
+
+    setPasswordValidation({
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[^A-Za-z0-9]/.test(password),
+    });
+  }, [password]);
 
   async function onSubmit(data) {
     let profileImageUrl = "";
@@ -76,8 +117,36 @@ const Signup = ({ onChangePage }) => {
     }
   }
 
+  const validationRules = [
+    {
+      id: "length",
+      label: "At least 8 characters",
+      valid: passwordValidation.length,
+    },
+    {
+      id: "uppercase",
+      label: "At least one uppercase letter (A-Z)",
+      valid: passwordValidation.uppercase,
+    },
+    {
+      id: "lowercase",
+      label: "At least one lowercase letter (a-z)",
+      valid: passwordValidation.lowercase,
+    },
+    {
+      id: "number",
+      label: "At least one number (0-9)",
+      valid: passwordValidation.number,
+    },
+    {
+      id: "special",
+      label: "At least one special character (!@#$%^&*)",
+      valid: passwordValidation.special,
+    },
+  ];
+
   return (
-    <div>
+    <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <FieldGroup>
           <ProfilePhotoSelector image={profilePic} setImage={setProfilePic} />
@@ -118,6 +187,8 @@ const Signup = ({ onChangePage }) => {
               </Field>
             )}
           />
+          
+          {/* Password Field with Validation */}
           <Controller
             name="password"
             control={form.control}
@@ -131,19 +202,76 @@ const Signup = ({ onChangePage }) => {
                     type={showPassword ? "text" : "password"}
                     aria-invalid={fieldState.invalid}
                     placeholder="Enter your password"
+                    onChange={(e) => {
+                      field.onChange(e);
+                    }}
                   />
-                  <span
-                    variant={"icon"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-primary cursor-pointer"
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                     onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
-                      <Eye className="size-[22px]" />
+                      <EyeOff className="size-5 cursor-pointer" />
                     ) : (
-                      <EyeOff className="size-[22px]" />
+                      <Eye className="size-5 cursor-pointer" />
                     )}
-                  </span>
+                  </button>
                 </div>
+                
+                {/* Password Strength Indicator */}
+                {password && (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            Object.values(passwordValidation).filter(Boolean).length === 5 
+                              ? "bg-green-500" 
+                              : Object.values(passwordValidation).filter(Boolean).length >= 3 
+                              ? "bg-yellow-500" 
+                              : "bg-red-500"
+                          }`}
+                          style={{
+                            width: `${(Object.values(passwordValidation).filter(Boolean).length / 5) * 100}%`
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium">
+                        {Object.values(passwordValidation).filter(Boolean).length === 5 
+                          ? "Strong" 
+                          : Object.values(passwordValidation).filter(Boolean).length >= 3 
+                          ? "Medium" 
+                          : "Weak"}
+                      </span>
+                    </div>
+                    
+                    {/* Validation Rules */}
+                    <div className="space-y-1.5">
+                      {validationRules.map((rule) => (
+                        <div 
+                          key={rule.id} 
+                          className="flex items-center gap-2"
+                        >
+                          {rule.valid ? (
+                            <Check className="size-4 text-green-500" />
+                          ) : (
+                            <X className="size-4 text-gray-300" />
+                          )}
+                          <span 
+                            className={`text-xs ${
+                              rule.valid ? "text-green-600" : "text-gray-500"
+                            }`}
+                          >
+                            {rule.label}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 {fieldState.invalid && (
                   <FieldError errors={[fieldState.error]} />
                 )}
@@ -153,13 +281,13 @@ const Signup = ({ onChangePage }) => {
 
           <Button
             type="submit"
-            className="bg-black hover:bg-primary hover:text-primary-foreground transition-colors"
-            disabled={loading}
+            className="bg-black hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || !form.formState.isValid}
           >
             {loading ? (
               <>
                 <Spinner />
-                Loading...
+                Creating Account...
               </>
             ) : (
               "SIGN UP"
