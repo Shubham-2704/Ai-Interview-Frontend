@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import ProfileInfoCard from "../Cards/ProfileInfoCard";
 import ApiKeyModal from "../ApiKeyModal";
+import SetupGuideModal from "../SetupGuideModal"; // New component
 
 const Navbar = () => {
   return (
@@ -18,10 +19,19 @@ const Navbar = () => {
         >
           <Link to="/dashboard">Intervia</Link>
         </NavigationMenuItem>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1">
+          {/* Question mark button for Setup Guide */}
+          <div className="flex mr-2">
+          <NavigationMenuItem>
+            <SetupGuideModal />
+          </NavigationMenuItem>
+          
+          {/* Original Add/Edit API Key button */}
           <NavigationMenuItem asChild>
             <ApiKeyModal />
           </NavigationMenuItem>
+          </div>
+          
           <NavigationMenuItem asChild>
             <ProfileInfoCard />
           </NavigationMenuItem>

@@ -322,3 +322,8 @@
   background-size: 1000px 100%;
   animation: shimmer 2s infinite linear;
 }
+
+ /* Remove list styles from navigation menu items */
+[data-slot="navigation-menu-item"] {
+  list-style-type: none;
+}
