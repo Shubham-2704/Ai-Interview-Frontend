@@ -30,7 +30,11 @@ const LandingPage = () => {
     if (!user) {
       setOpenAuthModel(true);
     } else {
-      navigate("/dashboard");
+      if (user.role === "admin") {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/dashboard");
+      }
     }
   };
 
@@ -57,25 +61,30 @@ const LandingPage = () => {
                   </Button>
                 )}
               </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>
-                    {currentPage === "login"
-                      ? "Welcome Back"
-                      : "Create an Account"}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {currentPage === "login"
-                      ? "Please enter your details to log in"
-                      : "Join us today by entering your details below"}
-                  </DialogDescription>
-                </DialogHeader>
+              <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] p-0 rounded-lg overflow-hidden">
+                {/* Scrollable container */}
+                <div className="h-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+                  <div className="p-5 pb-6">
+                    <DialogHeader className="mb-6">
+                      <DialogTitle className="text-xl sm:text-2xl text-center">
+                        {currentPage === "login"
+                          ? "Welcome Back"
+                          : "Create an Account"}
+                      </DialogTitle>
+                      <DialogDescription className="text-center">
+                        {currentPage === "login"
+                          ? "Please enter your details to log in"
+                          : "Join us today by entering your details below"}
+                      </DialogDescription>
+                    </DialogHeader>
 
-                {currentPage === "login" ? (
-                  <Login onChangePage={setCurrentPage} />
-                ) : (
-                  <Signup onChangePage={setCurrentPage} />
-                )}
+                    {currentPage === "login" ? (
+                      <Login onChangePage={setCurrentPage} />
+                    ) : (
+                      <Signup onChangePage={setCurrentPage} />
+                    )}
+                  </div>
+                </div>
               </DialogContent>
             </Dialog>
           </header>
@@ -175,6 +184,31 @@ const LandingPage = () => {
       <footer className="text-sm bg-gray-50 text-center p-5 mt-5">
         Made with ❤️... Happy Coding
       </footer>
+
+      {/* Add custom scrollbar styles */}
+      <style jsx>{`
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #d1d5db transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+          border-radius: 10px;
+          margin: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #d1d5db;
+          border-radius: 10px;
+          border: 2px solid transparent;
+          background-clip: content-box;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: #9ca3af;
+        }
+      `}</style>
     </>
   );
 };

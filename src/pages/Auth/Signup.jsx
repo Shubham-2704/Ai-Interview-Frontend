@@ -1,3 +1,4 @@
+
 import React, { useContext, useState, useEffect } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,13 +15,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { 
-  Eye, 
-  EyeOff, 
-  Check, 
-  X,
-  AlertCircle
-} from "lucide-react";
+import { Eye, EyeOff, Check, X, AlertCircle } from "lucide-react";
 import ProfilePhotoSelector from "@/components/Inputs/ProfilePhotoSelector";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
@@ -146,7 +141,7 @@ const Signup = ({ onChangePage }) => {
   ];
 
   return (
-    <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+    <div>
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <FieldGroup>
           <ProfilePhotoSelector image={profilePic} setImage={setProfilePic} />
@@ -187,7 +182,7 @@ const Signup = ({ onChangePage }) => {
               </Field>
             )}
           />
-          
+
           {/* Password Field with Validation */}
           <Controller
             name="password"
@@ -210,7 +205,9 @@ const Signup = ({ onChangePage }) => {
                     type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
                     onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
                     {showPassword ? (
                       <EyeOff className="size-5 cursor-pointer" />
@@ -219,47 +216,54 @@ const Signup = ({ onChangePage }) => {
                     )}
                   </button>
                 </div>
-                
+
                 {/* Password Strength Indicator */}
                 {password && (
                   <div className="mt-2 space-y-2">
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className={`h-full rounded-full transition-all duration-300 ${
-                            Object.values(passwordValidation).filter(Boolean).length === 5 
-                              ? "bg-green-500" 
-                              : Object.values(passwordValidation).filter(Boolean).length >= 3 
-                              ? "bg-yellow-500" 
+                            Object.values(passwordValidation).filter(Boolean)
+                              .length === 5
+                              ? "bg-green-500"
+                              : Object.values(passwordValidation).filter(
+                                  Boolean
+                                ).length >= 3
+                              ? "bg-yellow-500"
                               : "bg-red-500"
                           }`}
                           style={{
-                            width: `${(Object.values(passwordValidation).filter(Boolean).length / 5) * 100}%`
+                            width: `${
+                              (Object.values(passwordValidation).filter(Boolean)
+                                .length /
+                                5) *
+                              100
+                            }%`,
                           }}
                         />
                       </div>
                       <span className="text-xs font-medium">
-                        {Object.values(passwordValidation).filter(Boolean).length === 5 
-                          ? "Strong" 
-                          : Object.values(passwordValidation).filter(Boolean).length >= 3 
-                          ? "Medium" 
+                        {Object.values(passwordValidation).filter(Boolean)
+                          .length === 5
+                          ? "Strong"
+                          : Object.values(passwordValidation).filter(Boolean)
+                              .length >= 3
+                          ? "Medium"
                           : "Weak"}
                       </span>
                     </div>
-                    
+
                     {/* Validation Rules */}
                     <div className="space-y-1.5">
                       {validationRules.map((rule) => (
-                        <div 
-                          key={rule.id} 
-                          className="flex items-center gap-2"
-                        >
+                        <div key={rule.id} className="flex items-center gap-2">
                           {rule.valid ? (
                             <Check className="size-4 text-green-500" />
                           ) : (
                             <X className="size-4 text-gray-300" />
                           )}
-                          <span 
+                          <span
                             className={`text-xs ${
                               rule.valid ? "text-green-600" : "text-gray-500"
                             }`}
@@ -271,7 +275,7 @@ const Signup = ({ onChangePage }) => {
                     </div>
                   </div>
                 )}
-                
+
                 {fieldState.invalid && (
                   <FieldError errors={[fieldState.error]} />
                 )}
