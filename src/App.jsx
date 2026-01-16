@@ -3,33 +3,37 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 
 import LandingPage from "./pages/LandingPage";
-import Login from "./pages/Auth/Login";
-import Signup from "./pages/Auth/Signup";
 import Dashboard from "./pages/Home/Dashboard";
+import AdminDashboard from "./pages/Admin/Dashboard";
 import InterviewPrep from "./pages/InterviewPrep/InterviewPrep";
 
 import UserProvider from "./context/userContext.jsx";
+import ProtectedRoute from "./routes/ProtectedRoute";
 
 function App() {
   return (
     <UserProvider>
-      <div>
-        <Router>
-          <Routes>
-            {/* Default Route */}
-            <Route path="/" element={<LandingPage />} />
+      <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
 
-            {/* <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} /> */}
+          {/* USER ROUTES */}
+          <Route element={<ProtectedRoute allowedRoles={["user"]} />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route
               path="/interview-prep/:sessionId"
               element={<InterviewPrep />}
             />
-          </Routes>
-        </Router>
+          </Route>
+
+          {/* ADMIN ROUTES */}
+          <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          </Route>
+        </Routes>
+
         <Toaster richColors />
-      </div>
+      </Router>
     </UserProvider>
   );
 }

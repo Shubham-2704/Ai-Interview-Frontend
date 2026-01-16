@@ -11,7 +11,7 @@ export const API_PATHS = {
     FORGOT_PASSWORD: `/auth/forgot-password`, // Send OTP to email
     VERIFY_RESET_OTP: `/auth/verify-reset-otp`, // Verify OTP for password reset
     RESET_PASSWORD: `/auth/reset-password`, // Reset password using verified OTP
-
+    VERIFY_TOKEN: `/auth/verify-admin-token`, // Verify admin token
   },
 
   IMAGE: {
@@ -25,6 +25,7 @@ export const API_PATHS = {
     DELETE_API_KEY: "/ai/api-key", // Delete API key
     FOLLOWUP_CHAT: "/ai/followup-chat", // Follow-up chat for concept explanation
     CORRECT_GRAMMAR: "/ai/ai-correct", // Correct grammar using AI
+    VERIFY_TOKEN: `/auth/verify-admin-token`, // Verify admin token
   },
 
   SESSION: {
