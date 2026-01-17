@@ -3,7 +3,9 @@ import { useContext } from "react";
 import { UserContext } from "@/context/UserContext";
 
 const ProtectedRoute = ({ allowedRoles }) => {
-  const { user } = useContext(UserContext);
+  const { user, loading } = useContext(UserContext);
+
+   if (loading) return null;
 
   // Not logged in
   if (!user) {
