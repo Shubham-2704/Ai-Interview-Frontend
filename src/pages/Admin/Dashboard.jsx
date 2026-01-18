@@ -494,7 +494,7 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
         <StatCard
           title="Total Questions"
           value={stats.totalQuestions}
@@ -509,15 +509,6 @@ const Dashboard = () => {
           icon={BookOpen}
           trend={calculateTrend(stats.totalStudyMaterials, 4000)}
           color="text-indigo-500"
-          loading={loading}
-        />
-        <StatCard
-          title="Avg Session Time"
-          value={stats.avgSessionTime}
-          icon={Clock}
-          trend={calculateTrend(stats.avgSessionTime, 25)}
-          color="text-purple-500"
-          suffix="m"
           loading={loading}
         />
       </div>

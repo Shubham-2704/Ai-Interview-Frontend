@@ -35,10 +35,23 @@ import {
   Eye,
   EyeOff,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
+
+// ✅ Import shadcn dialog components
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const EditUser = () => {
   const { userId } = useParams();
@@ -56,6 +69,9 @@ const EditUser = () => {
     notes: "",
     experience: "beginner",
   });
+  
+  // ✅ State for delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     console.log("EditUser mounted with userId:", userId);
@@ -140,7 +156,7 @@ const EditUser = () => {
 
       // Make the API call
       await axiosInstance.put(
-        API_PATHS.ADMIN.UPDATE_USER(userId), // This should be: /api/admin/users/{userId}
+        API_PATHS.ADMIN.UPDATE_USER(userId),
         payload
       );
       toast.success("User updated successfully!");
@@ -178,6 +194,22 @@ const EditUser = () => {
     });
   };
 
+  const handleDeleteUser = async () => {
+    try {
+      await axiosInstance.delete(API_PATHS.ADMIN.DELETE_USER(userId));
+      toast.success("User deleted successfully");
+      setDeleteDialogOpen(false);
+      navigate("/admin/users");
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      toast.error(
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        "Failed to delete user"
+      );
+    }
+  };
+
   if (fetching) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -191,6 +223,50 @@ const EditUser = () => {
 
   return (
     <div className="space-y-6 p-6">
+      {/* ✅ Delete User Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+              <AlertDialogTitle>Delete User</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="pt-4">
+              <div className="flex items-start space-x-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={avatar} />
+                  <AvatarFallback>
+                    {formData.name ? formData.name.charAt(0) : "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{formData.name}</p>
+                  <p className="text-sm text-gray-500">{formData.email}</p>
+                </div>
+              </div>
+              <p className="mt-4 text-red-600 font-medium">
+                This action cannot be undone. This will permanently delete:
+              </p>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-gray-600">
+                <li>User account and profile</li>
+                <li>All interview sessions</li>
+                <li>All questions and answers</li>
+                <li>All study materials</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -501,28 +577,13 @@ const EditUser = () => {
                   <Separator />
 
                   <div className="text-center">
+                    {/* ✅ Updated Delete Button - NO AlertDialogTrigger needed */}
                     <Button
                       type="button"
                       variant="destructive"
                       size="sm"
-                      onClick={async () => {
-                        if (
-                          confirm(
-                            "Are you sure you want to delete this user? This action cannot be undone."
-                          )
-                        ) {
-                          try {
-                            await axiosInstance.delete(
-                              API_PATHS.ADMIN.DELETE_USER(userId)
-                            );
-                            toast.success("User deleted successfully");
-                            navigate("/admin/users");
-                          } catch (error) {
-                            console.error("Error deleting user:", error);
-                            toast.error("Failed to delete user");
-                          }
-                        }
-                      }}
+                      className="w-full"
+                      onClick={() => setDeleteDialogOpen(true)}
                     >
                       Delete User Account
                     </Button>
