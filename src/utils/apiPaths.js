@@ -52,4 +52,28 @@ export const API_PATHS = {
     REFRESH: (materialId) => `/study-materials/${materialId}/refresh`,
     DELETE: (materialId) => `/study-materials/${materialId}`,
   },
+
+  ADMIN: {
+    DASHBOARD_STATS: (period = "7d") =>
+      `/admin/dashboard/stats?period=${period}`,
+    USERS_LIST: (
+      page = 1,
+      limit = 20,
+      search = "",
+      role = "all",
+      status = "all"
+    ) =>
+      `/admin/users?page=${page}&limit=${limit}&search=${search}&role=${role}&status=${status}`,
+    USER_DETAILS: (userId) => `/admin/users/${userId}`,
+    UPDATE_USER: (userId) => `/admin/users/${userId}`,
+    DELETE_USER: (userId) => `/admin/users/${userId}`,
+    DELETE_SESSION: (sessionId) => `/admin/sessions/${sessionId}`,
+    SESSIONS_LIST: (page = 1, limit = 20, search = "", status = "all") =>
+      `/admin/sessions?page=${page}&limit=${limit}&search=${search}&status=${status}`,
+    SESSIONS_STATS: (period = "7d") => `/admin/sessions/stats?period=${period}`,
+    ANALYTICS: "/admin/analytics",
+    HEALTH: "/admin/health",
+    USER_STATS: "/admin/users/stats", // For user statistics cards
+    CREATE_USER: "/admin/users", // For creating new users
+  },
 };
