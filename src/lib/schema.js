@@ -34,3 +34,49 @@ export const sessionSchema = z.object({
   topicsToFocus: z.string().trim().nonempty("Topics to focus is required"),
   description: z.string().trim().optional(),
 });
+
+export const adminCreateUserSchema = z
+  .object({
+    name: z
+      .string()
+      .min(1, "Full name is required")
+      .max(50, "Full name must be less than 50 characters")
+      .regex(/^[a-zA-Z\s]*$/, "Full name can only contain letters and spaces"),
+    
+    email: z
+      .string()
+      .min(1, "Email is required")
+      .email("Please enter a valid email address"),
+    
+    password: z
+      .string()
+      .min(1, "Password is required")
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number")
+      .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character")
+      .max(100, "Password must be less than 100 characters"),
+    
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+    
+    role: z.enum(["user", "admin"], {
+      errorMap: () => ({ message: "Please select a valid role" }),
+    }).default("user"),
+    
+    profileImageUrl: z.string().optional().or(z.literal("")),
+    
+    isActive: z.boolean().default(true),
+    
+    sendWelcomeEmail: z.boolean().default(true),
+    
+    geminiApiKey: z.string().optional().or(z.literal("")),
+    
+    notes: z.string().max(500, "Notes must be less than 500 characters").optional().or(z.literal("")),
+    
+    joinDate: z.string().optional().or(z.literal("")),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });

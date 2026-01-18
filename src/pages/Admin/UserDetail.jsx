@@ -24,11 +24,24 @@ import {
   Trash2,
   Activity,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
+
+// ✅ Import shadcn dialog components
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const UserDetails = () => {
   const { userId: id } = useParams();
@@ -37,6 +50,14 @@ const UserDetails = () => {
   const [stats, setStats] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // ✅ State for delete dialogs
+  const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
+  const [deleteSessionDialog, setDeleteSessionDialog] = useState({
+    open: false,
+    sessionId: null,
+    sessionTitle: "",
+  });
 
   useEffect(() => {
     fetchUserDetails();
@@ -49,7 +70,6 @@ const UserDetails = () => {
         API_PATHS.ADMIN.USER_DETAILS(id)
       );
 
-      // Direct access to response data
       const data = response.data;
 
       setUser(data.user);
@@ -68,14 +88,11 @@ const UserDetails = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete ${user?.name}?`)) {
-      return;
-    }
-
+  const handleDeleteUser = async () => {
     try {
       await axiosInstance.delete(API_PATHS.ADMIN.DELETE_USER(id));
       toast.success("User deleted successfully");
+      setDeleteUserDialogOpen(false);
       navigate("/admin/users");
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -87,17 +104,14 @@ const UserDetails = () => {
     }
   };
 
-  const handleDeleteSession = async (sessionId, sessionTitle) => {
-    if (
-      !confirm(`Are you sure you want to delete session "${sessionTitle}"?`)
-    ) {
-      return;
-    }
-
+  const handleDeleteSession = async () => {
+    const { sessionId, sessionTitle } = deleteSessionDialog;
+    
     try {
       await axiosInstance.delete(API_PATHS.ADMIN.DELETE_SESSION(sessionId));
       toast.success("Session deleted successfully");
-
+      setDeleteSessionDialog({ open: false, sessionId: null, sessionTitle: "" });
+      
       // Refresh user details to update the session list
       fetchUserDetails();
     } catch (error) {
@@ -134,6 +148,79 @@ const UserDetails = () => {
 
   return (
     <div className="space-y-6 p-6">
+      {/* ✅ Delete User Dialog */}
+      <AlertDialog open={deleteUserDialogOpen} onOpenChange={setDeleteUserDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+              <AlertDialogTitle>Delete User</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="pt-4">
+              <div className="flex items-start space-x-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={user.profileImageUrl} />
+                  <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{user.name}</p>
+                  <p className="text-sm text-gray-500">{user.email}</p>
+                </div>
+              </div>
+              <p className="mt-4 text-red-600 font-medium">
+                This action cannot be undone. This will permanently delete:
+              </p>
+              <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-gray-600">
+                <li>User account and profile</li>
+                <li>All interview sessions ({stats?.totalSessions || 0})</li>
+                <li>All questions ({stats?.totalQuestions || 0})</li>
+                <li>All study materials ({stats?.totalMaterials || 0})</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteUser}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ✅ Delete Session Dialog */}
+      <AlertDialog open={deleteSessionDialog.open} onOpenChange={(open) => {
+        if (!open) setDeleteSessionDialog({ open: false, sessionId: null, sessionTitle: "" });
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-6 w-6 text-red-500" />
+              <AlertDialogTitle>Delete Session</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="pt-4">
+              <p className="font-medium text-gray-800">
+                Are you sure you want to delete <span className="text-blue-600">"{deleteSessionDialog.sessionTitle}"</span> session?
+              </p>
+              <p className="mt-2 text-sm text-gray-600">
+                This will delete all questions and materials associated with this session.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteSession}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete Session
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -154,13 +241,19 @@ const UserDetails = () => {
             <Edit className="mr-2 h-4 w-4" />
             Edit User
           </Button>
-          <Button variant="destructive" onClick={handleDelete}>
+          
+          {/* ✅ Updated Delete Button - NO AlertDialogTrigger needed */}
+          <Button 
+            variant="destructive"
+            onClick={() => setDeleteUserDialogOpen(true)}
+          >
             <Trash2 className="mr-2 h-4 w-4" />
             Delete User
           </Button>
         </div>
       </div>
 
+      {/* Rest of your component remains the same */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* User Info Card */}
         <Card className="lg:col-span-1">
@@ -344,11 +437,16 @@ const UserDetails = () => {
                           {session.materialCount || 0} Materials
                         </Badge>
                         <div className="flex items-center space-x-2">
+                          {/* ✅ Updated Delete Session Button */}
                           <Button
                             variant="destructive"
                             size="sm"
                             onClick={() =>
-                              handleDeleteSession(session.id, session.role)
+                              setDeleteSessionDialog({
+                                open: true,
+                                sessionId: session.id,
+                                sessionTitle: session.role,
+                              })
                             }
                           >
                             <Trash2 className="h-4 w-4" />

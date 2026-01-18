@@ -1,47 +1,44 @@
 import React, { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  ArrowLeft,
-  Upload,
-  User,
-  Mail,
-  Lock,
-  Key,
-  Shield,
-  CheckCircle,
-  XCircle,
-  Send,
+import { 
+  ArrowLeft, 
+  Upload, 
+  User, 
+  Mail, 
+  Lock, 
+  Key, 
+  Shield, 
+  CheckCircle, 
+  XCircle, 
+  Send, 
   Calendar,
-  Activity,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import axiosInstance from "@/utils/axiosInstance";
+import { API_PATHS } from "@/utils/apiPaths";
 
 const CreateUser = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [avatar, setAvatar] = useState(null);
+  
+  // ✅ Add states to show/hide passwords and Gemini API key
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+  
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -52,7 +49,6 @@ const CreateUser = () => {
     geminiApiKey: "",
     notes: "",
     isActive: true,
-    experience: "beginner",
     joinDate: new Date().toISOString().split("T")[0],
   });
 
@@ -67,44 +63,6 @@ const CreateUser = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      // Validate passwords match
-      if (formData.password !== formData.confirmPassword) {
-        alert("Passwords do not match!");
-        return;
-      }
-
-      if (formData.password.length < 6) {
-        alert("Password must be at least 6 characters!");
-        return;
-      }
-
-      // Prepare payload
-      const payload = {
-        ...formData,
-        profileImageUrl: avatar,
-      };
-
-      // API call would go here
-      console.log("Creating user:", payload);
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Success - navigate back to dashboard
-      navigate("/admin/dashboard");
-    } catch (error) {
-      console.error("Error creating user:", error);
-      alert("Failed to create user. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleChange = (field, value) => {
     setFormData({
       ...formData,
@@ -112,81 +70,209 @@ const CreateUser = () => {
     });
   };
 
-  const RoleBadge = ({ role }) => {
-    const roleConfig = {
-      admin: { label: "Admin", color: "bg-red-100 text-red-800" },
-      user: { label: "User", color: "bg-blue-100 text-blue-800" },
-      moderator: { label: "Moderator", color: "bg-purple-100 text-purple-800" },
-    };
-
-    const config = roleConfig[role] || roleConfig.user;
-
-    return <Badge className={config.color}>{config.label}</Badge>;
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      toast.error("Name is required");
+      return false;
+    }
+    
+    if (!formData.email.trim()) {
+      toast.error("Email is required");
+      return false;
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast.error("Please enter a valid email");
+      return false;
+    }
+    
+    if (!formData.password) {
+      toast.error("Password is required");
+      return false;
+    }
+    
+    if (formData.password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return false;
+    }
+    
+    if (!/(?=.*[A-Z])/.test(formData.password)) {
+      toast.error("Password must contain an uppercase letter");
+      return false;
+    }
+    
+    if (!/(?=.*[a-z])/.test(formData.password)) {
+      toast.error("Password must contain a lowercase letter");
+      return false;
+    }
+    
+    if (!/(?=.*\d)/.test(formData.password)) {
+      toast.error("Password must contain a number");
+      return false;
+    }
+    
+    if (!/(?=.*[^A-Za-z0-9])/.test(formData.password)) {
+      toast.error("Password must contain a special character");
+      return false;
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match");
+      return false;
+    }
+    
+    return true;
   };
 
-  const ExperienceBadge = ({ experience }) => {
-    const expConfig = {
-      beginner: { label: "Beginner", color: "bg-green-100 text-green-800" },
-      intermediate: {
-        label: "Intermediate",
-        color: "bg-yellow-100 text-yellow-800",
-      },
-      advanced: { label: "Advanced", color: "bg-red-100 text-red-800" },
-      expert: { label: "Expert", color: "bg-purple-100 text-purple-800" },
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-    const config = expConfig[experience] || expConfig.beginner;
+    if (!validateForm()) return;
 
+    setLoading(true);
+
+    try {
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        profileImageUrl: avatar || "",
+        isActive: formData.isActive,
+        sendWelcomeEmail: formData.sendWelcomeEmail,
+        geminiApiKey: formData.geminiApiKey || "",
+        notes: formData.notes || "",
+        joinDate: formData.joinDate
+      };
+
+      console.log("Sending payload:", payload); // Debug log
+
+      const response = await axiosInstance.post(
+        API_PATHS.ADMIN.CREATE_USER,
+        payload
+      );
+
+      console.log("API Response:", response.data); // Debug log
+
+      // Check for success in different possible response structures
+      const isSuccess = 
+        response.status === 200 || 
+        response.status === 201 ||
+        (response.data && (response.data.success === true || response.data.status === "success"));
+
+      if (isSuccess) {
+        const successMessage = response.data?.message || 
+                              response.data?.detail || 
+                              "User created successfully!";
+        
+        toast.success(successMessage);
+
+        // Reset form
+        setFormData({
+          name: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          role: "user",
+          sendWelcomeEmail: true,
+          geminiApiKey: "",
+          notes: "",
+          isActive: true,
+          joinDate: new Date().toISOString().split("T")[0],
+        });
+        setAvatar(null);
+        setShowPassword(false); // ✅ Reset show password state
+        setShowConfirmPassword(false); // ✅ Reset show confirm password state
+        setShowGeminiKey(false); // ✅ Reset show key state
+
+        // Redirect after a short delay
+        setTimeout(() => {
+          navigate("/admin/dashboard");
+        }, 1500);
+      } else {
+        const errorMsg = response.data?.message || 
+                        response.data?.detail || 
+                        response.data?.error || 
+                        "Failed to create user";
+        toast.error(errorMsg);
+      }
+    } catch (error) {
+      console.error("API Error:", error); // Debug log
+      
+      // Handle different error response formats
+      let errorMessage = "Failed to create user";
+      
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        errorMessage = 
+          error.response.data?.message ||
+          error.response.data?.detail ||
+          error.response.data?.error ||
+          error.response.statusText ||
+          `Server error: ${error.response.status}`;
+      } else if (error.request) {
+        // The request was made but no response was received
+        errorMessage = "No response received from server";
+      } else {
+        // Something happened in setting up the request
+        errorMessage = error.message || "Request setup failed";
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const RoleBadge = ({ role }) => {
+    const config = role === "admin" 
+      ? { label: "Admin", color: "bg-red-100 text-red-800" }
+      : { label: "User", color: "bg-blue-100 text-blue-800" };
+    
     return <Badge className={config.color}>{config.label}</Badge>;
   };
 
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/admin/dashboard")}
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Create New User</h1>
-            <p className="text-gray-500">Add a new user to the platform</p>
-          </div>
+      <div className="flex items-center space-x-4">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate("/admin/dashboard")}
+          disabled={loading}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold">Create New User</h1>
+          <p className="text-gray-500">Add a new user to the platform</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - Profile & Basic Info */}
+          {/* Left Column */}
           <div className="lg:col-span-2 space-y-6">
             {/* Profile Card */}
             <Card>
               <CardHeader>
                 <CardTitle>Profile Information</CardTitle>
-                <CardDescription>
-                  Basic information about the user
-                </CardDescription>
+                <CardDescription>Basic information about the user</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Profile Image */}
                 <div className="flex items-center space-x-6">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src={avatar} />
+                    <AvatarFallback><User className="h-12 w-12" /></AvatarFallback>
+                  </Avatar>
                   <div>
-                    <Avatar className="h-24 w-24">
-                      <AvatarImage src={avatar} />
-                      <AvatarFallback>
-                        <User className="h-12 w-12" />
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
-                  <div className="flex-1">
                     <Label htmlFor="avatar-upload" className="cursor-pointer">
                       <div className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-gray-50">
-                        <Upload className="h-4 w-4" />
-                        <span>Upload Profile Picture</span>
+                        <Upload className="h-4 w-4" /> Upload Profile Picture
                       </div>
                       <Input
                         id="avatar-upload"
@@ -196,18 +282,15 @@ const CreateUser = () => {
                         onChange={handleImageUpload}
                       />
                     </Label>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Recommended: Square image, 400x400px or larger
-                    </p>
                   </div>
                 </div>
 
+                {/* Name & Email */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="name">
                       <div className="flex items-center">
-                        <User className="mr-2 h-4 w-4" />
-                        Full Name *
+                        <User className="mr-2 h-4 w-4" /> Full Name *
                       </div>
                     </Label>
                     <Input
@@ -216,14 +299,14 @@ const CreateUser = () => {
                       onChange={(e) => handleChange("name", e.target.value)}
                       placeholder="John Doe"
                       required
+                      disabled={loading}
                     />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="email">
                       <div className="flex items-center">
-                        <Mail className="mr-2 h-4 w-4" />
-                        Email Address *
+                        <Mail className="mr-2 h-4 w-4" /> Email Address *
                       </div>
                     </Label>
                     <Input
@@ -233,50 +316,115 @@ const CreateUser = () => {
                       onChange={(e) => handleChange("email", e.target.value)}
                       placeholder="john@example.com"
                       required
+                      disabled={loading}
                     />
                   </div>
                 </div>
 
+                {/* Password Fields with Eye Toggles */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="password">
                       <div className="flex items-center">
-                        <Lock className="mr-2 h-4 w-4" />
-                        Password *
+                        <Lock className="mr-2 h-4 w-4" /> Password *
                       </div>
                     </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={formData.password}
-                      onChange={(e) => handleChange("password", e.target.value)}
-                      placeholder="••••••••"
-                      required
-                      minLength={6}
-                    />
+                    
+                    {/* ✅ Password Input with Eye Toggle */}
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={(e) => handleChange("password", e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        disabled={loading}
+                        className="pr-10"
+                      />
+                      
+                      {/* ✅ Eye Toggle Button for Password */}
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        disabled={loading}
+                        tabIndex={-1}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 cursor-pointer" />
+                        ) : (
+                          <Eye className="h-4 w-4 cursor-pointer" />
+                        )}
+                      </button>
+                    </div>
+                    
+                    {formData.password && (
+                      <div className="text-xs text-gray-500 space-y-1 mt-1">
+                        <div className={`flex items-center ${formData.password.length >= 8 ? "text-green-600" : "text-red-600"}`}>
+                          {formData.password.length >= 8 ? "✓" : "○"} At least 8 characters
+                        </div>
+                        <div className={`flex items-center ${/(?=.*[A-Z])/.test(formData.password) ? "text-green-600" : "text-red-600"}`}>
+                          {/(?=.*[A-Z])/.test(formData.password) ? "✓" : "○"} Uppercase letter
+                        </div>
+                        <div className={`flex items-center ${/(?=.*[a-z])/.test(formData.password) ? "text-green-600" : "text-red-600"}`}>
+                          {/(?=.*[a-z])/.test(formData.password) ? "✓" : "○"} Lowercase letter
+                        </div>
+                        <div className={`flex items-center ${/(?=.*\d)/.test(formData.password) ? "text-green-600" : "text-red-600"}`}>
+                          {/(?=.*\d)/.test(formData.password) ? "✓" : "○"} Number
+                        </div>
+                        <div className={`flex items-center ${/(?=.*[^A-Za-z0-9])/.test(formData.password) ? "text-green-600" : "text-red-600"}`}>
+                          {/(?=.*[^A-Za-z0-9])/.test(formData.password) ? "✓" : "○"} Special character
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">
                       <div className="flex items-center">
-                        <Lock className="mr-2 h-4 w-4" />
-                        Confirm Password *
+                        <Lock className="mr-2 h-4 w-4" /> Confirm Password *
                       </div>
                     </Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      value={formData.confirmPassword}
-                      onChange={(e) =>
-                        handleChange("confirmPassword", e.target.value)
-                      }
-                      placeholder="••••••••"
-                      required
-                      minLength={6}
-                    />
+                    
+                    {/* ✅ Confirm Password Input with Eye Toggle */}
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={formData.confirmPassword}
+                        onChange={(e) => handleChange("confirmPassword", e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        disabled={loading}
+                        className="pr-10"
+                      />
+                      
+                      {/* ✅ Eye Toggle Button for Confirm Password */}
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 focus:outline-none"
+                        disabled={loading}
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 cursor-pointer" />
+                        ) : (
+                          <Eye className="h-4 w-4 cursor-pointer" />
+                        )}
+                      </button>
+                    </div>
+                    
+                    {formData.confirmPassword && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Re-enter the password to confirm
+                      </p>
+                    )}
                   </div>
                 </div>
 
+                {/* Password Match Indicator */}
                 {formData.password && formData.confirmPassword && (
                   <div
                     className={`p-3 rounded-lg ${
@@ -289,61 +437,24 @@ const CreateUser = () => {
                       {formData.password === formData.confirmPassword ? (
                         <>
                           <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
-                          <span className="text-green-600">
-                            Passwords match
-                          </span>
+                          <span className="text-green-600">Passwords match</span>
                         </>
                       ) : (
                         <>
                           <XCircle className="h-4 w-4 text-red-600 mr-2" />
-                          <span className="text-red-600">
-                            Passwords do not match
-                          </span>
+                          <span className="text-red-600">Passwords do not match</span>
                         </>
                       )}
                     </div>
                   </div>
                 )}
 
+                {/* Join Date */}
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="experience">
-                      <div className="flex items-center">
-                        <Activity className="mr-2 h-4 w-4" />
-                        Experience Level
-                      </div>
-                    </Label>
-                    <Select
-                      value={formData.experience}
-                      onValueChange={(value) =>
-                        handleChange("experience", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select experience" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="beginner">
-                          Beginner (0-2 years)
-                        </SelectItem>
-                        <SelectItem value="intermediate">
-                          Intermediate (2-5 years)
-                        </SelectItem>
-                        <SelectItem value="advanced">
-                          Advanced (5-8 years)
-                        </SelectItem>
-                        <SelectItem value="expert">
-                          Expert (8+ years)
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="joinDate">
                       <div className="flex items-center">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        Join Date
+                        <Calendar className="mr-2 h-4 w-4" /> Join Date
                       </div>
                     </Label>
                     <Input
@@ -351,31 +462,31 @@ const CreateUser = () => {
                       type="date"
                       value={formData.joinDate}
                       onChange={(e) => handleChange("joinDate", e.target.value)}
+                      disabled={loading}
                     />
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Role & Permissions Card */}
+            {/* Role & Permissions */}
             <Card>
               <CardHeader>
                 <CardTitle>Role & Permissions</CardTitle>
-                <CardDescription>
-                  Set user role and access permissions
-                </CardDescription>
+                <CardDescription>Set user role and access permissions</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                {/* Role Selection */}
                 <div className="space-y-2">
                   <Label htmlFor="role">
                     <div className="flex items-center">
-                      <Shield className="mr-2 h-4 w-4" />
-                      User Role
+                      <Shield className="mr-2 h-4 w-4" /> User Role
                     </div>
                   </Label>
                   <Select
                     value={formData.role}
                     onValueChange={(value) => handleChange("role", value)}
+                    disabled={loading}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a role" />
@@ -383,26 +494,19 @@ const CreateUser = () => {
                     <SelectContent>
                       <SelectItem value="user">
                         <div className="flex items-center">
-                          <User className="mr-2 h-4 w-4" />
-                          User - Can create and manage own sessions
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="moderator">
-                        <div className="flex items-center">
-                          <Shield className="mr-2 h-4 w-4" />
-                          Moderator - Can manage user content
+                          <User className="mr-2 h-4 w-4" /> User - Can create and manage own sessions
                         </div>
                       </SelectItem>
                       <SelectItem value="admin">
                         <div className="flex items-center">
-                          <Shield className="mr-2 h-4 w-4 text-red-600" />
-                          Admin - Full system access
+                          <Shield className="mr-2 h-4 w-4 text-red-600" /> Admin - Full system access
                         </div>
                       </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
+                {/* Switches */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
@@ -416,6 +520,7 @@ const CreateUser = () => {
                       onCheckedChange={(checked) =>
                         handleChange("sendWelcomeEmail", checked)
                       }
+                      disabled={loading}
                     />
                   </div>
 
@@ -431,10 +536,12 @@ const CreateUser = () => {
                       onCheckedChange={(checked) =>
                         handleChange("isActive", checked)
                       }
+                      disabled={loading}
                     />
                   </div>
                 </div>
 
+                {/* Notes */}
                 <div className="space-y-2">
                   <Label htmlFor="notes">Additional Notes</Label>
                   <Textarea
@@ -443,13 +550,14 @@ const CreateUser = () => {
                     onChange={(e) => handleChange("notes", e.target.value)}
                     placeholder="Any additional information about this user..."
                     rows={3}
+                    disabled={loading}
                   />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Right Column - API Key & Actions */}
+          {/* Right Column */}
           <div className="space-y-6">
             {/* API Key Card */}
             <Card>
@@ -459,25 +567,48 @@ const CreateUser = () => {
                   Optional Gemini API configuration
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent>
                 <div className="space-y-2">
                   <Label htmlFor="geminiApiKey">
                     <div className="flex items-center">
-                      <Key className="mr-2 h-4 w-4" />
-                      API Key (Optional)
+                      <Key className="mr-2 h-4 w-4" /> API Key (Optional)
                     </div>
                   </Label>
-                  <Input
-                    id="geminiApiKey"
-                    type="password"
-                    value={formData.geminiApiKey}
-                    onChange={(e) =>
-                      handleChange("geminiApiKey", e.target.value)
-                    }
-                    placeholder="Enter Gemini API key"
-                  />
-                  <p className="text-sm text-gray-500">
-                    User will be able to generate AI content with this key
+                  
+                  {/* ✅ Gemini API Key Input with Eye Toggle */}
+                  <div className="relative">
+                    <Input
+                      id="geminiApiKey"
+                      type={showGeminiKey ? "text" : "password"}
+                      value={formData.geminiApiKey}
+                      onChange={(e) =>
+                        handleChange("geminiApiKey", e.target.value)
+                      }
+                      placeholder="Enter Gemini API key"
+                      disabled={loading}
+                      className="pr-10"
+                    />
+                    
+                    {/* ✅ Eye Toggle Button for Gemini API Key */}
+                    <button
+                      type="button"
+                      onClick={() => setShowGeminiKey(!showGeminiKey)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      disabled={loading}
+                      tabIndex={-1}
+                    >
+                      {showGeminiKey ? (
+                        <EyeOff className="h-4 w-4 cursor-pointer" />
+                      ) : (
+                        <Eye className="h-4 w-4 cursor-pointer" />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <p className="text-xs text-gray-500 mt-2">
+                    {formData.geminiApiKey 
+                      ? "User will be able to generate AI content with this key"
+                      : "Leave empty if you don't want to set an API key now"}
                   </p>
                 </div>
               </CardContent>
@@ -488,64 +619,40 @@ const CreateUser = () => {
               <CardHeader>
                 <CardTitle>User Preview</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Avatar>
-                      <AvatarImage src={avatar} />
-                      <AvatarFallback>
-                        {formData.name ? formData.name.charAt(0) : "?"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <div className="font-semibold">
-                        {formData.name || "No name provided"}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {formData.email || "No email provided"}
-                      </div>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <Avatar>
+                    <AvatarImage src={avatar} />
+                    <AvatarFallback>
+                      {formData.name ? formData.name.charAt(0) : "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <div className="font-semibold">
+                      {formData.name || "No name provided"}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {formData.email || "No email provided"}
                     </div>
                   </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Role:</span>
-                      <RoleBadge role={formData.role} />
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Experience:</span>
-                      <ExperienceBadge experience={formData.experience} />
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
-                      <Badge
-                        variant={formData.isActive ? "default" : "secondary"}
-                      >
-                        {formData.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">API Key:</span>
-                      <Badge
-                        variant={
-                          formData.geminiApiKey ? "default" : "secondary"
-                        }
-                      >
-                        {formData.geminiApiKey ? "Set" : "Not Set"}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Welcome Email:</span>
-                      <Badge
-                        variant={
-                          formData.sendWelcomeEmail ? "default" : "secondary"
-                        }
-                      >
-                        {formData.sendWelcomeEmail ? "Yes" : "No"}
-                      </Badge>
-                    </div>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Role:</span>
+                    <RoleBadge role={formData.role} />
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Status:</span>
+                    <Badge variant={formData.isActive ? "default" : "secondary"}>
+                      {formData.isActive ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">API Key:</span>
+                    <Badge variant={formData.geminiApiKey ? "default" : "secondary"}>
+                      {formData.geminiApiKey ? "Set" : "Not Set"}
+                    </Badge>
                   </div>
                 </div>
               </CardContent>
@@ -553,65 +660,33 @@ const CreateUser = () => {
 
             {/* Actions Card */}
             <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    size="lg"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Creating User...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="mr-2 h-4 w-4" />
-                        Create User
-                      </>
-                    )}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate("/admin/dashboard")}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Stats</CardTitle>
-                <CardDescription>System overview</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Total Users:</span>
-                    <span className="font-medium">1,254</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Active Today:</span>
-                    <span className="font-medium">243</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">New This Week:</span>
-                    <span className="font-medium">187</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Avg Sessions/User:</span>
-                    <span className="font-medium">24</span>
-                  </div>
-                </div>
+              <CardContent className="pt-6 space-y-4">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="lg"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Creating User...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" /> Create User
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate("/admin/dashboard")}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
               </CardContent>
             </Card>
           </div>
