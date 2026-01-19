@@ -62,30 +62,10 @@ const AdminLayout = () => {
       badge: 3421,
     },
     {
-      title: "Questions",
-      icon: MessageSquare,
-      path: "/admin/questions",
-      active: location.pathname.startsWith("/admin/questions"),
-      badge: 15432,
-    },
-    {
-      title: "Study Materials",
-      icon: BookOpen,
-      path: "/admin/study-materials",
-      active: location.pathname.startsWith("/admin/study-materials"),
-      badge: 5423,
-    },
-    {
       title: "Analytics",
       icon: BarChart3,
       path: "/admin/analytics",
       active: location.pathname.startsWith("/admin/analytics"),
-    },
-    {
-      title: "Reports",
-      icon: FileBarChart,
-      path: "/admin/reports",
-      active: location.pathname.startsWith("/admin/reports"),
     },
     {
       title: "Settings",
