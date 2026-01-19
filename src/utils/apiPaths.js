@@ -80,4 +80,9 @@ export const API_PATHS = {
     SESSION_STUDY_MATERIALS: (sessionId) => `/admin/sessions/${sessionId}/study-materials`,
     STUDY_MATERIALS_BY_QUESTION: (questionId) => `/admin/study-materials/question/${questionId}`,
   },
+
+  SYSTEM: {
+    SYSTEM_STATUS: "/admin/system/status",
+    SYSTEM_METRICS: "/admin/system/metrics",
+  },
 };
