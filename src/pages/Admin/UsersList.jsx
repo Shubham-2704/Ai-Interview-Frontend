@@ -58,7 +58,7 @@ const UsersList = () => {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
-    roleDistribution: { user: 0, admin: 0, moderator: 0 },
+    roleDistribution: { user: 0, admin: 0},
     activeUsers: 0,
     inactiveUsers: 0,
     newUsersThisWeek: 0,
@@ -138,7 +138,7 @@ const UsersList = () => {
           id: `user-${i + 1}`,
           name: `User ${i + 1}`,
           email: `user${i + 1}@example.com`,
-          role: i % 3 === 0 ? "admin" : i % 3 === 1 ? "moderator" : "user",
+          role: i % 3 === 0 ? "admin" : i % 3 === 1 ,
           sessions: Math.floor(Math.random() * 100),
           questions: Math.floor(Math.random() * 500),
           materials: Math.floor(Math.random() * 200),
@@ -214,10 +214,6 @@ const UsersList = () => {
   const RoleBadge = ({ role }) => {
     const roleConfig = {
       admin: { label: "Admin", className: "bg-red-100 text-red-800" },
-      moderator: {
-        label: "Moderator",
-        className: "bg-purple-100 text-purple-800",
-      },
       user: { label: "User", className: "bg-blue-100 text-blue-800" },
     };
     const config = roleConfig[role] || roleConfig.user;
@@ -293,7 +289,6 @@ const UsersList = () => {
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="moderator">Moderator</SelectItem>
                 <SelectItem value="user">User</SelectItem>
               </SelectContent>
             </Select>
@@ -421,7 +416,7 @@ const UsersList = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem
+                            <DropdownMenuItem className="cursor-pointer"
                               onClick={() =>
                                 navigate(`/admin/users/${user.id}`)
                               }
@@ -429,7 +424,7 @@ const UsersList = () => {
                               <Eye className="mr-2 h-4 w-4" />
                               View Details
                             </DropdownMenuItem>
-                            <DropdownMenuItem
+                            <DropdownMenuItem className="cursor-pointer"
                               onClick={() =>
                                 navigate(`/admin/users/${user.id}/edit`)
                               }
@@ -438,7 +433,7 @@ const UsersList = () => {
                               Edit User
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              className="text-red-600"
+                              className="text-red-600 cursor-pointer"
                               onClick={() =>
                                 handleDeleteUser(user.id, user.name)
                               }
@@ -520,12 +515,6 @@ const UsersList = () => {
                 <span className="text-gray-600">Admins</span>
                 <Badge variant="outline">
                   {stats.roleDistribution.admin || 0}
-                </Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Moderators</span>
-                <Badge variant="outline">
-                  {stats.roleDistribution.moderator || 0}
                 </Badge>
               </div>
             </div>
