@@ -11,15 +11,13 @@ import UserDetail from "./pages/Admin/UserDetail";
 import CreateUser from "./pages/Admin/CreateUser";
 import EditUser from "./pages/Admin/EditUser"; 
 import Sessions from "./pages/Admin/Sessions";
-import Questions from "./pages/Admin/Questions";
-import StudyMaterials from "./pages/Admin/StudyMaterials";
 import Analytics from "./pages/Admin/Analytics";
-import Reports from "./pages/Admin/Reports";
 import Settings from "./pages/Admin/Settings";
 import InterviewPrep from "./pages/InterviewPrep/InterviewPrep";
-
 import UserProvider from "./context/userContext.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute";
+import SessionQuestions from "./pages/Admin/SessionQuestions";
+import SessionResources from "./pages/Admin/SessionResources";
 
 function App() {
   return (
@@ -53,12 +51,11 @@ function App() {
 
               {/* Content Management */}
               <Route path="sessions" element={<Sessions />} />
-              <Route path="questions" element={<Questions />} />
-              <Route path="study-materials" element={<StudyMaterials />} />
+              <Route path="sessions/:sessionId/questions" element={<SessionQuestions />} />
+              <Route path="sessions/:sessionId/resources" element={<SessionResources />} />
 
               {/* Analytics & Reports */}
               <Route path="analytics" element={<Analytics />} />
-              <Route path="reports" element={<Reports />} />
 
               {/* Settings */}
               <Route path="settings" element={<Settings />} />

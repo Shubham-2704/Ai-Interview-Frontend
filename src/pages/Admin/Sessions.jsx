@@ -29,19 +29,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Search,
   Filter,
-  Eye,
   Download,
   Calendar,
-  Clock,
-  TrendingUp,
-  BarChart3,
   MessageSquare,
-  ChevronRight,
+  BookOpen,
   Loader2,
-  Users,
-  FileText,
-  CheckCircle,
-  XCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -51,173 +45,164 @@ import { API_PATHS } from "@/utils/apiPaths";
 
 const Sessions = () => {
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    completed: 0,
-    inProgress: 0,
-    avgDuration: 0,
-    avgQuestions: 0,
-    dailyAvg: 0,
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userSessions, setUserSessions] = useState([]);
+  const [userStats, setUserStats] = useState({
+    totalSessions: 0,
+    totalQuestions: 0,
+    totalResources: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [userLoading, setUserLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [expandedUser, setExpandedUser] = useState(null);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 20,
     total: 0,
     pages: 1,
   });
 
   useEffect(() => {
-    fetchSessions();
-    fetchSessionStats();
-  }, []);
+    fetchUsers();
+  }, [pagination.page]);
 
-  const fetchSessions = async () => {
+  const fetchUsers = async () => {
     setLoading(true);
     try {
       const response = await axiosInstance.get(
-        API_PATHS.ADMIN.SESSIONS_LIST(
+        API_PATHS.ADMIN.USERS_LIST(
           pagination.page,
           pagination.limit,
           searchTerm,
-          statusFilter
+          roleFilter,
+          "all"
         )
       );
-
       const data = response.data;
-      setSessions(data.sessions || []);
-      setPagination(
-        data.pagination || {
-          page: 1,
-          limit: 10,
-          total: data.sessions?.length || 0,
-          pages: 1,
-        }
-      );
+      setUsers(data.users || []);
+      setPagination(data.pagination || {
+        page: 1,
+        limit: 20,
+        total: data.users?.length || 0,
+        pages: 1,
+      });
     } catch (error) {
-      console.error("Error fetching sessions:", error);
-      toast.error(
-        error.response?.data?.detail ||
-          error.response?.data?.message ||
-          "Failed to load sessions"
-      );
-
-      // Fallback to mock data if API fails
-      const roles = [
-        "Frontend Developer",
-        "Backend Developer",
-        "Full Stack",
-        "DevOps",
-        "Data Scientist",
-      ];
-      const users = [
-        "John Doe",
-        "Jane Smith",
-        "Bob Johnson",
-        "Alice Brown",
-        "Charlie Wilson",
-      ];
-
-      const mockSessions = Array.from({ length: 10 }, (_, i) => ({
-        id: `session-${i + 1}`,
-        user: {
-          id: `user-${Math.floor(Math.random() * 10) + 1}`,
-          name: users[Math.floor(Math.random() * users.length)],
-          email: `user${Math.floor(Math.random() * 10) + 1}@example.com`,
-        },
-        role: roles[Math.floor(Math.random() * roles.length)],
-        experience: `${Math.floor(Math.random() * 10) + 1} years`,
-        questions: Math.floor(Math.random() * 50) + 1,
-        duration: Math.floor(Math.random() * 120) + 30,
-        createdAt: new Date(
-          Date.now() - Math.random() * 2592000000
-        ).toISOString(),
-        status: Math.random() > 0.3 ? "completed" : "in-progress",
-        description: "Mock session for testing",
-        questionCount: Math.floor(Math.random() * 50) + 1,
+      toast.error("Failed to load users");
+      
+      // Mock data for testing
+      const mockUsers = Array.from({ length: 10 }, (_, i) => ({
+        id: `user-${i + 1}`,
+        name: `User ${i + 1}`,
+        email: `user${i + 1}@example.com`,
+        role: "user",
+        sessionCount: Math.floor(Math.random() * 20) + 1,
+        questionCount: Math.floor(Math.random() * 100) + 10,
+        materialCount: Math.floor(Math.random() * 50) + 5,
+        createdAt: new Date(Date.now() - Math.random() * 2592000000).toISOString(),
       }));
-      setSessions(mockSessions);
+      setUsers(mockUsers);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchSessionStats = async () => {
+  const fetchUserDetails = async (userId) => {
+    setUserLoading(true);
     try {
       const response = await axiosInstance.get(
-        API_PATHS.ADMIN.SESSIONS_STATS()
+        API_PATHS.ADMIN.USER_DETAILS(userId)
       );
       const data = response.data;
-      setStats({
-        total: data.totalSessions || 0,
-        completed: data.completedSessions || 0,
-        inProgress: data.inProgressSessions || 0,
-        avgDuration: data.avgDuration || 0,
-        avgQuestions: data.avgQuestions || 0,
-        dailyAvg: 0, // You might need to calculate this separately
+      
+      setSelectedUser(data.user);
+      setUserSessions(data.sessions || []);
+      
+      // Calculate user stats
+      const totalQuestions = data.stats?.totalQuestions || 0;
+      const totalSessions = data.stats?.totalSessions || 0;
+      const totalMaterials = data.stats?.totalMaterials || 0;
+      
+      setUserStats({
+        totalSessions,
+        totalQuestions,
+        totalResources: totalMaterials,
       });
     } catch (error) {
-      console.error("Error fetching session stats:", error);
-      // Fallback stats
-      setStats({
-        total: 3421,
-        completed: 2987,
-        inProgress: 434,
-        avgDuration: 45,
-        avgQuestions: 24,
-        dailyAvg: 28,
+      toast.error("Failed to load user details");
+    } finally {
+      setUserLoading(false);
+    }
+  };
+
+  const handleUserSelect = (userId) => {
+    setSelectedUserId(userId);
+    setExpandedUser(null);
+    
+    if (userId && userId !== "all") {
+      fetchUserDetails(userId);
+      setSelectedUser(null); // Clear previous selection first
+    } else {
+      setSelectedUser(null);
+      setUserSessions([]);
+      setUserStats({
+        totalSessions: 0,
+        totalQuestions: 0,
+        totalResources: 0,
       });
     }
   };
 
-  const filteredSessions = sessions.filter((session) => {
-    if (roleFilter !== "all" && session.role !== roleFilter) return false;
-    if (statusFilter !== "all" && session.status !== statusFilter) return false;
-    if (
-      searchTerm &&
-      !session.role?.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      !session.user?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
-      return false;
+  const toggleUserExpand = async (user) => {
+    if (expandedUser === user.id) {
+      setExpandedUser(null);
+      setUserSessions([]);
+    } else {
+      setExpandedUser(user.id);
+      await fetchUserDetails(user.id);
     }
-    return true;
-  });
+  };
 
-  const StatusBadge = ({ status }) => {
-    const statusConfig = {
-      completed: {
-        label: "Completed",
-        className: "bg-green-100 text-green-800",
-        icon: CheckCircle,
-      },
-      "in-progress": {
-        label: "In Progress",
-        className: "bg-blue-100 text-blue-800",
-        icon: Clock,
-      },
-      pending: {
-        label: "Pending",
-        className: "bg-yellow-100 text-yellow-800",
-        icon: Clock,
-      },
-    };
-    const config = statusConfig[status] || {
-      label: "Unknown",
-      className: "bg-gray-100 text-gray-800",
-      icon: Clock,
-    };
-    const Icon = config.icon;
+  const handleApplyFilters = () => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+    fetchUsers();
+  };
 
-    return (
-      <Badge className={config.className}>
-        <Icon className="mr-1 h-3 w-3" />
-        {config.label}
-      </Badge>
-    );
+  const navigateToSessionQuestions = (sessionId) => {
+    navigate(`/admin/sessions/${sessionId}/questions`);
+  };
+
+  const navigateToSessionResources = (sessionId) => {
+    navigate(`/admin/sessions/${sessionId}/resources`);
+  };
+
+  // Helper function to parse comma-separated topics into array
+  const parseTopics = (topics) => {
+    if (!topics) return [];
+    
+    if (Array.isArray(topics)) {
+      // If it's already an array, return it
+      return topics;
+    }
+    
+    if (typeof topics === 'string') {
+      // Try to parse as JSON first
+      try {
+        const parsed = JSON.parse(topics);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (e) {
+        // If not JSON, split by comma
+        return topics.split(',').map(t => t.trim()).filter(t => t.length > 0);
+      }
+    }
+    
+    // If it's something else, convert to string and split
+    return String(topics).split(',').map(t => t.trim()).filter(t => t.length > 0);
   };
 
   return (
@@ -227,7 +212,7 @@ const Sessions = () => {
         <div>
           <h1 className="text-3xl font-bold">Sessions Management</h1>
           <p className="text-gray-500">
-            View and manage all interview sessions
+            View and manage user sessions, questions, and resources
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -238,79 +223,6 @@ const Sessions = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total Sessions</p>
-                <p className="text-2xl font-bold">
-                  {stats.total.toLocaleString()}
-                </p>
-              </div>
-              <div className="p-2 rounded-lg bg-blue-100">
-                <FileText className="h-5 w-5 text-blue-600" />
-              </div>
-            </div>
-            <div className="text-xs text-gray-500 mt-2">
-              {stats.total > 0
-                ? ((stats.completed / stats.total) * 100).toFixed(1)
-                : 0}
-              % completed
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Completed</p>
-                <p className="text-2xl font-bold">
-                  {stats.completed.toLocaleString()}
-                </p>
-              </div>
-              <div className="p-2 rounded-lg bg-green-100">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">In Progress</p>
-                <p className="text-2xl font-bold">
-                  {stats.inProgress.toLocaleString()}
-                </p>
-              </div>
-              <div className="p-2 rounded-lg bg-yellow-100">
-                <Clock className="h-5 w-5 text-yellow-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Avg Questions</p>
-                <p className="text-2xl font-bold">
-                  {stats.avgQuestions.toFixed(1)}
-                </p>
-              </div>
-              <div className="p-2 rounded-lg bg-purple-100">
-                <MessageSquare className="h-5 w-5 text-purple-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
@@ -318,48 +230,49 @@ const Sessions = () => {
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
               <Input
-                placeholder="Search sessions..."
+                placeholder="Search users..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    fetchSessions();
+                    handleApplyFilters();
                   }
                 }}
                 className="pl-8"
               />
             </div>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
               <SelectTrigger>
                 <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Filter by status" />
+                <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="moderator">Moderator</SelectItem>
               </SelectContent>
             </Select>
 
-            <div className="flex items-center justify-end gap-2">
-              <Button onClick={fetchSessions} variant="outline" size="sm">
+            <div className="flex items-center justify-end gap-2 col-span-2">
+              <Button onClick={handleApplyFilters} variant="outline" size="sm">
                 Apply Filters
               </Button>
               <Badge variant="outline">
-                {filteredSessions.length} sessions
+                {users.length} users
               </Badge>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Sessions Table */}
+      {/* Main Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>All Sessions</CardTitle>
+          <CardTitle>Users</CardTitle>
           <CardDescription>
-            Showing {filteredSessions.length} of {pagination.total} sessions
+            Select a user to view their session history
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -369,96 +282,230 @@ const Sessions = () => {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Experience</TableHead>
+                  <TableHead>Sessions</TableHead>
                   <TableHead>Questions</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead>Resources</TableHead>
+                  <TableHead>Joined</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
-                      <p className="mt-2 text-gray-500">Loading sessions...</p>
+                      <p className="mt-2 text-gray-500">Loading users...</p>
                     </TableCell>
                   </TableRow>
-                ) : filteredSessions.length === 0 ? (
+                ) : users.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <p className="text-gray-500">No sessions found</p>
+                    <TableCell colSpan={7} className="text-center py-8">
+                      <p className="text-gray-500">No users found</p>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredSessions.map((session) => (
-                    <TableRow key={session.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <Avatar>
-                            <AvatarImage
-                              src={
-                                session.user?.profileImageUrl ||
-                                `https://api.dicebear.com/7.x/avataaars/svg?seed=${
-                                  session.user?.id || session.id
-                                }`
-                              }
-                            />
-                            <AvatarFallback>
-                              {session.user?.name?.charAt(0) || "U"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">
-                              {session.user?.name || "Unknown User"}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {session.user?.email || "No email"}
+                  users.map((user) => (
+                    <React.Fragment key={user.id}>
+                      <TableRow className="hover:bg-gray-50">
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <Avatar>
+                              <AvatarImage
+                                src={
+                                  user.profileImageUrl ||
+                                  `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
+                                }
+                              />
+                              <AvatarFallback>
+                                {user.name?.charAt(0) || "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium">
+                                {user.name}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {user.email}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {session.role || "Not specified"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {session.experience || "N/A"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {session.questionCount || 0}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{session.duration || 0} minutes</TableCell>
-                      <TableCell>
-                        <StatusBadge status={session.status || "pending"} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Calendar className="mr-1 h-3 w-3 text-gray-500" />
-                          {session.createdAt
-                            ? format(
-                                new Date(session.createdAt),
-                                "MMM dd, yyyy"
-                              )
-                            : "N/A"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            navigate(`/admin/sessions/${session.id}`)
-                          }
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {user.role || "user"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {user.sessionCount || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {user.questionCount || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {user.materialCount || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Calendar className="mr-1 h-3 w-3 text-gray-500" />
+                            {user.createdAt
+                              ? format(new Date(user.createdAt), "MMM dd, yyyy")
+                              : "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleUserExpand(user)}
+                              title={expandedUser === user.id ? "Hide Sessions" : "View Sessions"}
+                            >
+                              {expandedUser === user.id ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      
+                      {/* Expanded Session List for this User */}
+                      {expandedUser === user.id && (
+                        <TableRow className="bg-gray-50">
+                          <TableCell colSpan={7} className="p-0">
+                            <div className="p-4 border-t">
+                              {userLoading ? (
+                                <div className="text-center py-4">
+                                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-500" />
+                                  <p className="mt-2 text-sm text-gray-500">Loading sessions...</p>
+                                </div>
+                              ) : userSessions.length === 0 ? (
+                                <div className="text-center py-4">
+                                  <p className="text-gray-500">No sessions found for this user</p>
+                                </div>
+                              ) : (
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-semibold">
+                                      {user.name}'s Session History
+                                    </h3>
+                                    <div className="text-sm text-gray-500">
+                                      {userSessions.length} sessions
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="grid gap-4">
+                                    {userSessions.map((session) => {
+                                      // Parse topics from comma-separated string
+                                      const topics = parseTopics(session.topicsToFocus);
+                                      
+                                      return (
+                                        <Card key={session.id} className="border">
+                                          <CardContent className="p-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                              <div>
+                                                <p className="text-sm font-medium text-gray-500">Role</p>
+                                                <p className="font-semibold">{session.role || "Not specified"}</p>
+                                              </div>
+                                              <div>
+                                                <p className="text-sm font-medium text-gray-500">Experience</p>
+                                                <Badge variant="outline">
+                                                  {session.experience || "N/A"}
+                                                </Badge>
+                                              </div>
+                                              <div>
+                                                <p className="text-sm font-medium text-gray-500">Questions</p>
+                                                <div className="flex items-center space-x-2">
+                                                  <Badge variant="outline">
+                                                    {session.questionCount || 0}
+                                                  </Badge>
+                                                  {session.materialCount > 0 && (
+                                                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                                                      <BookOpen className="h-3 w-3 mr-1" />
+                                                      {session.materialCount}
+                                                    </Badge>
+                                                  )}
+                                                </div>
+                                              </div>
+                                              <div>
+                                                <p className="text-sm font-medium text-gray-500">Created</p>
+                                                <p className="text-sm">
+                                                  {session.createdAt
+                                                    ? format(new Date(session.createdAt), "MMM dd, yyyy")
+                                                    : "N/A"}
+                                                </p>
+                                              </div>
+                                            </div>
+                                            
+                                            {session.description && (
+                                              <div className="mt-3">
+                                                <p className="text-sm font-medium text-gray-500">Description</p>
+                                                <p className="text-sm text-gray-700 mt-1">{session.description}</p>
+                                              </div>
+                                            )}
+                                            
+                                            {topics.length > 0 && (
+                                              <div className="mt-3">
+                                                <p className="text-sm font-medium text-gray-500">Topics Focus</p>
+                                                <div className="flex flex-wrap gap-2 mt-1">
+                                                  {topics.map((topic, index) => (
+                                                    <Badge 
+                                                      key={index} 
+                                                      variant="outline" 
+                                                      className="bg-blue-50 text-blue-700 border-blue-200"
+                                                    >
+                                                      {topic}
+                                                    </Badge>
+                                                  ))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            
+                                            <div className="flex justify-end mt-4 space-x-2">
+                                              
+                                            <div className="flex items-center space-x-2">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => navigate(`/admin/sessions/${session.id}/questions`)}
+                                                className="h-8 px-3"
+                                                disabled={session.questionCount === 0}
+                                              >
+                                                <MessageSquare className="mr-2 h-3 w-3" />
+                                                Questions ({session.questionCount || 0})
+                                              </Button>
+                                              
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => navigate(`/admin/sessions/${session.id}/resources`)}
+                                                className="h-8 px-3"
+                                                disabled={session.materialCount === 0}
+                                              >
+                                                <BookOpen className="mr-2 h-3 w-3" />
+                                                Resources ({session.materialCount || 0})
+                                              </Button>
+                                            </div>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   ))
                 )}
               </TableBody>
@@ -481,7 +528,6 @@ const Sessions = () => {
                         ...prev,
                         page: prev.page - 1,
                       }));
-                      fetchSessions();
                     }
                   }}
                   disabled={pagination.page === 1}
@@ -497,7 +543,6 @@ const Sessions = () => {
                         ...prev,
                         page: prev.page + 1,
                       }));
-                      fetchSessions();
                     }
                   }}
                   disabled={pagination.page === pagination.pages}
@@ -510,16 +555,8 @@ const Sessions = () => {
         </CardContent>
         <CardFooter className="flex justify-between">
           <div className="text-sm text-gray-500">
-            Showing {filteredSessions.length} sessions
+            Showing {users.length} users
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate("/admin/sessions/all")}
-          >
-            View All
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
         </CardFooter>
       </Card>
     </div>
@@ -527,4 +564,3 @@ const Sessions = () => {
 };
 
 export default Sessions;
-

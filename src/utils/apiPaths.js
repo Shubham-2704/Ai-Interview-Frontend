@@ -53,7 +53,7 @@ export const API_PATHS = {
     DELETE: (materialId) => `/study-materials/${materialId}`,
   },
 
-  ADMIN: {
+   ADMIN: {
     DASHBOARD_STATS: (period = "7d") =>
       `/admin/dashboard/stats?period=${period}`,
     USERS_LIST: (
@@ -75,5 +75,9 @@ export const API_PATHS = {
     HEALTH: "/admin/health",
     USER_STATS: "/admin/users/stats", // For user statistics cards
     CREATE_USER: "/admin/users", // For creating new users
+    SESSION_DETAILS: (sessionId) => `/admin/sessions/${sessionId}`,
+    SESSION_QUESTIONS: (sessionId) => `/admin/sessions/${sessionId}/questions`,
+    SESSION_STUDY_MATERIALS: (sessionId) => `/admin/sessions/${sessionId}/study-materials`,
+    STUDY_MATERIALS_BY_QUESTION: (questionId) => `/admin/study-materials/question/${questionId}`,
   },
 };
