@@ -36,21 +36,21 @@ import { UserContext } from "@/context/UserContext";
 const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user} = useContext(UserContext);
+  const { user } = useContext(UserContext);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [systemStatus, setSystemStatus] = useState({
     cpu: 0,
     memory: 0,
     database: 0,
     health: 0,
-    status: 'loading',
+    status: "loading",
     loading: true,
     timestamp: null,
     details: {
       active_connections: 0,
       uptime_hours: 0,
-      total_docs: 0
-    }
+      total_docs: 0,
+    },
   });
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
@@ -93,14 +93,14 @@ const AdminLayout = () => {
 
   // Fetch initial data
   useEffect(() => {
-     if (user) {
+    if (user) {
       fetchInitialData();
     }
-    
+
     // Set up auto-refresh intervals
     const systemStatusInterval = setInterval(fetchSystemStatus, 30000); // Every 30 seconds
     const dashboardStatsInterval = setInterval(fetchDashboardStats, 120000); // Every 2 minutes
-    
+
     return () => {
       clearInterval(systemStatusInterval);
       clearInterval(dashboardStatsInterval);
@@ -110,12 +110,9 @@ const AdminLayout = () => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      await Promise.all([
-        fetchSystemStatus(),
-        fetchDashboardStats()
-      ]);
+      await Promise.all([fetchSystemStatus(), fetchDashboardStats()]);
     } catch (error) {
-      console.error('Error fetching initial data:', error);
+      console.error("Error fetching initial data:", error);
     } finally {
       setLoading(false);
     }
@@ -123,24 +120,24 @@ const AdminLayout = () => {
 
   const fetchSystemStatus = async () => {
     try {
-      setSystemStatus(prev => ({ ...prev, loading: true }));
-      
+      setSystemStatus((prev) => ({ ...prev, loading: true }));
+
       const response = await adminService.getSystemStatus();
-      
+
       if (response.status === "success") {
         setSystemStatus({
           cpu: response.data?.cpu || 0,
           memory: response.data?.memory || 0,
           database: response.data?.database || 0,
           health: response.data?.health || 0,
-          status: response.data?.status || 'unknown',
+          status: response.data?.status || "unknown",
           loading: false,
           timestamp: response.data?.timestamp || null,
           details: response.data?.details || {
             active_connections: 0,
             uptime_hours: 0,
-            total_docs: 0
-          }
+            total_docs: 0,
+          },
         });
       } else {
         // Fallback to default values if API returns error
@@ -149,32 +146,32 @@ const AdminLayout = () => {
           memory: 0,
           database: 0,
           health: 0,
-          status: 'error',
+          status: "error",
           loading: false,
           timestamp: new Date().toISOString(),
           details: {
             active_connections: 0,
             uptime_hours: 0,
-            total_docs: 0
-          }
+            total_docs: 0,
+          },
         });
       }
     } catch (error) {
-      console.error('Error fetching system status:', error);
-      setSystemStatus(prev => ({ ...prev, loading: false, status: 'error' }));
+      console.error("Error fetching system status:", error);
+      setSystemStatus((prev) => ({ ...prev, loading: false, status: "error" }));
     }
   };
 
   const fetchDashboardStats = async () => {
     try {
       const response = await adminService.getDashboardStats("7d");
-      
-      if (response.status === "success") {
-        setTotalUsers(response.data?.totalUsers || 0);
-        setTotalSessions(response.data?.totalSessions || 0);
-      }
+
+      // if (response.status === "success") {
+      setTotalUsers(response?.totalUsers || 0);
+      setTotalSessions(response?.totalSessions || 0);
+      // }
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      console.error("Error fetching dashboard stats:", error);
     }
   };
 
@@ -184,35 +181,34 @@ const AdminLayout = () => {
     navigate("/login");
   };
 
-  const getStatusColor = (value, type = 'text') => {
+  const getStatusColor = (value, type = "text") => {
     if (value > 80) {
-      return type === 'text' ? 'text-red-600' : 'bg-red-500';
+      return type === "text" ? "text-red-600" : "bg-red-500";
     } else if (value > 60) {
-      return type === 'text' ? 'text-yellow-600' : 'bg-yellow-500';
+      return type === "text" ? "text-yellow-600" : "bg-yellow-500";
     } else {
-      return type === 'text' ? 'text-green-600' : 'bg-green-500';
+      return type === "text" ? "text-green-600" : "bg-green-500";
     }
   };
 
   const getHealthBadgeVariant = (status) => {
     switch (status) {
-      case 'healthy':
-        return 'default';
-      case 'warning':
-        return 'secondary';
-      case 'critical':
-        return 'destructive';
+      case "healthy":
+        return "default";
+      case "warning":
+        return "secondary";
+      case "critical":
+        return "destructive";
       default:
-        return 'outline';
+        return "outline";
     }
   };
 
   const Sidebar = ({ isMobile = false }) => (
     <div className={`${isMobile ? "w-full" : "w-64"} h-full flex flex-col`}>
       {/* Logo */}
-      <div className="p-6 border-b">
+      <div className="p-4 border-b">
         <div className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-linear-to-br from-blue-500 to-purple-600" />
           <div>
             <span className="text-xl font-bold">InterviewPrep</span>
             <Badge variant="outline" className="ml-2">
@@ -220,7 +216,6 @@ const AdminLayout = () => {
             </Badge>
           </div>
         </div>
-        <p className="text-xs text-gray-500 mt-1">Admin Control Panel</p>
       </div>
 
       {/* Navigation */}
@@ -234,7 +229,7 @@ const AdminLayout = () => {
                 variant={item.active ? "secondary" : "ghost"}
                 className={cn(
                   "w-full justify-start mb-1",
-                  item.active && "bg-blue-50 text-blue-700"
+                  item.active && "bg-blue-50 text-blue-700",
                 )}
                 onClick={() => {
                   navigate(item.path);
@@ -260,27 +255,29 @@ const AdminLayout = () => {
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-sm font-semibold">System Status</h3>
             <div className="flex items-center gap-2">
-              <Badge 
+              <Badge
                 variant={getHealthBadgeVariant(systemStatus.status)}
                 className="text-xs"
               >
-                {systemStatus.health ? `${systemStatus.health}%` : '--%'}
+                {systemStatus.health ? `${systemStatus.health}%` : "--%"}
               </Badge>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={fetchSystemStatus}
                 className="h-6 w-6"
                 disabled={systemStatus.loading}
               >
-                <RefreshCw className={`h-3 w-3 ${systemStatus.loading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-3 w-3 ${systemStatus.loading ? "animate-spin" : ""}`}
+                />
               </Button>
             </div>
           </div>
-          
+
           {systemStatus.loading ? (
             <div className="space-y-3">
-              {[1, 2, 3].map(i => (
+              {[1, 2, 3].map((i) => (
                 <div key={i}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-600">Loading...</span>
@@ -292,12 +289,14 @@ const AdminLayout = () => {
                 </div>
               ))}
             </div>
-          ) : systemStatus.status === 'error' ? (
+          ) : systemStatus.status === "error" ? (
             <div className="text-center py-4">
-              <p className="text-sm text-red-600">Failed to load system status</p>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <p className="text-sm text-red-600">
+                Failed to load system status
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={fetchSystemStatus}
                 className="mt-2"
               >
@@ -310,63 +309,69 @@ const AdminLayout = () => {
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">CPU Usage</span>
-                  <span className={`font-semibold ${getStatusColor(systemStatus.cpu, 'text')}`}>
+                  <span
+                    className={`font-semibold ${getStatusColor(systemStatus.cpu, "text")}`}
+                  >
                     {systemStatus.cpu}%
                   </span>
                 </div>
                 <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${getStatusColor(systemStatus.cpu, 'bg')}`}
+                  <div
+                    className={`h-full ${getStatusColor(systemStatus.cpu, "bg")}`}
                     style={{ width: `${systemStatus.cpu}%` }}
                   ></div>
                 </div>
               </div>
-              
+
               {/* Memory Usage */}
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">Memory</span>
-                  <span className={`font-semibold ${getStatusColor(systemStatus.memory, 'text')}`}>
+                  <span
+                    className={`font-semibold ${getStatusColor(systemStatus.memory, "text")}`}
+                  >
                     {systemStatus.memory}%
                   </span>
                 </div>
                 <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${getStatusColor(systemStatus.memory, 'bg')}`}
+                  <div
+                    className={`h-full ${getStatusColor(systemStatus.memory, "bg")}`}
                     style={{ width: `${systemStatus.memory}%` }}
                   ></div>
                 </div>
               </div>
-              
+
               {/* Database Usage */}
               <div>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-gray-600">Database</span>
-                  <span className={`font-semibold ${getStatusColor(systemStatus.database, 'text')}`}>
+                  <span
+                    className={`font-semibold ${getStatusColor(systemStatus.database, "text")}`}
+                  >
                     {systemStatus.database}%
                   </span>
                 </div>
                 <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full ${getStatusColor(systemStatus.database, 'bg')}`}
+                  <div
+                    className={`h-full ${getStatusColor(systemStatus.database, "bg")}`}
                     style={{ width: `${systemStatus.database}%` }}
                   ></div>
                 </div>
               </div>
-              
+
               {/* Status Details */}
               <div className="pt-2 border-t text-xs text-gray-600">
                 <div className="grid grid-cols-2 gap-1">
                   <div className="truncate">Connections:</div>
                   <div className="text-right font-medium">
-                    {systemStatus.details?.active_connections?.toLocaleString() || 0}
+                    {systemStatus.details?.active_connections?.toLocaleString() ||
+                      0}
                   </div>
                   <div className="truncate">Uptime:</div>
                   <div className="text-right font-medium">
-                    {systemStatus.details?.uptime_hours 
-                      ? `${Math.round(systemStatus.details.uptime_hours)}h` 
-                      : '0h'
-                    }
+                    {systemStatus.details?.uptime_hours
+                      ? `${Math.round(systemStatus.details.uptime_hours)}h`
+                      : "0h"}
                   </div>
                   <div className="truncate">Documents:</div>
                   <div className="text-right font-medium">
@@ -375,7 +380,11 @@ const AdminLayout = () => {
                 </div>
                 {systemStatus.timestamp && (
                   <div className="text-gray-500 text-right mt-1">
-                    Updated: {new Date(systemStatus.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    Updated:{" "}
+                    {new Date(systemStatus.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </div>
                 )}
               </div>
@@ -385,7 +394,7 @@ const AdminLayout = () => {
       </nav>
 
       {/* User Profile */}
-      <div className="p-4 border-t">
+      <div className="p-2 border-t">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start p-2">
@@ -397,17 +406,23 @@ const AdminLayout = () => {
                 <p className="text-sm font-semibold">{user?.name}</p>
                 <p className="text-xs text-gray-500">{user?.email}</p>
               </div>
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-4 w-4 cursor-pointer" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate(`/admin/users/${user?.id}`)}>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => navigate(`/admin/users/${user?.id}`)}
+            >
               <UserIcon className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate("/admin/settings")}>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => navigate("/admin/settings")}
+            >
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>
@@ -416,7 +431,10 @@ const AdminLayout = () => {
               Help & Support
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={handleLogout}>
+            <DropdownMenuItem
+              className="text-red-600 cursor-pointer"
+              onClick={handleLogout}
+            >
               <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>
@@ -495,7 +513,9 @@ const AdminLayout = () => {
                 </span>
               </Button>
               <div className="hidden md:block">
-                <div className="text-sm font-medium">Admin Dashboard</div>
+                <div className="text-sm font-medium">
+                  {user?.name}'s Dashboard
+                </div>
                 <div className="text-xs text-gray-500">
                   {new Date().toLocaleDateString("en-US", {
                     weekday: "long",
