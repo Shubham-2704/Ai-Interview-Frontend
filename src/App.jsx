@@ -1,7 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
-
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Home/Dashboard";
 import AdminLayout from "./pages/Admin/AdminLayout";
@@ -21,6 +21,7 @@ import SessionResources from "./pages/Admin/SessionResources";
 
 function App() {
   return (
+     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
     <UserProvider>
       <Router>
         <Routes>
@@ -69,6 +70,7 @@ function App() {
         <Toaster richColors />
       </Router>
     </UserProvider>
+    </GoogleOAuthProvider>
   );
 }
 
