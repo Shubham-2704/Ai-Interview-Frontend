@@ -1,10 +1,10 @@
-
 import React, { useContext, useState, useEffect } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema } from "@/lib/schema";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "@/context/UserContext";
+import { GoogleLogin } from "@react-oauth/google";
 
 import {
   Field,
@@ -27,6 +27,7 @@ const Signup = ({ onChangePage }) => {
   const [profilePic, setProfilePic] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [passwordValidation, setPasswordValidation] = useState({
     length: false,
     uppercase: false,
@@ -112,6 +113,36 @@ const Signup = ({ onChangePage }) => {
     }
   }
 
+  // Google Signup Handler
+  const handleGoogleSignup = async (credentialResponse) => {
+    setGoogleLoading(true);
+    try {
+      const response = await axiosInstance.post(API_PATHS.AUTH.GOOGLE_SIGNUP, {
+        token: credentialResponse.credential,
+      });
+
+      const { token } = response.data;
+      if (token) {
+        localStorage.setItem("token", token);
+        updateUser(response.data);
+        navigate("/dashboard");
+        toast.success("Account created successfully!");
+      }
+    } catch (error) {
+      if (error.response && error.response.data.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to sign up with Google. Please try again.");
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    toast.error("Google signup failed. Please try again.");
+  };
+
   const validationRules = [
     {
       id: "length",
@@ -142,6 +173,42 @@ const Signup = ({ onChangePage }) => {
 
   return (
     <div>
+      {/* Google Signup Button */}
+      <div className="mb-6">
+        {googleLoading ? (
+          <Button
+            variant="outline"
+            className="w-full flex items-center justify-center gap-2 py-6 border-gray-300"
+            disabled
+          >
+            <Spinner size="sm" />
+            Signing up with Google...
+          </Button>
+        ) : (
+          <GoogleLogin
+            onSuccess={handleGoogleSignup}
+            onError={handleGoogleError}
+            text="signup_with"
+            size="large"
+            width="100%"
+            theme="outline"
+            shape="rectangular"
+            logo_alignment="left"
+            useOneTap={false}
+          />
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="relative mb-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-300"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-2 bg-white text-gray-500">Or continue with</span>
+        </div>
+      </div>
+
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <FieldGroup>
           <ProfilePhotoSelector image={profilePic} setImage={setProfilePic} />
@@ -228,10 +295,10 @@ const Signup = ({ onChangePage }) => {
                               .length === 5
                               ? "bg-green-500"
                               : Object.values(passwordValidation).filter(
-                                  Boolean
-                                ).length >= 3
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
+                                    Boolean,
+                                  ).length >= 3
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
                           }`}
                           style={{
                             width: `${
@@ -248,9 +315,9 @@ const Signup = ({ onChangePage }) => {
                           .length === 5
                           ? "Strong"
                           : Object.values(passwordValidation).filter(Boolean)
-                              .length >= 3
-                          ? "Medium"
-                          : "Weak"}
+                                .length >= 3
+                            ? "Medium"
+                            : "Weak"}
                       </span>
                     </div>
 

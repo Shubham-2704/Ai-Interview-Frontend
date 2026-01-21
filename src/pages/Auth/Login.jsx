@@ -5,6 +5,7 @@ import { loginSchema } from "@/lib/schema";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "@/context/UserContext";
 import ForgotPasswordDialog from "./ForgotPasswordPage";
+import { GoogleLogin } from "@react-oauth/google";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ import { toast } from "sonner";
 
 const Login = ({ onChangePage }) => {
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
   const [showAdminTokenModal, setShowAdminTokenModal] = useState(false);
@@ -86,6 +88,48 @@ const Login = ({ onChangePage }) => {
     }
   }
 
+  // Google Login Handler
+  const handleGoogleLogin = async (credentialResponse) => {
+    setGoogleLoading(true);
+    try {
+      const response = await axiosInstance.post(API_PATHS.AUTH.GOOGLE_SIGNUP, {
+        token: credentialResponse.credential,
+      });
+
+      const { token, role } = response.data;
+
+      if (token) {
+        localStorage.setItem("token", token);
+        updateUser(response.data);
+
+        // Store user data for admin check
+        setUserData(response.data);
+
+        // Check if user is admin
+        if (role === "admin") {
+          // Show admin token modal instead of navigating directly
+          setShowAdminTokenModal(true);
+        } else {
+          // Regular user - navigate to dashboard
+          navigate("/dashboard");
+          toast.success("Logged in successfully!");
+        }
+      }
+    } catch (error) {
+      if (error.response && error.response.data.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to login with Google. Please try again.");
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    toast.error("Google login failed. Please try again.");
+  };
+
   // Handle admin token verification
   const handleVerifyAdminToken = async () => {
     if (!adminToken.trim()) {
@@ -102,7 +146,14 @@ const Login = ({ onChangePage }) => {
 
       if (response.data) {
         toast.success("Admin token verified!");
-        navigate("/admin/dashboard");
+
+        // Navigate based on user role
+        if (userData?.role === "admin") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/dashboard");
+        }
+
         setShowAdminTokenModal(false);
       } else {
         toast.error("Invalid admin token");
@@ -133,6 +184,42 @@ const Login = ({ onChangePage }) => {
 
   return (
     <div>
+      {/* Google Login Button */}
+      <div className="mb-6">
+        {googleLoading ? (
+          <Button
+            variant="outline"
+            className="w-full flex items-center justify-center gap-2 py-6 border-gray-300"
+            disabled
+          >
+            <Spinner size="sm" />
+            Signing in with Google...
+          </Button>
+        ) : (
+          <GoogleLogin
+            onSuccess={handleGoogleLogin}
+            onError={handleGoogleError}
+            text="signin_with"
+            size="large"
+            width="100%"
+            theme="outline"
+            shape="rectangular"
+            logo_alignment="left"
+            useOneTap={false}
+          />
+        )}
+      </div>
+
+      {/* Divider */}
+      <div className="relative mb-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-300"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-2 bg-white text-gray-500">Or continue with</span>
+        </div>
+      </div>
+
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <FieldGroup>
           <Controller
@@ -307,3 +394,5 @@ const Login = ({ onChangePage }) => {
 };
 
 export default Login;
+
+

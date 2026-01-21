@@ -6,6 +6,7 @@ export const API_PATHS = {
   AUTH: {
     REGISTER: "/auth/register", // Signup
     LOGIN: "/auth/login", // Authenticate user & return JWT token
+    GOOGLE_SIGNUP: "/auth/google-signup", // Google signup
     GET_PROFILE: "/auth/profile", // Get logged-in user details
     UPDATE_PROFILE: "/auth/profile", // Update logged-in user details
     FORGOT_PASSWORD: `/auth/forgot-password`, // Send OTP to email
