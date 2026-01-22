@@ -18,6 +18,9 @@ import UserProvider from "./context/userContext.jsx";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import SessionQuestions from "./pages/Admin/SessionQuestions";
 import SessionResources from "./pages/Admin/SessionResources";
+import QuizPage from "./pages/Quiz/QuizPage";
+import QuizHistory from "./pages/Quiz/QuizHistory";
+import QuizAnalytics from "./pages/Quiz/QuizAnalytics";
 
 function App() {
   return (
@@ -34,6 +37,15 @@ function App() {
               path="/interview-prep/:sessionId"
               element={<InterviewPrep />}
             />
+            <Route path="/quiz/:sessionId" element={<QuizPage />} />
+            <Route
+                path="/quiz/:sessionId/history"
+                element={<QuizHistory />}
+              />
+              <Route
+                path="/quiz/:sessionId/analytics"
+                element={<QuizAnalytics />}
+              />
           </Route>
 
           {/* ADMIN ROUTES - All admin routes inside AdminLayout */}

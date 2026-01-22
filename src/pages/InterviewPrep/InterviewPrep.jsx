@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef, memo } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { format } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import InterviewPrepSkeleton from "./components/InterviewPrepSkeleton";
 import Drawer from "@/components/Drawer";
 import StudyMaterialsDrawer from "@/components/StudyMaterialsDrawer";
-import { CircleAlert, ListCollapse } from "lucide-react";
+import { CircleAlert, FileQuestion, ListCollapse } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { DownloadIcon } from "@/components/ui/DownloadIcon";
@@ -93,7 +93,7 @@ const saveToLocalStorage = (key, data) => {
       try {
         localStorage.setItem(
           key,
-          JSON.stringify({ data, timestamp: Date.now() })
+          JSON.stringify({ data, timestamp: Date.now() }),
         );
         return true;
       } catch (retryError) {
@@ -214,7 +214,7 @@ const loadFromSessionStorage = (key) => {
 
     // Verify it's from current session
     const currentSessionId = sessionStorage.getItem(
-      SESSION_STORAGE_KEYS.SESSION_ID
+      SESSION_STORAGE_KEYS.SESSION_ID,
     );
     if (sessionId !== currentSessionId) {
       // Clear data from old session
@@ -254,6 +254,7 @@ const createExplanationId = (question) => {
 };
 
 const InterviewPrep = memo(() => {
+  const navigate = useNavigate();
   const { sessionId } = useParams();
 
   const [sessionData, setSessionData] = useState(null);
@@ -291,7 +292,7 @@ const InterviewPrep = memo(() => {
   const fetchSessionDetailsById = useCallback(async () => {
     try {
       const response = await axiosInstance.get(
-        API_PATHS.SESSION.GET_ONE(sessionId)
+        API_PATHS.SESSION.GET_ONE(sessionId),
       );
 
       if (response.data?.session) {
@@ -337,7 +338,7 @@ const InterviewPrep = memo(() => {
 
       // Check LocalStorage FIRST (Persistent across sessions)
       const cachedExplanation = loadFromLocalStorage(
-        LOCAL_STORAGE_KEYS.EXPLANATION_DATA(expId)
+        LOCAL_STORAGE_KEYS.EXPLANATION_DATA(expId),
       );
 
       if (cachedExplanation) {
@@ -355,7 +356,7 @@ const InterviewPrep = memo(() => {
       // If not in localStorage, call API
       const response = await axiosInstance.post(
         API_PATHS.AI.GENERATE_EXPLANATION,
-        { question }
+        { question },
       );
 
       if (response.data) {
@@ -364,7 +365,7 @@ const InterviewPrep = memo(() => {
         // Save to localStorage for persistence across sessions
         const saved = saveToLocalStorage(
           LOCAL_STORAGE_KEYS.EXPLANATION_DATA(expId),
-          response.data
+          response.data,
         );
 
         if (saved) {
@@ -379,7 +380,7 @@ const InterviewPrep = memo(() => {
       setExplanation(null);
       setErrorMsg(
         error.response?.data?.message ||
-          "Server are too busy, Please try again later."
+          "Server are too busy, Please try again later.",
       );
       console.error("Error generating concept explanation:", error);
     } finally {
@@ -443,13 +444,13 @@ const InterviewPrep = memo(() => {
         // OPTION 2: Check Session Storage (Current Tab Only)
         else {
           const sessionCached = loadFromSessionStorage(
-            SESSION_STORAGE_KEYS.STUDY_MATERIALS(questionId)
+            SESSION_STORAGE_KEYS.STUDY_MATERIALS(questionId),
           );
 
           if (sessionCached) {
             console.log(
               "📦 Found in session storage (current tab only):",
-              sessionCached
+              sessionCached,
             );
 
             // Small delay for better UX (shows skeleton briefly)
@@ -469,7 +470,7 @@ const InterviewPrep = memo(() => {
         try {
           // Try to GET existing materials from database
           const getResponse = await axiosInstance.get(
-            API_PATHS.STUDY_MATERIALS.GET_BY_QUESTION(questionId)
+            API_PATHS.STUDY_MATERIALS.GET_BY_QUESTION(questionId),
           );
 
           if (getResponse.data && !forceRefresh) {
@@ -478,7 +479,7 @@ const InterviewPrep = memo(() => {
             // Save to session storage for current tab (NOT localStorage)
             saveToSessionStorage(
               SESSION_STORAGE_KEYS.STUDY_MATERIALS(questionId),
-              getResponse.data
+              getResponse.data,
             );
 
             setStudyMaterials(getResponse.data);
@@ -492,7 +493,7 @@ const InterviewPrep = memo(() => {
             console.error("⚠️ Database check error:", dbError.message);
           }
           console.log(
-            "📝 No existing materials in database, will generate new"
+            "📝 No existing materials in database, will generate new",
           );
         }
 
@@ -512,7 +513,7 @@ const InterviewPrep = memo(() => {
           // Save to session storage for current tab (NOT localStorage)
           saveToSessionStorage(
             SESSION_STORAGE_KEYS.STUDY_MATERIALS(questionId),
-            response.data
+            response.data,
           );
 
           setStudyMaterials(response.data);
@@ -521,7 +522,7 @@ const InterviewPrep = memo(() => {
           toast.success(
             forceRefresh
               ? "Study materials refreshed!"
-              : "Study materials generated!"
+              : "Study materials generated!",
           );
         }
       } catch (error) {
@@ -537,7 +538,7 @@ const InterviewPrep = memo(() => {
         // Better error messages
         if (error.response?.status === 404) {
           setErrorMsg(
-            "Endpoint not found. Please check backend configuration."
+            "Endpoint not found. Please check backend configuration.",
           );
         } else if (error.response?.status === 401) {
           setErrorMsg("Authentication required. Please login again.");
@@ -547,7 +548,7 @@ const InterviewPrep = memo(() => {
           setErrorMsg(
             error.response?.data?.message ||
               error.message ||
-              "Failed to fetch study materials. Please try again."
+              "Failed to fetch study materials. Please try again.",
           );
         }
 
@@ -559,7 +560,7 @@ const InterviewPrep = memo(() => {
         }, 500);
       }
     },
-    []
+    [],
   );
 
   // Refresh Study Materials
@@ -574,7 +575,7 @@ const InterviewPrep = memo(() => {
       console.log("🔄 Refreshing study materials with ID:", studyMaterialId);
 
       const response = await axiosInstance.post(
-        API_PATHS.STUDY_MATERIALS.REFRESH(studyMaterialId)
+        API_PATHS.STUDY_MATERIALS.REFRESH(studyMaterialId),
       );
 
       console.log("✅ Refresh response:", response.data);
@@ -584,7 +585,7 @@ const InterviewPrep = memo(() => {
         if (selectedQuestionId) {
           saveToSessionStorage(
             SESSION_STORAGE_KEYS.STUDY_MATERIALS(selectedQuestionId),
-            response.data
+            response.data,
           );
         }
 
@@ -610,13 +611,13 @@ const InterviewPrep = memo(() => {
       console.log("🗑️ Deleting study materials with ID:", studyMaterialId);
 
       await axiosInstance.delete(
-        API_PATHS.STUDY_MATERIALS.DELETE(studyMaterialId)
+        API_PATHS.STUDY_MATERIALS.DELETE(studyMaterialId),
       );
 
       // Clear from session storage (NOT localStorage)
       if (selectedQuestionId) {
         clearSessionStorageItem(
-          SESSION_STORAGE_KEYS.STUDY_MATERIALS(selectedQuestionId)
+          SESSION_STORAGE_KEYS.STUDY_MATERIALS(selectedQuestionId),
         );
       }
 
@@ -637,7 +638,7 @@ const InterviewPrep = memo(() => {
     }
 
     clearSessionStorageItem(
-      SESSION_STORAGE_KEYS.STUDY_MATERIALS(selectedQuestionId)
+      SESSION_STORAGE_KEYS.STUDY_MATERIALS(selectedQuestionId),
     );
     toast.success("Session cache cleared!");
     setOpenStudyMaterialsDrawer(false);
@@ -657,7 +658,7 @@ const InterviewPrep = memo(() => {
     try {
       const response = await axiosInstance.post(
         API_PATHS.AI.GENERATE_EXPLANATION,
-        { question: lastQuestion }
+        { question: lastQuestion },
       );
 
       if (response.data) {
@@ -665,14 +666,14 @@ const InterviewPrep = memo(() => {
         // Update localStorage (persistent)
         saveToLocalStorage(
           LOCAL_STORAGE_KEYS.EXPLANATION_DATA(explanationId),
-          response.data
+          response.data,
         );
         toast.success("Explanation refreshed and saved!");
       }
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          "Server are too busy, Please try again later."
+          "Server are too busy, Please try again later.",
       );
       setErrorMsg("Failed to refresh. Please try again.");
       console.error("Error refreshing explanation:", error);
@@ -743,7 +744,7 @@ const InterviewPrep = memo(() => {
 
       try {
         const response = await axiosInstance.post(
-          API_PATHS.QUESTION.PIN(questionId)
+          API_PATHS.QUESTION.PIN(questionId),
         );
 
         if (response.data && response.data?.question) {
@@ -751,7 +752,7 @@ const InterviewPrep = memo(() => {
           toast.success(
             `Question ${
               response.data.question.isPinned ? "Pinned" : "Unpinned"
-            } successfully!`
+            } successfully!`,
           );
         }
       } catch (error) {
@@ -762,7 +763,7 @@ const InterviewPrep = memo(() => {
         }, 300);
       }
     },
-    [fetchSessionDetailsById]
+    [fetchSessionDetailsById],
   );
 
   // Add more questions to a session
@@ -780,7 +781,7 @@ const InterviewPrep = memo(() => {
           experience: sessionDataRef.current.experience,
           topicsToFocus: sessionDataRef.current.topicsToFocus,
           numberOfQuestions: 10,
-        }
+        },
       );
 
       const generatedQuestions = aiResponse.data;
@@ -790,7 +791,7 @@ const InterviewPrep = memo(() => {
         {
           sessionId,
           questions: generatedQuestions,
-        }
+        },
       );
 
       if (response.data) {
@@ -825,7 +826,7 @@ const InterviewPrep = memo(() => {
         throw error;
       }
     },
-    [explanation?.explanation]
+    [explanation?.explanation],
   );
 
   // Download PDF of session Q&A
@@ -837,7 +838,7 @@ const InterviewPrep = memo(() => {
         API_PATHS.PDF.EXPORT_SESSION_QNA(sessionId),
         {
           responseType: "blob",
-        }
+        },
       );
 
       const blob = new Blob([response.data], {
@@ -869,7 +870,7 @@ const InterviewPrep = memo(() => {
       console.error("PDF download failed:", error);
       toast.error(
         error.response?.data?.detail ||
-          "Failed to export PDF. Please try after some time."
+          "Failed to export PDF. Please try after some time.",
       );
     }
   }, [sessionId, sessionData?.role]);
@@ -908,18 +909,34 @@ const InterviewPrep = memo(() => {
           <CardHeader>
             <div className="flex items-center justify-between flex-wrap gap-2">
               <CardTitle className="text-lg">Interview Q & A</CardTitle>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    onClick={downloadSessionPdf}
-                    className="flex items-center gap-2 ml-auto"
-                  >
-                    <DownloadIcon />
-                    <span className="hidden sm:inline">Download Q&A</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Download PDF of Q&A Session</TooltipContent>
-              </Tooltip>
+              <div className="flex items-center gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={() => navigate(`/quiz/${sessionId}`)}
+                      className="gap-2 bg-blue-600 hover:bg-blue-700"
+                    >
+                      <FileQuestion className="h-4 w-4" />
+                      <span className="hidden sm:inline">Practice Quiz</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Take a quiz based on these questions
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={downloadSessionPdf}
+                      className="flex items-center gap-2 ml-auto"
+                    >
+                      <DownloadIcon />
+                      <span className="hidden sm:inline">Download Q&A</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Download PDF of Q&A Session</TooltipContent>
+                </Tooltip>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="grid grid-cols-12 gap-4">
@@ -951,7 +968,7 @@ const InterviewPrep = memo(() => {
                           }
                           onStudyMaterials={() => {
                             console.log(
-                              "📞 Calling fetchStudyMaterials from QuestionCard"
+                              "📞 Calling fetchStudyMaterials from QuestionCard",
                             );
                             if (!question?._id) {
                               console.error("❌ Question ID is undefined");
@@ -960,7 +977,7 @@ const InterviewPrep = memo(() => {
                             }
                             fetchStudyMaterials(
                               question?.question,
-                              question._id
+                              question._id,
                             );
                           }}
                           isPinned={question?.isPinned}
@@ -998,7 +1015,6 @@ const InterviewPrep = memo(() => {
               </AnimatePresence>
             </div>
           </CardContent>
-
           <div>
             <Drawer
               isOpen={openLearnMoreDrawer}
