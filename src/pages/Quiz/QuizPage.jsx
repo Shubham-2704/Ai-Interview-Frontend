@@ -261,17 +261,17 @@ const QuizPage = () => {
 
     return (
       <DashboardLayout>
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="container mx-auto px-4 py-8 max-w-[1400px]">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col justify-between mb-8 gap-4">
+            <div className="flex items-center gap-4 justify-between">
               <Button
                 variant="ghost"
                 onClick={() => navigate(`/interview-prep/${sessionId}`)}
                 className="gap-2"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Back to Session
+                <p className="hidden md:block">Back to Session</p>
               </Button>
               <div>
                 <h1 className="text-2xl font-bold">Practice Quiz</h1>
@@ -282,16 +282,13 @@ const QuizPage = () => {
                   </p>
                 )}
               </div>
-            </div>
-
-            <div className="flex items-center gap-4">
               <Button
                 variant="outline"
                 onClick={() => navigate(`/quiz/${sessionId}/history`)}
                 className="gap-2"
               >
                 <History className="h-4 w-4" />
-                History
+                <p className="hidden md:block">History</p>
               </Button>
             </div>
           </div>
@@ -358,12 +355,12 @@ const QuizPage = () => {
                 <button
                   key={index}
                   onClick={() => setCurrentQuestion(index)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
+                  className={`w-10 h-10 rounded-full flex items-center cursor-pointer justify-center text-sm font-medium transition-all ${
                     index === currentQuestion
                       ? "bg-primary text-white scale-110"
                       : userAnswers[index] !== null
                         ? "bg-green-100 text-green-800 hover:bg-green-200"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        : "bg-red-100 text-red-700 hover:bg-gray-200"
                   }`}
                 >
                   {index + 1}
@@ -391,20 +388,24 @@ const QuizPage = () => {
           </AnimatePresence>
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between items-center mt-8 pt-6 border-t">
+          <div className="flex justify-between items-center ">
             <div className="flex items-center gap-3">
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => handleQuestionNavigation("prev")}
                 disabled={currentQuestion === 0}
-                className="gap-2"
+                className="gap-2 hover:bg-gray-100"
               >
                 <ChevronLeft className="h-4 w-4" />
                 Previous
               </Button>
 
               {currentQuestion > 0 && (
-                <Button variant="ghost" onClick={() => setCurrentQuestion(0)}>
+                <Button
+                  className="hidden md:block"
+                  variant="ghost"
+                  onClick={() => setCurrentQuestion(0)}
+                >
                   First Question
                 </Button>
               )}
@@ -414,7 +415,8 @@ const QuizPage = () => {
               {currentQuestion < totalQuestions - 1 ? (
                 <Button
                   onClick={() => handleQuestionNavigation("next")}
-                  className="gap-2"
+                  className="gap-2 hover:bg-gray-100"
+                  variant="ghost"
                 >
                   Next Question
                   <ChevronRight className="h-4 w-4" />
@@ -423,7 +425,7 @@ const QuizPage = () => {
                 <Button
                   onClick={handleSubmitQuiz}
                   disabled={isLoading}
-                  className="gap-2 bg-green-600 hover:bg-green-700"
+                  className="gap-2 hover:bg-green-700"
                 >
                   {isLoading ? (
                     <>
@@ -440,38 +442,6 @@ const QuizPage = () => {
               )}
             </div>
           </div>
-
-          {/* Quick Submit Section */}
-          {answeredCount === totalQuestions &&
-            currentQuestion === totalQuestions - 1 && (
-              <Card className="mt-8 border-green-200 bg-green-50">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      <div>
-                        <p className="font-medium">All questions answered!</p>
-                        <p className="text-sm text-muted-foreground">
-                          You've answered all {totalQuestions} questions. Ready
-                          to submit?
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={handleSubmitQuiz}
-                      disabled={isLoading}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        "Submit Now"
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
         </div>
       </DashboardLayout>
     );
@@ -480,22 +450,22 @@ const QuizPage = () => {
   if (quizState === "results" && results) {
     return (
       <DashboardLayout>
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="container mx-auto px-4 py-8 max-w-[1400px]">
           <div className="flex items-center justify-between mb-8">
             <Button
-              variant="ghost"
+              variant="outline"
               onClick={() => navigate(`/interview-prep/${sessionId}`)}
-              className="gap-2"
+              className="gap-2 hover:bg-gray-100"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Session
+              <p className="hidden md:block">Back to Session</p>
             </Button>
 
             <div className="flex items-center gap-3">
               <Button
                 variant="outline"
                 onClick={() => navigate(`/quiz/${sessionId}/history`)}
-                className="gap-2"
+                className="gap-2 text-orange-500 bg:orange-100 hover:bg-orange-200 hover:text-orange-500"
               >
                 <History className="h-4 w-4" />
                 Quiz History
@@ -503,7 +473,7 @@ const QuizPage = () => {
               <Button
                 variant="outline"
                 onClick={() => navigate(`/quiz/${sessionId}/analytics`)}
-                className="gap-2"
+                className="gap-2 text-blue-500 bg:blue-100 hover:bg-blue-200 hover:text-blue-500"
               >
                 <BarChart3 className="h-4 w-4" />
                 Analytics

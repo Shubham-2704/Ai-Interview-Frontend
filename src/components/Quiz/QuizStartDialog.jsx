@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +12,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Loader2, Target, Clock, Brain, Trophy } from "lucide-react";
+import { UserContext } from "@/context/UserContext";
 
 const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
   const [questionCount, setQuestionCount] = useState(10);
+  const { user, openApiKeyModal } = useContext(UserContext);
 
   const handleStart = () => {
+    if (!user?.hasGeminiKey) {
+      openApiKeyModal();
+      return;
+    }
     onStartQuiz(questionCount);
   };
 
@@ -55,7 +61,7 @@ const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
               min={5}
               max={30}
               step={1}
-              className="w-full"
+              className="w-full cursor-pointer"
             />
 
             <div className="flex justify-between text-sm text-muted-foreground">

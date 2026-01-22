@@ -10,12 +10,13 @@ import {
   Clock,
   Trophy,
   TrendingUp,
-  RefreshCw,
   Download,
   Trash2,
   FileText,
   BarChart3,
   Eye,
+  Plus,
+  Loader2, // Added Loader2 for loading spinner
 } from "lucide-react";
 import {
   Table,
@@ -48,6 +49,7 @@ const QuizHistory = () => {
   const [sessionInfo, setSessionInfo] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quizToDelete, setQuizToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false); // Added deleting state
 
   const fetchQuizHistory = useCallback(async () => {
     try {
@@ -81,6 +83,7 @@ const QuizHistory = () => {
   const handleDeleteQuiz = async () => {
     if (!quizToDelete) return;
 
+    setDeleting(true); // Start loading
     try {
       await axiosInstance.delete(API_PATHS.QUIZ.DELETE(quizToDelete));
       toast.success("Quiz deleted successfully");
@@ -88,6 +91,7 @@ const QuizHistory = () => {
     } catch (error) {
       toast.error("Failed to delete quiz");
     } finally {
+      setDeleting(false); // Stop loading
       setDeleteDialogOpen(false);
       setQuizToDelete(null);
     }
@@ -204,38 +208,37 @@ const QuizHistory = () => {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-8 max-w-[1400px]">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div className="flex justify-between mb-8 gap-4">
           <div>
             <Button
-              variant="ghost"
+              variant="outline"
               onClick={() => navigate(`/interview-prep/${sessionId}`)}
-              className="gap-2 mb-2"
+              className="gap-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Session
+              <p className="hidden md:block">Back to Session</p>
             </Button>
-            <h1 className="text-3xl font-bold">Quiz History</h1>
-            {sessionInfo && (
-              <p className="text-muted-foreground">
-                {sessionInfo.role} • {sessionInfo.experience} years experience
-              </p>
-            )}
+          </div>
+          <div className="flex gap-2">
+            <h1 className="text-3xl font-bold hidden md:block">Quiz</h1>
+            <h1 className="text-2xl md:text-3xl font-bold hidden md:block">History</h1>
           </div>
 
           <div className="flex items-center gap-3">
             <Button
+              variant="outline"
               onClick={() => navigate(`/quiz/${sessionId}`)}
-              className="gap-2"
+              className="gap-2 text-orange-500 bg:orange-100 hover:bg-orange-200 hover:text-orange-500"
             >
-              <RefreshCw className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
               New Quiz
             </Button>
             <Button
               variant="outline"
               onClick={() => navigate(`/quiz/${sessionId}/analytics`)}
-              className="gap-2"
+              className="gap-2  text-blue-500 bg:blue-100 hover:bg-blue-200 hover:text-blue-500"
             >
               <BarChart3 className="h-4 w-4" />
               Analytics
@@ -557,11 +560,23 @@ const QuizHistory = () => {
               <Button
                 variant="outline"
                 onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleting} // Disable cancel button during delete
               >
                 Cancel
               </Button>
-              <Button variant="destructive" onClick={handleDeleteQuiz}>
-                Delete
+              <Button
+                variant="destructive"
+                onClick={handleDeleteQuiz}
+                disabled={deleting} // Disable delete button during delete
+              >
+                {deleting ? ( // Show loading spinner when deleting
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete"
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>

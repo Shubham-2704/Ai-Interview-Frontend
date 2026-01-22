@@ -12,11 +12,11 @@ import {
   BarChart3,
   Calendar,
   Download,
-  TrendingDown,
   Users,
   Award,
   Zap,
   Brain,
+  ChevronDown,
 } from "lucide-react";
 import {
   LineChart,
@@ -36,8 +36,14 @@ import {
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 import { format } from "date-fns";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const QuizAnalytics = () => {
   const { sessionId } = useParams();
@@ -47,6 +53,38 @@ const QuizAnalytics = () => {
   const [loading, setLoading] = useState(true);
   const [sessionInfo, setSessionInfo] = useState(null);
   const [timeRange, setTimeRange] = useState("all"); // 'week', 'month', 'all'
+
+  const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#f97316", "#ef4444"];
+
+  // Custom label renderer for pie chart
+  const renderCustomizedLabel = ({
+    cx,
+    cy,
+    midAngle,
+    innerRadius,
+    outerRadius,
+    percent,
+    name,
+  }) => {
+    const RADIAN = Math.PI / 180;
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? "start" : "end"}
+        dominantBaseline="central"
+        fontSize={12}
+        fontWeight="bold"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
@@ -59,15 +97,19 @@ const QuizAnalytics = () => {
         setAnalytics(response.data);
 
         // Fetch topic performance separately
-        const topicResponse = await axiosInstance.get(
-          `/quiz/session/${sessionId}/topics`,
-        );
+        try {
+          const topicResponse = await axiosInstance.get(
+            `/quiz/session/${sessionId}/topics`,
+          );
 
-        if (topicResponse.data?.topicPerformance) {
-          setAnalytics((prev) => ({
-            ...prev,
-            topicPerformance: topicResponse.data.topicPerformance,
-          }));
+          if (topicResponse.data?.topicPerformance) {
+            setAnalytics((prev) => ({
+              ...prev,
+              topicPerformance: topicResponse.data.topicPerformance,
+            }));
+          }
+        } catch (topicError) {
+          console.warn("Failed to fetch topic performance:", topicError);
         }
       }
     } catch (error) {
@@ -83,11 +125,11 @@ const QuizAnalytics = () => {
         improvementRate: 15.2,
         scoreDistribution: [20, 30, 25, 15, 10],
         dailyPerformance: [
-          { date: "2024-01-01", score: 70 },
-          { date: "2024-01-08", score: 75 },
-          { date: "2024-01-15", score: 80 },
-          { date: "2024-01-22", score: 85 },
-          { date: "2024-01-29", score: 90 },
+          { date: "01/01", score: 70 },
+          { date: "01/08", score: 75 },
+          { date: "01/15", score: 80 },
+          { date: "01/22", score: 85 },
+          { date: "01/29", score: 90 },
         ],
         topicPerformance: [
           { topic: "Algorithms", score: 85 },
@@ -104,23 +146,9 @@ const QuizAnalytics = () => {
     }
   }, [sessionId, timeRange]);
 
-  //   const fetchSessionInfo = useCallback(async () => {
-  //     try {
-  //       const response = await axiosInstance.get(`/sessions/${sessionId}`);
-  //       if (response.data?.session) {
-  //         setSessionInfo(response.data.session);
-  //       }
-  //     } catch (error) {
-  //       console.error("Failed to fetch session info:", error);
-  //     }
-  //   }, [sessionId]);
-
   useEffect(() => {
     fetchAnalytics();
-    // fetchSessionInfo();
   }, [fetchAnalytics]);
-
-  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
   const formatTime = (seconds) => {
     if (!seconds) return "0m";
@@ -167,40 +195,100 @@ const QuizAnalytics = () => {
     }
   };
 
+  // Prepare pie chart data
+  const getPieChartData = () => {
+    if (!analytics?.scoreDistribution) return [];
+
+    return [
+      { name: "90-100%", value: analytics.scoreDistribution[0] || 0 },
+      { name: "80-89%", value: analytics.scoreDistribution[1] || 0 },
+      { name: "70-79%", value: analytics.scoreDistribution[2] || 0 },
+      { name: "60-69%", value: analytics.scoreDistribution[3] || 0 },
+      { name: "Below 60%", value: analytics.scoreDistribution[4] || 0 },
+    ];
+  };
+
+  const pieChartData = getPieChartData();
+  const hasPieChartData = pieChartData.some((item) => item.value > 0);
+
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-4 py-8 max-w-[1400px]">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div className="flex justify-between mb-8 gap-4">
           <div>
             <Button
-              variant="ghost"
+              variant="outline"
               onClick={() => navigate(`/interview-prep/${sessionId}`)}
               className="gap-2 mb-2"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Session
+              <p className="hidden md:block">Back to Session</p>
             </Button>
-            <h1 className="text-3xl font-bold">Quiz Analytics</h1>
-            {sessionInfo && (
-              <p className="text-muted-foreground">
-                {sessionInfo.role} • {sessionInfo.experience} years experience
-              </p>
-            )}
+          </div>
+          <div className="flex gap-2">
+            <h1 className="text-3xl font-bold hidden md:block">Quiz </h1>
+            <h1 className="text-3xl font-bold hidden md:block"> Analytics</h1>
           </div>
 
           <div className="flex items-center gap-3">
-            <Tabs
-              value={timeRange}
-              onValueChange={setTimeRange}
-              className="w-auto"
-            >
-              <TabsList>
-                <TabsTrigger value="week">This Week</TabsTrigger>
-                <TabsTrigger value="month">This Month</TabsTrigger>
-                <TabsTrigger value="all">All Time</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {/* Desktop: Tabs (hidden on mobile) */}
+            <div className="hidden md:block">
+              <Tabs
+                value={timeRange}
+                onValueChange={setTimeRange}
+                className="w-auto"
+              >
+                <TabsList>
+                  <TabsTrigger value="week" className="cursor-pointer">
+                    This Week
+                  </TabsTrigger>
+                  <TabsTrigger value="month" className="cursor-pointer">
+                    This Month
+                  </TabsTrigger>
+                  <TabsTrigger value="all" className="cursor-pointer">
+                    All Time
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+
+            {/* Mobile: Dropdown (visible on mobile) */}
+            <div className="md:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-[120px] justify-between"
+                  >
+                    {timeRange === "week" && "This Week"}
+                    {timeRange === "month" && "This Month"}
+                    {timeRange === "all" && "All Time"}
+                    <ChevronDown className="ml-2 h-4 w-4 cursor-pointer" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[120px]">
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => setTimeRange("week")}
+                  >
+                    This Week
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => setTimeRange("month")}
+                  >
+                    This Month
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="cursor-pointer"
+                    onClick={() => setTimeRange("all")}
+                  >
+                    All Time
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             <Button
               variant="outline"
@@ -208,7 +296,7 @@ const QuizAnalytics = () => {
               className="gap-2"
             >
               <Download className="h-4 w-4" />
-              Export
+              <span className="hidden sm:inline">Export</span>
             </Button>
           </div>
         </div>
@@ -334,37 +422,48 @@ const QuizAnalytics = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={analytics.dailyPerformance || []}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fontSize: 12 }}
-                          angle={-45}
-                          textAnchor="end"
-                          height={60}
-                        />
-                        <YAxis
-                          domain={[0, 100]}
-                          tickFormatter={(value) => `${value}%`}
-                        />
-                        <Tooltip
-                          formatter={(value) => [`${value}%`, "Score"]}
-                          labelFormatter={(label) => `Date: ${label}`}
-                        />
-                        <Legend />
-                        <Line
-                          type="monotone"
-                          dataKey="score"
-                          stroke="#8884d8"
-                          strokeWidth={2}
-                          dot={{ r: 4 }}
-                          activeDot={{ r: 6 }}
-                          name="Score %"
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
+                  <div className="h-80 w-full min-w-0">
+                    {analytics.dailyPerformance &&
+                    analytics.dailyPerformance.length > 0 ? (
+                      <ResponsiveContainer
+                        width="100%"
+                        height="100%"
+                        minHeight={200}
+                      >
+                        <LineChart data={analytics.dailyPerformance}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="date"
+                            tick={{ fontSize: 12 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={60}
+                          />
+                          <YAxis
+                            domain={[0, 100]}
+                            tickFormatter={(value) => `${value}%`}
+                          />
+                          <Tooltip
+                            formatter={(value) => [`${value}%`, "Score"]}
+                            labelFormatter={(label) => `Date: ${label}`}
+                          />
+                          <Legend />
+                          <Line
+                            type="monotone"
+                            dataKey="score"
+                            stroke="#8884d8"
+                            strokeWidth={2}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                            name="Score %"
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-muted-foreground">
+                        No trend data available
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -378,33 +477,44 @@ const QuizAnalytics = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={analytics.topicPerformance || []}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="topic"
-                          tick={{ fontSize: 12 }}
-                          angle={-45}
-                          textAnchor="end"
-                          height={60}
-                        />
-                        <YAxis
-                          domain={[0, 100]}
-                          tickFormatter={(value) => `${value}%`}
-                        />
-                        <Tooltip
-                          formatter={(value) => [`${value}%`, "Score"]}
-                        />
-                        <Legend />
-                        <Bar
-                          dataKey="score"
-                          fill="#82ca9d"
-                          name="Score %"
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div className="h-80 w-full min-w-0">
+                    {analytics.topicPerformance &&
+                    analytics.topicPerformance.length > 0 ? (
+                      <ResponsiveContainer
+                        width="100%"
+                        height="100%"
+                        minHeight={200}
+                      >
+                        <BarChart data={analytics.topicPerformance}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis
+                            dataKey="topic"
+                            tick={{ fontSize: 12 }}
+                            angle={-45}
+                            textAnchor="end"
+                            height={60}
+                          />
+                          <YAxis
+                            domain={[0, 100]}
+                            tickFormatter={(value) => `${value}%`}
+                          />
+                          <Tooltip
+                            formatter={(value) => [`${value}%`, "Score"]}
+                          />
+                          <Legend />
+                          <Bar
+                            dataKey="score"
+                            fill="#82ca9d"
+                            name="Score %"
+                            radius={[4, 4, 0, 0]}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-muted-foreground">
+                        No topic data available
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -416,50 +526,60 @@ const QuizAnalytics = () => {
                 <CardTitle>Score Distribution</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          {
-                            name: "90-100%",
-                            value: analytics.scoreDistribution?.[0] || 0,
-                          },
-                          {
-                            name: "80-89%",
-                            value: analytics.scoreDistribution?.[1] || 0,
-                          },
-                          {
-                            name: "70-79%",
-                            value: analytics.scoreDistribution?.[2] || 0,
-                          },
-                          {
-                            name: "60-69%",
-                            value: analytics.scoreDistribution?.[3] || 0,
-                          },
-                          {
-                            name: "Below 60%",
-                            value: analytics.scoreDistribution?.[4] || 0,
-                          },
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={(entry) => `${entry.name}: ${entry.value}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {COLORS.map((color, index) => (
-                          <Cell key={`cell-${index}`} fill={color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value) => [`${value}%`, "Percentage"]}
-                      />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="h-64 w-full min-w-0">
+                  {hasPieChartData ? (
+                    <ResponsiveContainer
+                      width="100%"
+                      height="100%"
+                      minHeight={200}
+                    >
+                      <PieChart>
+                        <Pie
+                          data={pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={renderCustomizedLabel}
+                          outerRadius={80}
+                          fill="#8884d8"
+                          dataKey="value"
+                          nameKey="name"
+                        >
+                          {pieChartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value, name, props) => {
+                            const total = pieChartData.reduce(
+                              (sum, item) => sum + item.value,
+                              0,
+                            );
+                            const percentage =
+                              total > 0
+                                ? ((value / total) * 100).toFixed(1)
+                                : 0;
+                            return [
+                              `${value} quizzes (${percentage}%)`,
+                              props.payload.name,
+                            ];
+                          }}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
+                      <div className="text-4xl mb-2">📊</div>
+                      <p>No score distribution data available</p>
+                      <p className="text-sm mt-1">
+                        Take more quizzes to see your score distribution
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
