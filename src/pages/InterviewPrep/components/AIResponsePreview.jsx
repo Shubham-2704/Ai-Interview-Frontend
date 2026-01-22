@@ -5,11 +5,11 @@ import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-const AIResponsePreview = ({ content }) => {
+const AIResponsePreview = ({ content, type }) => {
   if (!content) return null;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className=" mx-auto">
       <div className="text-sm prose prose-slate dark:prose-invert max-w-none">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
@@ -35,7 +35,9 @@ const AIResponsePreview = ({ content }) => {
               );
             },
             p({ children }) {
-              return <p className="mb-4 leading-5">{children}</p>;
+              return (
+                <p className={`${!type && `mb-4`}  leading-5`}>{children}</p>
+              );
             },
             strong({ children }) {
               return <strong>{children}</strong>;
@@ -137,9 +139,11 @@ const AIResponsePreview = ({ content }) => {
           {content}
         </ReactMarkdown>
       </div>
-      <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500 italic text-center">
-        AI-generated, for reference only
-      </div>
+      {!type && (
+        <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500 italic text-center">
+          AI-generated, for reference only
+        </div>
+      )}
     </div>
   );
 };

@@ -37,7 +37,7 @@ const QuizProgress = ({ current, total, answers = [] }) => {
             <div className="flex items-center justify-center gap-2">
               {Array.from({ length: Math.min(total, 10) }).map((_, index) => (
                 <div key={index} className="flex items-center">
-                  {getAnswerStatus(index)}
+                  {getAnswerStatus(index + 1)}
                   {index < Math.min(total, 10) - 1 && (
                     <div className="h-px w-4 bg-gray-200 mx-1"></div>
                   )}
@@ -56,7 +56,7 @@ const QuizProgress = ({ current, total, answers = [] }) => {
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Current Question</p>
               <p className="text-xl font-bold">
-                {current + 1} of {total}
+                {current} of {total}
               </p>
             </div>
             <div className="text-right">

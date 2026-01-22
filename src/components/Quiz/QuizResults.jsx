@@ -20,6 +20,19 @@ import { Badge } from "@/components/ui/badge";
 const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
   const { score, total, percentage, questions, feedback } = results;
 
+  // Get correct and wrong question numbers
+  const correctQuestions = [];
+  const wrongQuestions = [];
+
+  questions.forEach((q, index) => {
+    const questionNumber = q.number || index + 1;
+    if (q.isCorrect) {
+      correctQuestions.push(questionNumber);
+    } else {
+      wrongQuestions.push(questionNumber);
+    }
+  });
+
   const getPerformanceColor = (percentage) => {
     if (percentage >= 90) return "text-green-600 dark:text-green-400";
     if (percentage >= 80) return "text-blue-600 dark:text-blue-400";
@@ -125,29 +138,81 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
           </div>
 
           {/* Performance Stats */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Correct Answers Card */}
             <Card className="p-4 border-green-200 dark:border-green-800">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
                   <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{score}</div>
-                  <div className="text-sm text-muted-foreground">Correct</div>
+                  <div className="text-sm text-muted-foreground">
+                    Correct Answers
+                  </div>
                 </div>
               </div>
+
+              {correctQuestions.length > 0 ? (
+                <div>
+                  <div className="text-sm font-medium mb-2">
+                    Correct Questions:
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {correctQuestions.map((qNum) => (
+                      <Badge
+                        key={qNum}
+                        variant="secondary"
+                        className="bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-300"
+                      >
+                        Q{qNum}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground italic">
+                  No correct answers
+                </div>
+              )}
             </Card>
 
+            {/* Wrong Answers Card */}
             <Card className="p-4 border-red-200 dark:border-red-800">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 mb-3">
                 <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
                   <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{total - score}</div>
-                  <div className="text-sm text-muted-foreground">Incorrect</div>
+                  <div className="text-sm text-muted-foreground">
+                    Wrong Answers
+                  </div>
                 </div>
               </div>
+
+              {wrongQuestions.length > 0 ? (
+                <div>
+                  <div className="text-sm font-medium mb-2">
+                    Questions to Review:
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {wrongQuestions.map((qNum) => (
+                      <Badge
+                        key={qNum}
+                        variant="secondary"
+                        className="bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900 dark:text-red-300"
+                      >
+                        Q{qNum}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground italic">
+                  Perfect! All answers correct 🎉
+                </div>
+              )}
             </Card>
           </div>
 
@@ -168,58 +233,13 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
               <div className="flex items-center gap-2">
                 <Target className="h-4 w-4 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  Review incorrect answers to improve your understanding.
+                  {wrongQuestions.length > 0
+                    ? `Focus on reviewing questions: ${wrongQuestions.join(", ")}`
+                    : "Excellent work! You answered all questions correctly!"}
                 </p>
               </div>
             </div>
           </Card>
-
-          {/* Strengths & Weaknesses */}
-          {questions && questions.length > 0 && (
-            <Card className="p-6 border-2">
-              <h3 className="text-xl font-semibold mb-4">Analysis</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <Award className="h-4 w-4 text-green-600" />
-                    Strengths
-                  </h4>
-                  <ul className="space-y-1 text-sm">
-                    {questions
-                      .filter((q) => q.isCorrect)
-                      .slice(0, 3)
-                      .map((q, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <CheckCircle className="h-3 w-3 text-green-600" />
-                          <span className="truncate">
-                            Q{q.number || i + 1}: Answered correctly
-                          </span>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <XCircle className="h-4 w-4 text-red-600" />
-                    Areas to Improve
-                  </h4>
-                  <ul className="space-y-1 text-sm">
-                    {questions
-                      .filter((q) => !q.isCorrect)
-                      .slice(0, 3)
-                      .map((q, i) => (
-                        <li key={i} className="flex items-center gap-2">
-                          <XCircle className="h-3 w-3 text-red-600" />
-                          <span className="truncate">
-                            Q{q.number || i + 1}: Review needed
-                          </span>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              </div>
-            </Card>
-          )}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">

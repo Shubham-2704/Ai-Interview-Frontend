@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useState } from "react"; // Added useState
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, HelpCircle } from "lucide-react";
+import { CheckCircle2, XCircle, HelpCircle, Eye, EyeOff } from "lucide-react"; // Added Eye icons
 import { cn } from "@/lib/utils";
+import AIResponsePreview from "@/pages/InterviewPrep/components/AIResponsePreview";
+import { Button } from "@/components/ui/button"; // Added Button
 
 const QuizQuestionCard = ({
   question,
@@ -18,6 +20,7 @@ const QuizQuestionCard = ({
   disabled = false,
 }) => {
   const options = ["A", "B", "C", "D"];
+  const [showExplanation, setShowExplanation] = useState(false); // Added state for toggle
 
   const getOptionStyle = (optIndex) => {
     if (!showResults) return "";
@@ -66,7 +69,7 @@ const QuizQuestionCard = ({
           : "hover:border-primary/30 border-gray-200 dark:border-gray-800",
       )}
     >
-      <CardContent className="pt-6">
+      <CardContent>
         {/* Question Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -86,24 +89,50 @@ const QuizQuestionCard = ({
                 ) : (
                   <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
                     <XCircle className="h-5 w-5" />
-                    <span className="font-medium">Incorrect</span>
+                    <span className="font-medium hidden md:block">
+                      Incorrect
+                    </span>
                   </div>
                 )}
               </div>
             )}
           </div>
 
-          {showResults && !isCorrect && (
-            <Badge variant="destructive" className="text-sm font-mono">
-              Correct: {options[correctAnswer]}
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            {showResults && !isCorrect && (
+              <Badge
+                variant="destructive"
+                className="text-sm font-mono hidden md:block"
+              >
+                Correct: {options[correctAnswer]}
+              </Badge>
+            )}
+
+            {/* Explanation toggle button */}
+            {showResults && explanation && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowExplanation(!showExplanation)}
+                className="h-8 gap-1 text-blue-600 dark:text-blue-400"
+              >
+                {showExplanation ? (
+                  <EyeOff className="h-3 w-3" />
+                ) : (
+                  <Eye className="h-3 w-3" />
+                )}
+                <span className="text-xs">
+                  {showExplanation ? "Hide" : "Show"} Explanation
+                </span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Question Text */}
         <div className="mb-6">
           <div className="text-lg font-medium leading-relaxed whitespace-pre-wrap">
-            {question.question}
+            <AIResponsePreview content={question.question} type="question" />
           </div>
         </div>
 
@@ -118,7 +147,7 @@ const QuizQuestionCard = ({
             <div
               key={optIndex}
               className={cn(
-                "flex items-center space-x-3 p-4 rounded-lg border transition-all",
+                "flex items-center space-x-3 p-2 rounded-lg border transition-all",
                 getOptionStyle(optIndex),
                 !showResults && "hover:bg-accent cursor-pointer",
                 selectedAnswer === optIndex &&
@@ -129,7 +158,6 @@ const QuizQuestionCard = ({
               <RadioGroupItem
                 value={optIndex.toString()}
                 id={`q${index}-opt${optIndex}`}
-                className="h-5 w-5"
               />
               <Label
                 htmlFor={`q${index}-opt${optIndex}`}
@@ -142,7 +170,9 @@ const QuizQuestionCard = ({
                   >
                     {options[optIndex]}
                   </Badge>
-                  <span className="flex-1 whitespace-pre-wrap">{option}</span>
+                  <span className="flex-1 whitespace-pre-wrap">
+                    <AIResponsePreview content={option} type="option" />
+                  </span>
                 </div>
                 {getOptionStatus(optIndex)}
               </Label>
@@ -150,8 +180,8 @@ const QuizQuestionCard = ({
           ))}
         </RadioGroup>
 
-        {/* Explanation (only shown in review mode) */}
-        {showResults && explanation && (
+        {/* Explanation (only shown when toggled) */}
+        {showResults && explanation && showExplanation && (
           <div className="mt-6 p-4 bg-muted/50 rounded-lg border">
             <div className="flex items-center gap-2 mb-3">
               <HelpCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
@@ -160,7 +190,7 @@ const QuizQuestionCard = ({
               </h4>
             </div>
             <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {explanation}
+              <AIResponsePreview content={explanation} />
             </div>
           </div>
         )}
