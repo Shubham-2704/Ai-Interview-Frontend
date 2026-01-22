@@ -13,20 +13,31 @@ import {
   Target,
   TrendingUp,
   Award,
+  AlertCircle,
+  HelpCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 
-const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
-  const { score, total, percentage, questions, feedback } = results;
+const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, timePerQuestion = [] }) => {
+  const { score, total, percentage, questions, feedback, submissionType } = results;
 
-  // Get correct and wrong question numbers
+  // Get correct, wrong, and unanswered question numbers
   const correctQuestions = [];
   const wrongQuestions = [];
+  const unansweredQuestions = [];
 
   questions.forEach((q, index) => {
     const questionNumber = q.number || index + 1;
-    if (q.isCorrect) {
+    
+    // Check if question was answered (userAnswer is not null/undefined and not -1)
+    const isAnswered = q.userAnswer !== null && 
+                      q.userAnswer !== undefined && 
+                      q.userAnswer !== -1;
+    
+    if (!isAnswered) {
+      unansweredQuestions.push(questionNumber);
+    } else if (q.isCorrect) {
       correctQuestions.push(questionNumber);
     } else {
       wrongQuestions.push(questionNumber);
@@ -77,9 +88,10 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
   };
 
   const formatTime = (seconds) => {
+    if (!seconds) return "0:00";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const performance = getPerformanceLevel(percentage);
@@ -98,14 +110,22 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
             <CardTitle className="text-3xl">Quiz Completed!</CardTitle>
             <Trophy className="h-8 w-8 text-yellow-500 dark:text-yellow-400" />
           </div>
-          <Badge className={`text-lg py-1.5 px-4 ${performance.color}`}>
-            {performance.emoji} {performance.level}
-          </Badge>
+          <div className="flex flex-col items-center gap-2">
+            <Badge className={`text-lg py-1.5 px-4 ${performance.color}`}>
+              {performance.emoji} {performance.level}
+            </Badge>
+            {submissionType === "auto" && (
+              <Badge variant="destructive" className="flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Auto-Submitted (Time Expired)
+              </Badge>
+            )}
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-8">
           {/* Score Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="text-center p-6 border-2">
               <div className="text-5xl font-bold mb-2">
                 <span className={getPerformanceColor(percentage)}>
@@ -135,10 +155,44 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
               </div>
               <p className="text-sm text-muted-foreground">Time Spent</p>
             </Card>
+
+            <Card className="text-center p-6 border-2">
+              <div className="text-5xl font-bold mb-2">
+                {totalTimeLimit ? formatTime(totalTimeLimit) : '∞'}
+              </div>
+              <p className="text-sm text-muted-foreground">Time Limit</p>
+            </Card>
           </div>
 
-          {/* Performance Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Time Analysis Card */}
+          <Card className="p-6 border-2">
+            <div className="flex items-center gap-3 mb-4">
+              <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-xl font-semibold">Time Analysis</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-3xl font-bold">{formatTime(timeSpent)}</div>
+                <div className="text-sm text-muted-foreground">Time Spent</div>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-3xl font-bold">
+                  {totalTimeLimit ? formatTime(totalTimeLimit) : '∞'}
+                </div>
+                <div className="text-sm text-muted-foreground">Total Limit</div>
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-3xl font-bold">
+                  {totalTimeLimit ? `${Math.round((timeSpent / totalTimeLimit) * 100)}%` : 'N/A'}
+                </div>
+                <div className="text-sm text-muted-foreground">Time Used</div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Performance Stats - Now 3 columns */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Correct Answers Card */}
             <Card className="p-4 border-green-200 dark:border-green-800">
               <div className="flex items-center gap-3 mb-3">
@@ -184,7 +238,7 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
                   <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{total - score}</div>
+                  <div className="text-2xl font-bold">{wrongQuestions.length}</div>
                   <div className="text-sm text-muted-foreground">
                     Wrong Answers
                   </div>
@@ -210,13 +264,54 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
                 </div>
               ) : (
                 <div className="text-sm text-muted-foreground italic">
-                  Perfect! All answers correct 🎉
+                  No wrong answers
+                </div>
+              )}
+            </Card>
+
+            {/* Unanswered Questions Card */}
+            <Card className="p-4 border-yellow-200 dark:border-yellow-800">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                  <HelpCircle className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{unansweredQuestions.length}</div>
+                  <div className="text-sm text-muted-foreground">
+                    Unanswered
+                  </div>
+                </div>
+              </div>
+
+              {unansweredQuestions.length > 0 ? (
+                <div>
+                  <div className="text-sm font-medium mb-2">
+                    Unanswered Questions:
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {unansweredQuestions.map((qNum) => (
+                      <Badge
+                        key={qNum}
+                        variant="secondary"
+                        className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-300"
+                      >
+                        Q{qNum}
+                      </Badge>
+                    ))}
+                  </div>
+                  <p className="text-xs text-yellow-600 mt-2">
+                    ⏰ These questions were not answered before time expired
+                  </p>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground italic">
+                  All questions answered
                 </div>
               )}
             </Card>
           </div>
 
-          {/* Feedback */}
+          {/* Feedback - Updated to include unanswered questions */}
           <Card className="p-6 border-2">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -230,14 +325,55 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
                 {feedback ||
                   `You scored ${percentage.toFixed(1)}% on this quiz.`}
               </p>
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  {wrongQuestions.length > 0
-                    ? `Focus on reviewing questions: ${wrongQuestions.join(", ")}`
-                    : "Excellent work! You answered all questions correctly!"}
-                </p>
+              
+              <div className="space-y-2">
+                {wrongQuestions.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-red-500" />
+                    <p className="text-sm">
+                      <span className="font-medium">Focus on reviewing:</span> Questions {wrongQuestions.join(", ")}
+                    </p>
+                  </div>
+                )}
+                
+                {unansweredQuestions.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    <p className="text-sm">
+                      <span className="font-medium">Unanswered questions:</span> {unansweredQuestions.join(", ")} - Practice time management
+                    </p>
+                  </div>
+                )}
+                
+                {wrongQuestions.length === 0 && unansweredQuestions.length === 0 && (
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-green-500" />
+                    <p className="text-sm text-muted-foreground">
+                      Excellent work! You answered all questions correctly!
+                    </p>
+                  </div>
+                )}
               </div>
+              
+              {submissionType === "auto" && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-yellow-700">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="font-medium">Time Management Tip:</span>
+                    <span>Try to pace yourself better next time. Each question has a 3-minute limit.</span>
+                  </div>
+                </div>
+              )}
+              
+              {unansweredQuestions.length > 0 && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Clock className="h-4 w-4" />
+                    <span className="font-medium">Quick Tip:</span>
+                    <span>If you're running out of time, try to at least select an answer for every question.</span>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -262,13 +398,16 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent }) => {
             </Button>
           </div>
 
-          {/* Tips */}
+          {/* Tips - Updated */}
           <div className="text-center text-sm text-muted-foreground pt-4 border-t">
             <p>
-              💡 <strong>Tip:</strong> Consistent practice leads to better
-              retention. Try to take quizzes regularly!
+              📝 <strong>Pro Tip:</strong> {unansweredQuestions.length > 0 
+                ? 'Always try to answer every question, even if you have to guess!' 
+                : 'Great job answering all questions!'}
             </p>
-            <p className="mt-1">Each mistake is a learning opportunity! 📚</p>
+            <p className="mt-1">
+              ⏰ <strong>Time Management:</strong> Practice with timers to improve your speed!
+            </p>
           </div>
         </CardContent>
       </Card>
