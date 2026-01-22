@@ -86,4 +86,13 @@ export const API_PATHS = {
     SYSTEM_STATUS: "/admin/system/status",
     SYSTEM_METRICS: "/admin/system/metrics",
   },
+
+  QUIZ: {
+    GENERATE: "/quiz/generate",
+    SUBMIT: (quizId) => `/quiz/${quizId}/submit`,
+    RESULTS: (quizId) => `/quiz/${quizId}/results`,
+    SESSION_QUIZZES: (sessionId) => `/quiz/session/${sessionId}`,
+    DELETE: (quizId) => `/quiz/${quizId}`,
+    ANALYTICS: (sessionId) => `/quiz/session/${sessionId}/analytics`,
+  },
 };

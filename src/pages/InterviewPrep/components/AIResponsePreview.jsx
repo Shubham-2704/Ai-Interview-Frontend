@@ -137,6 +137,9 @@ const AIResponsePreview = ({ content }) => {
           {content}
         </ReactMarkdown>
       </div>
+      <div className="mt-4 pt-4 border-t border-gray-200 text-xs text-gray-500 italic text-center">
+        AI-generated, for reference only
+      </div>
     </div>
   );
 };
