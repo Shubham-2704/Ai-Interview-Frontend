@@ -1,12 +1,12 @@
-import React, { useState } from "react"; // Added useState
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, HelpCircle, Eye, EyeOff } from "lucide-react"; // Added Eye icons
+import { CheckCircle2, XCircle, HelpCircle, Eye, EyeOff, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AIResponsePreview from "@/pages/InterviewPrep/components/AIResponsePreview";
-import { Button } from "@/components/ui/button"; // Added Button
+import { Button } from "@/components/ui/button";
 
 const QuizQuestionCard = ({
   question,
@@ -18,9 +18,11 @@ const QuizQuestionCard = ({
   correctAnswer = null,
   explanation = null,
   disabled = false,
+  timeSpent = 0,
+  timeLimit = 180,
 }) => {
   const options = ["A", "B", "C", "D"];
-  const [showExplanation, setShowExplanation] = useState(false); // Added state for toggle
+  const [showExplanation, setShowExplanation] = useState(false);
 
   const getOptionStyle = (optIndex) => {
     if (!showResults) return "";
@@ -56,6 +58,13 @@ const QuizQuestionCard = ({
     }
 
     return null;
+  };
+
+  const formatTime = (seconds) => {
+    if (!seconds) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -158,6 +167,7 @@ const QuizQuestionCard = ({
               <RadioGroupItem
                 value={optIndex.toString()}
                 id={`q${index}-opt${optIndex}`}
+                disabled={disabled || showResults}
               />
               <Label
                 htmlFor={`q${index}-opt${optIndex}`}

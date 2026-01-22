@@ -94,5 +94,6 @@ export const API_PATHS = {
     SESSION_QUIZZES: (sessionId) => `/quiz/session/${sessionId}`,
     DELETE: (quizId) => `/quiz/${quizId}`,
     ANALYTICS: (sessionId) => `/quiz/session/${sessionId}/analytics`,
+    TRACK_TIME: (quizId) => `/quiz/${quizId}/track-time`,
   },
 };

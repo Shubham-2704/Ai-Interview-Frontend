@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -19,6 +19,8 @@ import {
   ChevronRight,
   CheckCircle2,
   XCircle,
+  AlertCircle,
+  Clock,
 } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
@@ -38,23 +40,19 @@ const QuizPage = () => {
   const [results, setResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionInfo, setSessionInfo] = useState(null);
+  
+  // Timer states
+  const [questionTimeLimit, setQuestionTimeLimit] = useState(180); // 3 minutes per question
+  const [totalQuizTimeLimit, setTotalQuizTimeLimit] = useState(0);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
+  const [timeWarningShown, setTimeWarningShown] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [timeExtensionUsed, setTimeExtensionUsed] = useState({});
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
 
   const reviewQuizId = searchParams.get("review");
 
-  // Fetch session info
-  //   useEffect(() => {
-  //     const fetchSessionInfo = async () => {
-  //       try {
-  //         const response = await axiosInstance.get(`/api/sessions/${sessionId}`);
-  //         if (response.data?.session) {
-  //           setSessionInfo(response.data.session);
-  //         }
-  //       } catch (error) {
-  //         console.error("Failed to fetch session info:", error);
-  //       }
-  //     };
-  //     fetchSessionInfo();
-  //   }, [sessionId]);
 
   // Load quiz for review
   useEffect(() => {
@@ -62,6 +60,43 @@ const QuizPage = () => {
       loadQuizForReview(reviewQuizId);
     }
   }, [reviewQuizId]);
+
+  // Setup timers when quiz starts
+  useEffect(() => {
+    if (quizData && quizState === "active") {
+      const totalTime = quizData.totalQuestions * questionTimeLimit;
+      setTotalQuizTimeLimit(totalTime);
+      setIsTimerActive(true);
+      setQuestionStartTime(Date.now());
+      
+      // Track initial question time
+      trackQuestionTime(currentQuestion);
+    }
+  }, [quizData, quizState, questionTimeLimit]);
+
+  // Track question changes
+  useEffect(() => {
+    if (quizState === "active" && quizData) {
+      setQuestionStartTime(Date.now());
+      trackQuestionTime(currentQuestion);
+    }
+  }, [currentQuestion, quizState, quizData]);
+
+  // Auto-submit check
+  useEffect(() => {
+    if (quizState === "active" && totalQuizTimeLimit > 0 && timeSpent >= totalQuizTimeLimit) {
+      if (!autoSubmitTriggered) {
+        setAutoSubmitTriggered(true);
+        handleAutoSubmit();
+      }
+    }
+    
+    // Show warning when 1 minute remaining
+    if (totalQuizTimeLimit > 0 && timeSpent >= totalQuizTimeLimit - 60 && !timeWarningShown) {
+      setTimeWarningShown(true);
+      toast.warning("⚠️ Less than 1 minute remaining! Quiz will auto-submit soon.");
+    }
+  }, [timeSpent, totalQuizTimeLimit, quizState, autoSubmitTriggered]);
 
   const loadQuizForReview = async (quizId) => {
     setIsLoading(true);
@@ -76,6 +111,8 @@ const QuizPage = () => {
             options: q.options,
           })),
           totalQuestions: quiz.totalQuestions,
+          timeLimitPerQuestion: quiz.timeLimitPerQuestion || 180,
+          totalTimeLimit: quiz.totalTimeLimit || quiz.totalQuestions * 180,
         });
         setUserAnswers(quiz.userAnswers || []);
         setResults({
@@ -91,8 +128,13 @@ const QuizPage = () => {
               correctAnswer: q.correctAnswer,
               isCorrect: quiz.userAnswers?.[i] === q.correctAnswer,
               explanation: q.explanation,
+              timeSpentOnQuestion: q.timeSpentOnQuestion || 0,
             })),
           feedback: quiz.feedback || "",
+          submissionType: quiz.submissionType || "manual",
+          totalTimeLimit: quiz.totalTimeLimit,
+          timeLimitPerQuestion: quiz.timeLimitPerQuestion,
+          timePerQuestion: quiz.timePerQuestion || [],
         });
         setQuizState("results");
         setTimeSpent(quiz.timeSpent || 0);
@@ -105,27 +147,49 @@ const QuizPage = () => {
     }
   };
 
-  const startQuiz = useCallback(
-    async (questionCount) => {
-      setIsLoading(true);
-      try {
-        const response = await axiosInstance.post(API_PATHS.QUIZ.GENERATE, {
-          sessionId,
-          numberOfQuestions: questionCount,
-        });
+  const trackQuestionTime = async (questionIndex) => {
+    if (!quizData?.quizId) return;
+    
+    try {
+      await axiosInstance.post(API_PATHS.QUIZ.TRACK_TIME(quizData.quizId), {
+        questionIndex
+      });
+    } catch (error) {
+      console.error("Failed to track question time:", error);
+    }
+  };
 
-        setQuizData(response.data);
-        setUserAnswers(new Array(response.data.totalQuestions).fill(null));
-        setQuizState("active");
-        setShowStartDialog(false);
-        toast.success("Quiz generated successfully!");
-      } catch (error) {
-        toast.error(error.response?.data?.detail || "Failed to generate quiz");
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [sessionId],
+  const startQuiz = useCallback(
+  async (questionCount) => {
+    setIsLoading(true);
+    try {
+      const response = await axiosInstance.post(API_PATHS.QUIZ.GENERATE, {
+        sessionId,
+        numberOfQuestions: questionCount,
+      });
+
+      setQuizData({
+        ...response.data,
+        totalTimeLimit: response.data.totalTimeLimit || questionCount * 180,
+        timeLimitPerQuestion: response.data.timeLimitPerQuestion || 180,
+      });
+      setUserAnswers(new Array(response.data.totalQuestions).fill(null));
+      setQuizState("active");
+      setShowStartDialog(false);
+      setAutoSubmitTriggered(false);
+      setTimeWarningShown(false);
+      setIsPaused(false);
+      setTimeSpent(0);
+      setTimeExtensionUsed({}); // ADD THIS LINE - Reset extensions
+      
+      toast.success(`Quiz started! You have ${questionCount * 3} minutes total.`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Failed to generate quiz");
+    } finally {
+      setIsLoading(false);
+    }
+  },
+  [sessionId],
   );
 
   const handleAnswerSelect = useCallback(
@@ -140,15 +204,16 @@ const QuizPage = () => {
   );
 
   const handleSubmitQuiz = useCallback(async () => {
-    if (userAnswers.some((answer) => answer === null)) {
-      const unanswered = userAnswers.filter((a) => a === null).length;
-      toast.warning(
-        `You have ${unanswered} unanswered question(s). Please answer all questions.`,
+    const unanswered = userAnswers.filter((a) => a === null || a === undefined).length;
+    if (unanswered > 0) {
+      const confirmSubmit = window.confirm(
+        `You have ${unanswered} unanswered question(s). Submit anyway?`
       );
-      return;
+      if (!confirmSubmit) return;
     }
 
     setIsLoading(true);
+    setIsTimerActive(false);
     try {
       const response = await axiosInstance.post(
         API_PATHS.QUIZ.SUBMIT(quizData.quizId),
@@ -169,57 +234,58 @@ const QuizPage = () => {
     }
   }, [quizData, userAnswers, timeSpent]);
 
-  const handleRetry = useCallback(() => {
-    setQuizState("start");
-    setShowStartDialog(true);
-    setQuizData(null);
-    setUserAnswers([]);
-    setResults(null);
-    setCurrentQuestion(0);
-    setTimeSpent(0);
-  }, []);
+  const handleAutoSubmit = useCallback(async () => {
+    if (quizState !== "active" || !quizData || autoSubmitTriggered) return;
 
-  const handleDownloadResults = useCallback(async () => {
-    if (!results || !quizData?.quizId) return;
-
+    setIsTimerActive(false);
+    setAutoSubmitTriggered(true);
+    
+    // Fill unanswered questions with null
+    const finalAnswers = userAnswers.map(answer => answer === null || answer === undefined ? -1 : answer);
+    
+    setIsLoading(true);
     try {
-      toast.info("Preparing results for download...");
+      const response = await axiosInstance.post(
+        API_PATHS.QUIZ.SUBMIT(quizData.quizId),
+        {
+          quizId: quizData.quizId,
+          answers: finalAnswers,
+          timeSpent: totalQuizTimeLimit,
+          isAutoSubmit: true,
+        },
+      );
 
-      // Create a nicely formatted JSON
-      const downloadData = {
-        session: sessionInfo?.role || "Interview Preparation",
-        date: new Date().toLocaleDateString(),
-        timeSpent: timeSpent,
-        score: results.score,
-        total: results.total,
-        percentage: results.percentage,
-        feedback: results.feedback,
-        questions: results.questions.map((q, i) => ({
-          number: i + 1,
-          question: q.question,
-          yourAnswer: q.options?.[q.userAnswer] || "Not answered",
-          correctAnswer: q.options?.[q.correctAnswer],
-          status: q.isCorrect ? "Correct" : "Incorrect",
-          explanation: q.explanation,
-        })),
-      };
-
-      const dataStr = JSON.stringify(downloadData, null, 2);
-      const dataBlob = new Blob([dataStr], { type: "application/json" });
-      const url = URL.createObjectURL(dataBlob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `quiz-results-${sessionInfo?.role?.replace(/\s+/g, "-") || "interview"}-${new Date().toISOString().split("T")[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      toast.success("Results downloaded as JSON!");
+      setResults(response.data);
+      setQuizState("results");
+      toast.info("⏰ Time's up! Quiz auto-submitted.");
     } catch (error) {
-      toast.error("Failed to download results");
+      toast.error("Failed to auto-submit quiz. Please submit manually.");
+    } finally {
+      setIsLoading(false);
     }
-  }, [results, quizData, sessionInfo, timeSpent]);
+  }, [quizData, userAnswers, quizState, totalQuizTimeLimit, autoSubmitTriggered]);
+
+  const handleQuestionTimeUp = useCallback(() => {
+    toast.warning(`Time's up for question ${currentQuestion + 1}! Moving to next question.`);
+    
+    // Auto-select first option if not answered
+    if (userAnswers[currentQuestion] === null || userAnswers[currentQuestion] === undefined) {
+      setUserAnswers(prev => {
+        const newAnswers = [...prev];
+        newAnswers[currentQuestion] = 0;
+        return newAnswers;
+      });
+    }
+
+    // Move to next question or submit if last question
+    if (currentQuestion < quizData.totalQuestions - 1) {
+      setTimeout(() => {
+        setCurrentQuestion(prev => prev + 1);
+      }, 500);
+    } else {
+      handleSubmitQuiz();
+    }
+  }, [currentQuestion, userAnswers, quizData, handleSubmitQuiz]);
 
   const handleTimeUpdate = useCallback((newTime) => {
     setTimeSpent(newTime);
@@ -239,6 +305,87 @@ const QuizPage = () => {
     [currentQuestion, quizData?.totalQuestions],
   );
 
+  const handleExtendQuestionTime = useCallback((extraSeconds) => {
+    if (!timeExtensionUsed[currentQuestion]) {
+      // Add time to total quiz time
+      setTotalQuizTimeLimit(prev => {
+        const newLimit = prev + extraSeconds;
+        return newLimit;
+      });
+      
+      // Mark as used for this question
+      setTimeExtensionUsed(prev => ({
+        ...prev,
+        [currentQuestion]: true
+      }));
+      
+      toast.success(`Added ${extraSeconds} seconds to quiz time`);
+      
+      // Force update to trigger re-evaluation of critical state
+      setTimeSpent(prev => prev);
+    }
+  }, [currentQuestion, timeExtensionUsed]);
+
+  const handleRetry = useCallback(() => {
+    setQuizState("start");
+    setShowStartDialog(true);
+    setQuizData(null);
+    setUserAnswers([]);
+    setResults(null);
+    setCurrentQuestion(0);
+    setTimeSpent(0);
+    setTotalQuizTimeLimit(0);
+    setIsTimerActive(false);
+    setAutoSubmitTriggered(false);
+    setTimeWarningShown(false);
+    setIsPaused(false);
+  }, []);
+
+  const handleDownloadResults = useCallback(async () => {
+    if (!results || !quizData?.quizId) return;
+
+    try {
+      toast.info("Preparing results for download...");
+
+      // Create a nicely formatted JSON
+      const downloadData = {
+        session: sessionInfo?.role || "Interview Preparation",
+        date: new Date().toLocaleDateString(),
+        timeSpent: timeSpent,
+        totalTimeLimit: totalQuizTimeLimit,
+        score: results.score,
+        total: results.total,
+        percentage: results.percentage,
+        feedback: results.feedback,
+        submissionType: results.submissionType || "manual",
+        questions: results.questions.map((q, i) => ({
+          number: i + 1,
+          question: q.question,
+          yourAnswer: q.options?.[q.userAnswer] || "Not answered",
+          correctAnswer: q.options?.[q.correctAnswer],
+          status: q.isCorrect ? "Correct" : "Incorrect",
+          explanation: q.explanation,
+          timeSpent: q.timeSpentOnQuestion || 0,
+        })),
+      };
+
+      const dataStr = JSON.stringify(downloadData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `quiz-results-${sessionInfo?.role?.replace(/\s+/g, "-") || "interview"}-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success("Results downloaded as JSON!");
+    } catch (error) {
+      toast.error("Failed to download results");
+    }
+  }, [results, quizData, sessionInfo, timeSpent, totalQuizTimeLimit]);
+
   // Show loading state
   if (isLoading && !quizData) {
     return (
@@ -257,7 +404,7 @@ const QuizPage = () => {
   if (quizState === "active" && quizData) {
     const currentQ = quizData.questions[currentQuestion];
     const totalQuestions = quizData.totalQuestions;
-    const answeredCount = userAnswers.filter((a) => a !== null).length;
+    const answeredCount = userAnswers.filter((a) => a !== null && a !== undefined).length;
 
     return (
       <DashboardLayout>
@@ -297,26 +444,38 @@ const QuizPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <QuizTimer
               onTimeUpdate={handleTimeUpdate}
-              isActive={quizState === "active"}
+              isActive={isTimerActive && !isPaused && !autoSubmitTriggered}
+              timeLimit={totalQuizTimeLimit}
+              onTimeUp={handleAutoSubmit}
+              currentQuestion={currentQuestion + 1}
+              totalQuestions={quizData.totalQuestions}
+              initialTimeSpent={timeSpent}
+              isPaused={isPaused}
+              onPauseToggle={(paused) => setIsPaused(paused)}
+              onExtendTime={handleExtendQuestionTime}
+              timeExtensionUsed={timeExtensionUsed[currentQuestion] || false}
             />
+            
             <QuizProgress
               current={currentQuestion + 1}
               total={quizData.totalQuestions}
               answers={userAnswers}
             />
+            
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Answered</p>
-                    <p className="text-2xl font-bold">
-                      {answeredCount}/{totalQuestions}
-                    </p>
+                    <p className="text-sm text-muted-foreground">Time Stats</p>
+                    <div className="space-y-1">
+                      <p className="text-sm">Total: {Math.floor(totalQuizTimeLimit / 60)}:00</p>
+                      <p className="text-sm">Per Q: 3:00</p>
+                    </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Progress</p>
+                    <p className="text-sm text-muted-foreground">Answered</p>
                     <p className="text-2xl font-bold">
-                      {Math.round((answeredCount / totalQuestions) * 100)}%
+                      {answeredCount}/{quizData.totalQuestions}
                     </p>
                   </div>
                 </div>
@@ -332,9 +491,9 @@ const QuizPage = () => {
               </h2>
               <div className="flex items-center gap-2">
                 <span
-                  className={`px-3 py-1 rounded-full text-sm ${userAnswers[currentQuestion] !== null ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
+                  className={`px-3 py-1 rounded-full text-sm ${userAnswers[currentQuestion] !== null && userAnswers[currentQuestion] !== undefined ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
                 >
-                  {userAnswers[currentQuestion] !== null ? (
+                  {userAnswers[currentQuestion] !== null && userAnswers[currentQuestion] !== undefined ? (
                     <span className="flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3" />
                       Answered
@@ -354,14 +513,15 @@ const QuizPage = () => {
               {quizData.questions.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => setCurrentQuestion(index)}
-                  className={`w-10 h-10 rounded-full flex items-center cursor-pointer justify-center text-sm font-medium transition-all ${
+                  onClick={() => !autoSubmitTriggered && setCurrentQuestion(index)}
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
                     index === currentQuestion
                       ? "bg-primary text-white scale-110"
-                      : userAnswers[index] !== null
+                      : userAnswers[index] !== null && userAnswers[index] !== undefined
                         ? "bg-green-100 text-green-800 hover:bg-green-200"
                         : "bg-red-100 text-red-700 hover:bg-gray-200"
-                  }`}
+                  } ${autoSubmitTriggered ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                  disabled={autoSubmitTriggered}
                 >
                   {index + 1}
                 </button>
@@ -383,17 +543,18 @@ const QuizPage = () => {
                 index={currentQuestion}
                 selectedAnswer={userAnswers[currentQuestion]}
                 onAnswerSelect={handleAnswerSelect}
+                disabled={autoSubmitTriggered}
               />
             </motion.div>
           </AnimatePresence>
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between items-center ">
+          <div className="flex justify-between items-center mt-8">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 onClick={() => handleQuestionNavigation("prev")}
-                disabled={currentQuestion === 0}
+                disabled={currentQuestion === 0 || autoSubmitTriggered}
                 className="gap-2 hover:bg-gray-100"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -404,7 +565,8 @@ const QuizPage = () => {
                 <Button
                   className="hidden md:block"
                   variant="ghost"
-                  onClick={() => setCurrentQuestion(0)}
+                  onClick={() => !autoSubmitTriggered && setCurrentQuestion(0)}
+                  disabled={autoSubmitTriggered}
                 >
                   First Question
                 </Button>
@@ -417,6 +579,7 @@ const QuizPage = () => {
                   onClick={() => handleQuestionNavigation("next")}
                   className="gap-2 hover:bg-gray-100"
                   variant="ghost"
+                  disabled={autoSubmitTriggered}
                 >
                   Next Question
                   <ChevronRight className="h-4 w-4" />
@@ -424,7 +587,7 @@ const QuizPage = () => {
               ) : (
                 <Button
                   onClick={handleSubmitQuiz}
-                  disabled={isLoading}
+                  disabled={isLoading || autoSubmitTriggered}
                   className="gap-2 hover:bg-green-700"
                 >
                   {isLoading ? (
@@ -442,6 +605,25 @@ const QuizPage = () => {
               )}
             </div>
           </div>
+
+          {/* Auto-submit warning */}
+          {autoSubmitTriggered && (
+            <div className="mt-6 p-4 bg-orange-100 border border-orange-300 rounded-lg text-center">
+              <div className="flex items-center justify-center gap-2">
+                <Clock className="h-5 w-5 text-orange-600" />
+                <p className="text-orange-700 font-semibold">
+                  Time's up! Submitting your quiz automatically...
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Pause Info */}
+          {isPaused && (
+            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
+              <p className="text-yellow-700">⏸ Quiz is paused. Timer will resume when you continue.</p>
+            </div>
+          )}
         </div>
       </DashboardLayout>
     );
@@ -487,19 +669,28 @@ const QuizPage = () => {
             onRetry={handleRetry}
             onDownload={handleDownloadResults}
             timeSpent={timeSpent}
+            totalTimeLimit={results.totalTimeLimit}
+            timePerQuestion={results.timePerQuestion}
           />
 
-          {/* Detailed Review */}
+          {/* Detailed Review with Explanation */}
           <div className="mt-12">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Detailed Review</h2>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
+              <div className="flex items-center gap-4">
+                {results.submissionType === "auto" && (
+                  <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    Auto-Submitted
+                  </span>
+                )}
+                <div className="text-sm text-muted-foreground">
                   {results.score} correct out of {results.total}
-                </span>
+                </div>
               </div>
             </div>
 
+            {/* Questions Review */}
             <div className="space-y-6">
               {results.questions.map((question, index) => (
                 <QuizQuestionCard
@@ -514,6 +705,8 @@ const QuizPage = () => {
                   isCorrect={question.isCorrect}
                   correctAnswer={question.correctAnswer}
                   explanation={question.explanation}
+                  timeSpent={question.timeSpentOnQuestion}
+                  timeLimit={results.timeLimitPerQuestion}
                 />
               ))}
             </div>
@@ -549,11 +742,11 @@ const QuizPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
               <div className="space-y-3 p-4 rounded-lg border">
                 <div className="p-2 bg-blue-100 rounded-lg w-fit mx-auto">
-                  <BarChart3 className="h-8 w-8 text-blue-600" />
+                  <Clock className="h-8 w-8 text-blue-600" />
                 </div>
-                <h3 className="font-semibold">AI-Generated</h3>
+                <h3 className="font-semibold">Timed Questions</h3>
                 <p className="text-sm text-muted-foreground">
-                  Questions tailored to your experience level and topics
+                  Each question has a 3-minute limit. Quiz auto-submits when time expires.
                 </p>
               </div>
 
@@ -563,17 +756,17 @@ const QuizPage = () => {
                 </div>
                 <h3 className="font-semibold">Track Progress</h3>
                 <p className="text-sm text-muted-foreground">
-                  Review past attempts and monitor improvement over time
+                  Review past attempts with detailed time analysis
                 </p>
               </div>
 
               <div className="space-y-3 p-4 rounded-lg border">
                 <div className="p-2 bg-purple-100 rounded-lg w-fit mx-auto">
-                  <Send className="h-8 w-8 text-purple-600" />
+                  <BarChart3 className="h-8 w-8 text-purple-600" />
                 </div>
-                <h3 className="font-semibold">Instant Feedback</h3>
+                <h3 className="font-semibold">Time Management</h3>
                 <p className="text-sm text-muted-foreground">
-                  Detailed explanations for every answer
+                  Learn to manage your time effectively with per-question timers
                 </p>
               </div>
             </div>

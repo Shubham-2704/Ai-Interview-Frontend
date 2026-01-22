@@ -1,139 +1,204 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, AlertTriangle } from "lucide-react";
+import { Clock, AlertCircle, Pause, Play, Plus } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
-const QuizTimer = ({ onTimeUpdate, isActive = true, timeLimit = null }) => {
-  const [seconds, setSeconds] = useState(0);
-  const [isTimeWarning, setIsTimeWarning] = useState(false);
+const QuizTimer = ({
+  onTimeUpdate,
+  isActive = true,
+  timeLimit = 0,
+  onTimeUp,
+  currentQuestion,
+  totalQuestions,
+  initialTimeSpent = 0,
+  isPaused: externalPaused = false,
+  onPauseToggle,
+  onExtendTime,
+  timeExtensionUsed = false,
+}) => {
+  const [timeSpent, setTimeSpent] = useState(initialTimeSpent);
+  const [isCritical, setIsCritical] = useState(false);
+  const [isPaused, setIsPaused] = useState(externalPaused);
+
+  // Sync with external pause state
+  useEffect(() => {
+    setIsPaused(externalPaused);
+  }, [externalPaused]);
+
+  const formatTimeDisplay = useCallback((seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }, []);
 
   useEffect(() => {
-    let interval;
-    if (isActive) {
-      interval = setInterval(() => {
-        setSeconds((prev) => {
-          const newTime = prev + 1;
-          onTimeUpdate(newTime);
+    if (!isActive || isPaused) return;
 
-          // Check for time warnings if timeLimit is set
-          if (timeLimit && newTime >= timeLimit * 0.8) {
-            setIsTimeWarning(true);
+    const interval = setInterval(() => {
+      setTimeSpent((prev) => {
+        const newTime = prev + 1;
+        
+        if (timeLimit > 0) {
+          const timeLeft = timeLimit - newTime;
+          
+          // UPDATE THIS LOGIC: Show red when timeLeft <= 60 seconds
+          if (timeLeft <= 60 && timeLeft > 0) {
+            setIsCritical(true);
+          } else if (timeLeft > 60) {
+            setIsCritical(false);
           }
+          
+          if (timeLeft <= 0) {
+            clearInterval(interval);
+            onTimeUp?.();
+            return timeLimit;
+          }
+        }
+        
+        onTimeUpdate?.(newTime);
+        return newTime;
+      });
+    }, 1000);
 
-          return newTime;
-        });
-      }, 1000);
-    }
     return () => clearInterval(interval);
-  }, [isActive, onTimeUpdate, timeLimit]);
+  }, [isActive, isPaused, onTimeUpdate, onTimeUp, timeLimit]);
 
-  const formatTime = (totalSeconds) => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+  const handlePauseToggle = () => {
+    const newPausedState = !isPaused;
+    setIsPaused(newPausedState);
+    if (onPauseToggle) {
+      onPauseToggle(newPausedState);
     }
-    return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
   };
 
-  const getTimeColor = () => {
-    if (timeLimit) {
-      const timeLeft = timeLimit - seconds;
-      if (timeLeft < 60) return "text-red-600"; // Less than 1 minute
-      if (timeLeft < timeLimit * 0.3) return "text-orange-600"; // Less than 30% time left
+  const handleExtendTime = () => {
+    if (onExtendTime && !timeExtensionUsed) {
+      // When adding time, check if we're still in critical zone
+      const newTimeLeft = timeLimit - timeSpent + 30;
+      if (newTimeLeft > 60) {
+        setIsCritical(false); // Remove red warning if now have > 60 seconds
+      }
+      onExtendTime(30); // Add 30 seconds
     }
-    return "text-primary";
   };
 
-  const getTimeMessage = () => {
-    if (!timeLimit) return null;
+  const progressPercentage = timeLimit > 0 ? ((timeSpent / timeLimit) * 100) : 0;
+  const timeLeft = Math.max(0, timeLimit - timeSpent);
 
-    const timeLeft = timeLimit - seconds;
-    if (timeLeft <= 0) return "Time's up!";
-    if (timeLeft < 60) return "Less than 1 minute left!";
-    if (timeLeft < 300) return "5 minutes remaining";
-    return null;
+  const getProgressColor = () => {
+    if (timeLimit <= 0) return "bg-blue-500";
+    if (progressPercentage > 90) return "bg-red-500";
+    if (progressPercentage > 75) return "bg-orange-500";
+    if (progressPercentage > 50) return "bg-yellow-500";
+    return "bg-green-500";
   };
 
   return (
     <Card
       className={cn(
-        "border-2 transition-all",
-        isTimeWarning
-          ? "border-orange-300 bg-orange-50 dark:bg-orange-950/20"
-          : "border-primary/20",
+        "border-2 transition-all duration-300",
+        isCritical && timeLeft > 0
+          ? "border-red-500 bg-red-50 dark:bg-red-950/20"
+          : "border-primary/20"
       )}
     >
       <CardContent className="p-4">
         <div className="space-y-3">
-          {/* Timer Display */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {isTimeWarning ? (
-                <AlertTriangle className="h-5 w-5 text-orange-600" />
+              {isCritical && timeLeft > 0 ? (
+                <AlertCircle className="h-5 w-5 text-red-600 animate-pulse" />
               ) : (
                 <Clock className="h-5 w-5 text-primary" />
               )}
-              <span className="font-medium">Time</span>
+              <span className="font-semibold">Quiz Timer</span>
             </div>
-            <div
-              className={cn(
-                "font-mono text-2xl font-bold transition-colors",
-                getTimeColor(),
+            <div className="flex items-center gap-2">
+              {onPauseToggle && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handlePauseToggle}
+                  className="h-8 w-8 p-0"
+                >
+                  {isPaused ? (
+                    <Play className="h-4 w-4" />
+                  ) : (
+                    <Pause className="h-4 w-4" />
+                  )}
+                </Button>
               )}
-            >
-              {formatTime(seconds)}
+              <div
+                className={cn(
+                  "text-xl font-bold font-mono",
+                  isCritical && timeLeft > 0 ? "text-red-600 animate-pulse" : "text-primary"
+                )}
+              >
+                {formatTimeDisplay(timeSpent)}
+                {timeLimit > 0 && ` / ${formatTimeDisplay(timeLimit)}`}
+              </div>
             </div>
           </div>
 
-          {/* Time Limit Info */}
-          {timeLimit && (
-            <div className="pt-2 border-t">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Time Limit</span>
-                <span className="font-medium">{formatTime(timeLimit)}</span>
-              </div>
-              <div className="mt-1 flex items-center justify-between">
-                <span className="text-muted-foreground">Time Left</span>
-                <span className={cn("font-medium", getTimeColor())}>
-                  {formatTime(Math.max(0, timeLimit - seconds))}
-                </span>
-              </div>
+          {/* Question Info */}
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Question {currentQuestion} of {totalQuestions}</span>
+            <span>3:00 per question</span>
+          </div>
 
-              {/* Progress Bar */}
-              <div className="mt-2">
-                <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-                  <div
-                    className={cn(
-                      "h-full transition-all duration-1000",
-                      seconds / timeLimit > 0.8
-                        ? "bg-red-500"
-                        : seconds / timeLimit > 0.6
-                          ? "bg-orange-500"
-                          : "bg-green-500",
-                    )}
-                    style={{
-                      width: `${Math.min(100, (seconds / timeLimit) * 100)}%`,
-                    }}
-                  />
-                </div>
+          {timeLimit > 0 && (
+            <div className="space-y-2">
+              <Progress
+                value={progressPercentage}
+                className={cn("h-2", getProgressColor())}
+              />
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>{isPaused ? "⏸ Paused" : "Time Spent"}</span>
+                <span>
+                  {timeLeft > 0
+                    ? `${formatTimeDisplay(timeLeft)} remaining`
+                    : "Time's up!"}
+                </span>
               </div>
             </div>
           )}
 
-          {/* Time Warning Message */}
-          {getTimeMessage() && (
-            <div
+          {/* 30 Second Extension Button - Only show when timeLeft < 120 (2 minutes) */}
+          {onExtendTime && !timeExtensionUsed && timeLeft < 120 && (
+            <Button
+              onClick={handleExtendTime}
+              variant="outline"
+              size="sm"
               className={cn(
-                "text-sm font-medium px-3 py-2 rounded-lg",
-                seconds >= timeLimit
-                  ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                  : "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
+                "w-full gap-2 mt-2 border-green-300 hover:bg-green-50",
+                timeLeft <= 60 
+                  ? "text-red-600 border-red-300 hover:bg-red-50" 
+                  : "text-green-600"
               )}
             >
-              ⏰ {getTimeMessage()}
+              <Plus className="h-3 w-3" />
+              Add 30 seconds (Once per question)
+              {timeLeft <= 60 && " ⚡"}
+            </Button>
+          )}
+
+          {timeExtensionUsed && (
+            <div className="text-xs text-gray-500 text-center mt-2">
+              ⏰ 30 seconds already added to this question
+            </div>
+          )}
+
+          {isCritical && timeLeft > 0 && (
+            <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-2 rounded animate-pulse">
+              ⚡ Less than 1 minute remaining!
+            </div>
+          )}
+
+          {isPaused && (
+            <div className="text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/30 p-2 rounded">
+              ⏸ Timer paused
             </div>
           )}
         </div>

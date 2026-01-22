@@ -1,26 +1,28 @@
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Loader2, Target, Clock, Brain, Trophy } from "lucide-react";
-import { UserContext } from "@/context/UserContext";
+import { Loader2, Clock, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
-  const [questionCount, setQuestionCount] = useState(10);
-  const { user, openApiKeyModal } = useContext(UserContext);
+  const [questionCount, setQuestionCount] = useState(5);
+
+  const calculateTotalTime = (count) => {
+    return Math.floor((count * 180) / 60); // 3 minutes per question
+  };
 
   const handleStart = () => {
-    if (!user?.hasGeminiKey) {
-      openApiKeyModal();
+    if (questionCount < 1 || questionCount > 20) {
+      alert("Please select between 1 and 20 questions");
       return;
     }
     onStartQuiz(questionCount);
@@ -28,119 +30,86 @@ const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-2xl flex items-center gap-2">
-            <Target className="h-6 w-6 text-blue-600" />
-            Start Practice Quiz
-          </DialogTitle>
+          <DialogTitle>Start New Quiz</DialogTitle>
           <DialogDescription>
-            Generate a quiz based on your session questions. Test your
-            knowledge!
+            Choose the number of questions. Each question has a 3-minute time limit.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Question Count Selection */}
-          <div className="space-y-4">
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="questionCount">Number of Questions</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {[3, 5, 10].map((count) => (
+                <Button
+                  key={count}
+                  type="button"
+                  variant={questionCount === count ? "default" : "outline"}
+                  onClick={() => setQuestionCount(count)}
+                  className="flex flex-col items-center p-4"
+                >
+                  <span className="text-lg font-bold">{count}</span>
+                  {/* <span className="text-xs text-muted-foreground">
+                    {calculateTotalTime(count)} min total
+                  </span> */}
+                </Button>
+              ))}
+            </div>
+            <div className="pt-2">
+              <Label htmlFor="customCount">Custom (1-20)</Label>
+              <Input
+                id="customCount"
+                type="number"
+                min="1"
+                max="20"
+                value={questionCount}
+                onChange={(e) => setQuestionCount(parseInt(e.target.value) || 1)}
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-lg border p-4 space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="questions" className="text-lg font-medium">
-                Number of Questions
-              </Label>
-              <div className="flex items-center gap-2">
-                <div className="text-3xl font-bold text-primary">
-                  {questionCount}
-                </div>
-                <span className="text-muted-foreground">questions</span>
-              </div>
+              <span className="text-sm font-medium flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Time per question
+              </span>
+              <span className="font-bold">3:00</span>
             </div>
-
-            <Slider
-              value={[questionCount]}
-              onValueChange={(value) => setQuestionCount(value[0])}
-              min={5}
-              max={30}
-              step={1}
-              className="w-full cursor-pointer"
-            />
-
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3" />5 (Quick)
-              </span>
-              <span className="flex items-center gap-1">
-                <Brain className="h-3 w-3" />
-                15 (Standard)
-              </span>
-              <span className="flex items-center gap-1">
-                <Trophy className="h-3 w-3" />
-                30 (Comprehensive)
-              </span>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Total quiz time</span>
+              <span className="font-bold">{calculateTotalTime(questionCount)}:00</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Questions</span>
+              <span className="font-bold">{questionCount}</span>
             </div>
           </div>
 
-          {/* Quiz Features */}
-          <div className="rounded-xl border p-4 space-y-3 bg-blue-50/50">
-            <h4 className="font-medium text-lg">What you'll get:</h4>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-start gap-2">
-                <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>
-                <span>
-                  <strong>AI-generated questions</strong> based on your session
-                  topics
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>
-                <span>
-                  <strong>Timer & progress tracking</strong> for realistic
-                  practice
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>
-                <span>
-                  <strong>Instant scoring</strong> with detailed explanations
-                </span>
-              </li>
-              <li className="flex items-start gap-2">
-                <div className="h-2 w-2 bg-blue-500 rounded-full mt-2"></div>
-                <span>
-                  <strong>Performance analytics</strong> to track improvement
-                </span>
-              </li>
-            </ul>
-          </div>
-
-          {/* Tips */}
-          <div className="rounded-lg border p-3 bg-yellow-50/50">
-            <p className="text-sm text-muted-foreground">
-              💡 <strong>Tip:</strong> Start with 10 questions to gauge your
-              current level, then increase difficulty as you improve.
-            </p>
-          </div>
+          <Alert variant="warning">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Quiz will auto-submit when time expires. Each question has a 3-minute limit.
+            </AlertDescription>
+          </Alert>
         </div>
 
-        <DialogFooter className="sm:justify-between gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
+        <DialogFooter>
           <Button
             onClick={handleStart}
             disabled={isLoading}
-            className="gap-2 bg-blue-600 hover:bg-blue-700 min-w-32"
+            className="w-full"
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating...
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Starting Quiz...
               </>
             ) : (
-              "Start Quiz Now"
+              `Start ${questionCount}-Question Quiz (${calculateTotalTime(questionCount)} min)`
             )}
           </Button>
         </DialogFooter>
