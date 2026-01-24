@@ -18,7 +18,7 @@ const QuizProgress = ({ current, total, answers = [] }) => {
   };
 
   return (
-    <Card className="border-primary/20">
+    <Card className="border-primary/20 p-0">
       <CardContent className="p-4">
         <div className="space-y-4">
           {/* Progress Bar */}
