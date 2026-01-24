@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, AlertCircle, Pause, Play, Plus } from "lucide-react";
+import { Clock, AlertCircle, Plus } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,78 +13,61 @@ const QuizTimer = ({
   currentQuestion,
   totalQuestions,
   initialTimeSpent = 0,
-  isPaused: externalPaused = false,
-  onPauseToggle,
   onExtendTime,
   timeExtensionUsed = false,
 }) => {
   const [timeSpent, setTimeSpent] = useState(initialTimeSpent);
   const [isCritical, setIsCritical] = useState(false);
-  const [isPaused, setIsPaused] = useState(externalPaused);
-
-  // Sync with external pause state
-  useEffect(() => {
-    setIsPaused(externalPaused);
-  }, [externalPaused]);
 
   const formatTimeDisplay = useCallback((seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   }, []);
 
   useEffect(() => {
-    if (!isActive || isPaused) return;
+    if (!isActive) return;
 
     const interval = setInterval(() => {
       setTimeSpent((prev) => {
         const newTime = prev + 1;
-        
+
         if (timeLimit > 0) {
           const timeLeft = timeLimit - newTime;
-          
-          // UPDATE THIS LOGIC: Show red when timeLeft <= 60 seconds
+
+          // Show red when timeLeft <= 60 seconds
           if (timeLeft <= 60 && timeLeft > 0) {
             setIsCritical(true);
           } else if (timeLeft > 60) {
             setIsCritical(false);
           }
-          
+
           if (timeLeft <= 0) {
             clearInterval(interval);
             onTimeUp?.();
             return timeLimit;
           }
         }
-        
+
         onTimeUpdate?.(newTime);
         return newTime;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isActive, isPaused, onTimeUpdate, onTimeUp, timeLimit]);
-
-  const handlePauseToggle = () => {
-    const newPausedState = !isPaused;
-    setIsPaused(newPausedState);
-    if (onPauseToggle) {
-      onPauseToggle(newPausedState);
-    }
-  };
+  }, [isActive, onTimeUpdate, onTimeUp, timeLimit]);
 
   const handleExtendTime = () => {
     if (onExtendTime && !timeExtensionUsed) {
-      // When adding time, check if we're still in critical zone
       const newTimeLeft = timeLimit - timeSpent + 30;
       if (newTimeLeft > 60) {
-        setIsCritical(false); // Remove red warning if now have > 60 seconds
+        setIsCritical(false);
       }
-      onExtendTime(30); // Add 30 seconds
+      onExtendTime(30);
     }
   };
 
-  const progressPercentage = timeLimit > 0 ? ((timeSpent / timeLimit) * 100) : 0;
+  const progressPercentage = timeLimit > 0 ? (timeSpent / timeLimit) * 100 : 0;
   const timeLeft = Math.max(0, timeLimit - timeSpent);
 
   const getProgressColor = () => {
@@ -98,10 +81,10 @@ const QuizTimer = ({
   return (
     <Card
       className={cn(
-        "border-2 transition-all duration-300",
+        "border-2 transition-all duration-300 p-0",
         isCritical && timeLeft > 0
           ? "border-red-500 bg-red-50 dark:bg-red-950/20"
-          : "border-primary/20"
+          : "border-primary/20",
       )}
     >
       <CardContent className="p-4">
@@ -116,24 +99,12 @@ const QuizTimer = ({
               <span className="font-semibold">Quiz Timer</span>
             </div>
             <div className="flex items-center gap-2">
-              {onPauseToggle && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handlePauseToggle}
-                  className="h-8 w-8 p-0"
-                >
-                  {isPaused ? (
-                    <Play className="h-4 w-4" />
-                  ) : (
-                    <Pause className="h-4 w-4" />
-                  )}
-                </Button>
-              )}
               <div
                 className={cn(
                   "text-xl font-bold font-mono",
-                  isCritical && timeLeft > 0 ? "text-red-600 animate-pulse" : "text-primary"
+                  isCritical && timeLeft > 0
+                    ? "text-red-600 animate-pulse"
+                    : "text-primary",
                 )}
               >
                 {formatTimeDisplay(timeSpent)}
@@ -144,7 +115,9 @@ const QuizTimer = ({
 
           {/* Question Info */}
           <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Question {currentQuestion} of {totalQuestions}</span>
+            <span>
+              Question {currentQuestion} of {totalQuestions}
+            </span>
             <span>3:00 per question</span>
           </div>
 
@@ -155,7 +128,6 @@ const QuizTimer = ({
                 className={cn("h-2", getProgressColor())}
               />
               <div className="flex justify-between text-sm text-muted-foreground">
-                <span>{isPaused ? "⏸ Paused" : "Time Spent"}</span>
                 <span>
                   {timeLeft > 0
                     ? `${formatTimeDisplay(timeLeft)} remaining`
@@ -170,16 +142,15 @@ const QuizTimer = ({
             <Button
               onClick={handleExtendTime}
               variant="outline"
-              size="sm"
               className={cn(
-                "w-full gap-2 mt-2 border-green-300 hover:bg-green-50",
-                timeLeft <= 60 
-                  ? "text-red-600 border-red-300 hover:bg-red-50" 
-                  : "text-green-600"
+                "gap-2 mt-2 border-green-300 hover:bg-green-50",
+                timeLeft <= 60
+                  ? "text-red-600 border-red-300 hover:bg-red-50"
+                  : "text-green-600",
               )}
             >
               <Plus className="h-3 w-3" />
-              Add 30 seconds (Once per question)
+              Add 30 seconds
               {timeLeft <= 60 && " ⚡"}
             </Button>
           )}
@@ -193,12 +164,6 @@ const QuizTimer = ({
           {isCritical && timeLeft > 0 && (
             <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-2 rounded animate-pulse">
               ⚡ Less than 1 minute remaining!
-            </div>
-          )}
-
-          {isPaused && (
-            <div className="text-sm text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-950/30 p-2 rounded">
-              ⏸ Timer paused
             </div>
           )}
         </div>

@@ -23,7 +23,7 @@ import DashboardSkeleton from "./components/DashboardSkeleton";
 const Dashboard = () => {
   const [openCreateModel, setOpenCreateModel] = useState(false);
   const [sessions, setSessions] = useState([]);
-  const [loading, setLoading] = useState(true); // Add loading state
+  const [loading, setLoading] = useState(true);
 
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
 
@@ -31,21 +31,21 @@ const Dashboard = () => {
 
   const fetchAllSessions = useCallback(async () => {
     try {
-      setLoading(true); // Set loading to true before fetching
+      setLoading(true);
       const response = await axiosInstance.get(API_PATHS.SESSION.GET_ALL);
       setSessions(response.data);
     } catch (error) {
       console.error("Error fetching session data:", error);
       toast.error("Failed to fetch sessions.");
     } finally {
-      setLoading(false); // Set loading to false after fetching (success or error)
+      setLoading(false);
     }
   }, []);
 
   const deleteSession = async (sessionId) => {
     try {
       const response = await axiosInstance.delete(
-        API_PATHS.SESSION.DELETE(sessionId)
+        API_PATHS.SESSION.DELETE(sessionId),
       );
 
       toast.success(response.data.message);
@@ -58,7 +58,6 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchAllSessions();
   }, [fetchAllSessions]);
 
@@ -67,47 +66,80 @@ const Dashboard = () => {
       {loading ? (
         <DashboardSkeleton />
       ) : (
-        <div className="container mx-auto py-4 px-4 md:px-4">
+        <div className="w-full min-h-screen px-4 md:px-8 py-4">
+          {/* Content Area */}
           {sessions.length === 0 ? (
-            <p className="text-lg text-gray-600 flex items-center justify-center h-[50vh]">
-              No sessions found. Create a new one to get started!
-            </p>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                <Plus className="h-12 w-12 text-gray-400" />
+              </div>
+              <p className="text-lg text-gray-600 mb-2">No sessions found</p>
+              <p className="text-base text-gray-500 mb-6 max-w-md">
+                Create a new session to get started!
+              </p>
+              <Button
+                onClick={() => setOpenCreateModel(true)}
+                className="px-6"
+                size="lg"
+              >
+                <Plus className="mr-2 h-5 w-5" />
+                Create Session
+              </Button>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-7 pt-1 pb-6 px-4 md:px-0">
-              {sessions?.map((session, index) => (
-                <SummaryCard
-                  key={session?._id}
-                  colors={CARD_BG[index % CARD_BG.length]}
-                  data={session}
-                  onSelect={() => navigate(`/interview-prep/${session?._id}`)}
-                  onDelete={() => deleteSession(session?._id)}
-                  openDeleteAlert={openDeleteAlert}
-                  setOpenDeleteAlert={setOpenDeleteAlert}
-                />
-              ))}
+            <div className="w-full">
+              {/* Simple responsive grid - 1 column on mobile, 2 on tablet, 3 on desktop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                {sessions?.map((session, index) => (
+                  <div key={session?._id} className="h-full">
+                    <SummaryCard
+                      colors={CARD_BG[index % CARD_BG.length]}
+                      data={session}
+                      onSelect={() =>
+                        navigate(`/interview-prep/${session?._id}`)
+                      }
+                      onDelete={() => deleteSession(session?._id)}
+                      openDeleteAlert={openDeleteAlert}
+                      setOpenDeleteAlert={setOpenDeleteAlert}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
+          {/* Floating Action Button */}
           <Dialog open={openCreateModel} onOpenChange={setOpenCreateModel}>
             <DialogTrigger asChild>
               <Button
-                size={"lg"}
-                className="font-semibold rounded-full hover:bg-black transition-colors hover:shadow-2xl hover:shadow-primary/90 fixed bottom-10 md:bottom-20 right-10 md:right-20"
+                size="lg"
+                className="font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 fixed z-40 
+                  bottom-6 right-6 
+                  sm:bottom-8 sm:right-8"
               >
-                <Plus className="size-6" />
+                <Plus className="h-5 w-5 mr-2" />
                 Add New
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Start a New Interview Journey</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-xl">
+                  Start a New Interview Journey
+                </DialogTitle>
+                <DialogDescription className="text-base">
                   Fill out a few quick details and unlock your personalized set
                   of interview questions!
                 </DialogDescription>
               </DialogHeader>
 
-              <CreateSessionForm />
+              <div className="py-2">
+                <CreateSessionForm
+                  onSuccess={() => {
+                    setOpenCreateModel(false);
+                    fetchAllSessions();
+                  }}
+                />
+              </div>
             </DialogContent>
           </Dialog>
         </div>
@@ -117,60 +149,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
-//   return !loading ? (
-//     <DashboardSkeleton />
-//   ) : (
-//     <DashboardLayout>
-//       <div className="container mx-auto py-4 px-4 md:px-6">
-//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-7 pt-1 pb-6 px-4 md:px-0">
-//           {sessions.length === 0 ? (
-//             <div className="container mx-auto py-4 px-4 md:px-6">
-//               <div className="flex flex-col items-center justify-center h-[50vh]">
-//                 <p className="text-lg text-gray-600">
-//                   No sessions found. Create a new one to get started!
-//                 </p>
-//                 {/* The create session button is already available via DialogTrigger */}
-//               </div>
-//             </div>
-//           ) : (
-//             sessions?.map((session, index) => (
-//               <SummaryCard
-//                 key={session?._id}
-//                 colors={CARD_BG[index % CARD_BG.length]}
-//                 data={session}
-//                 onSelect={() => navigate(`/interview-prep/${session?._id}`)}
-//                 onDelete={() => deleteSession(session?._id)}
-//                 openDeleteAlert={openDeleteAlert}
-//                 setOpenDeleteAlert={setOpenDeleteAlert}
-//               />
-//             ))
-//           )}
-//         </div>
-
-//         <Dialog open={openCreateModel} onOpenChange={setOpenCreateModel}>
-//           <DialogTrigger asChild>
-//             <Button
-//               size={"lg"}
-//               className="font-semibold rounded-full hover:bg-black transition-colors hover:shadow-2xl hover:shadow-primary/90 fixed bottom-10 md:bottom-20 right-10 md:right-20"
-//             >
-//               <Plus className="size-6" />
-//               Add New
-//             </Button>
-//           </DialogTrigger>
-//           <DialogContent>
-//             <DialogHeader>
-//               <DialogTitle>Start a New Interview Journey</DialogTitle>
-//               <DialogDescription>
-//                 Fill out a few quick details and unlock your personalized set of
-//                 interview questions!
-//               </DialogDescription>
-//             </DialogHeader>
-
-//             <CreateSessionForm />
-//           </DialogContent>
-//         </Dialog>
-//       </div>
-//     </DashboardLayout>
-//   );
-// };

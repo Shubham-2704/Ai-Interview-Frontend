@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
   const [questionCount, setQuestionCount] = useState(5);
+  const [error, setError] = useState("");
 
   const calculateTotalTime = (count) => {
     return Math.floor((count * 180) / 60); // 3 minutes per question
@@ -22,10 +23,29 @@ const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
 
   const handleStart = () => {
     if (questionCount < 1 || questionCount > 20) {
-      alert("Please select between 1 and 20 questions");
+      setError("Please select between 1 and 20 questions");
       return;
     }
+    setError(""); // Clear error if validation passes
     onStartQuiz(questionCount);
+  };
+
+  const handleInputChange = (e) => {
+    const value = parseInt(e.target.value) || 1;
+    setQuestionCount(value);
+
+    // Clear error when user starts typing
+    if (error) {
+      setError("");
+    }
+  };
+
+  const handleCountButtonClick = (count) => {
+    setQuestionCount(count);
+    // Clear error when user selects a button
+    if (error) {
+      setError("");
+    }
   };
 
   return (
@@ -34,7 +54,8 @@ const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
         <DialogHeader>
           <DialogTitle>Start New Quiz</DialogTitle>
           <DialogDescription>
-            Choose the number of questions. Each question has a 3-minute time limit.
+            Choose the number of questions. Each question has a 3-minute time
+            limit.
           </DialogDescription>
         </DialogHeader>
 
@@ -47,17 +68,14 @@ const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
                   key={count}
                   type="button"
                   variant={questionCount === count ? "default" : "outline"}
-                  onClick={() => setQuestionCount(count)}
+                  onClick={() => handleCountButtonClick(count)}
                   className="flex flex-col items-center p-4"
                 >
                   <span className="text-lg font-bold">{count}</span>
-                  {/* <span className="text-xs text-muted-foreground">
-                    {calculateTotalTime(count)} min total
-                  </span> */}
                 </Button>
               ))}
             </div>
-            <div className="pt-2">
+            <div className="pt-2 space-y-1">
               <Label htmlFor="customCount">Custom (1-20)</Label>
               <Input
                 id="customCount"
@@ -65,9 +83,15 @@ const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
                 min="1"
                 max="20"
                 value={questionCount}
-                onChange={(e) => setQuestionCount(parseInt(e.target.value) || 1)}
-                className="mt-1"
+                onChange={handleInputChange}
+                className={`mt-1 ${error ? "border-red-500 focus-visible:ring-red-500" : ""}`}
               />
+              {error && (
+                <div className="flex items-start gap-1 text-red-600 text-sm">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -81,7 +105,9 @@ const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Total quiz time</span>
-              <span className="font-bold">{calculateTotalTime(questionCount)}:00</span>
+              <span className="font-bold">
+                {calculateTotalTime(questionCount)}:00
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Questions</span>
@@ -92,17 +118,14 @@ const QuizStartDialog = ({ open, onOpenChange, onStartQuiz, isLoading }) => {
           <Alert variant="warning">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Quiz will auto-submit when time expires. Each question has a 3-minute limit.
+              Quiz will auto-submit when time expires. Each question has a
+              3-minute limit.
             </AlertDescription>
           </Alert>
         </div>
 
         <DialogFooter>
-          <Button
-            onClick={handleStart}
-            disabled={isLoading}
-            className="w-full"
-          >
+          <Button onClick={handleStart} disabled={isLoading} className="w-full">
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

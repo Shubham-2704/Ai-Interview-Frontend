@@ -53,7 +53,7 @@ const QuestionCard = memo(
 
     const speakableText = React.useMemo(
       () => extractSpeakableText(answer),
-      [answer]
+      [answer],
     );
     const {
       status: speechStatus,
@@ -200,24 +200,77 @@ const QuestionCard = memo(
       isLocalMaterialsLoading || studyMaterialsLoading;
 
     return (
-      <div className="bg-white rounded-lg mb-4 overflow-hidden py-4 px-5 shadow-xl shadow-gray-100/70 border border-gray-100/60 group">
-        <Item className="flex-nowrap cursor-pointer p-0">
-          <ItemHeader
-            onClick={toggleExpand}
-            className="justify-normal text-xs md:text-sm font-medium mr-0 md:mr-20"
-          >
-            <span className="text-xs md:text-[15px] font-semibold text-gray-400 leading-[18px]">
-              Q
-            </span>
-            {question}
-          </ItemHeader>
-          <ItemContent className="flex flex-row items-center justify-end relative">
-            <ItemActions
-              className={`flex ${
+      <div className="bg-white rounded-lg mb-4 overflow-hidden p-4 md:py-4 md:px-5 shadow-xl shadow-gray-100/70 border border-gray-100/60 group">
+        <div className="flex flex-col md:flex-row md:items-start gap-3 md:gap-0">
+          {/* Question Header - Full width on mobile */}
+          <div onClick={toggleExpand} className="flex-1 cursor-pointer min-w-0">
+            <div className="flex items-start gap-2">
+              <span className="text-xs md:text-[15px] font-semibold text-gray-400 leading-[18px] mt-0.5 shrink-0">
+                Q
+              </span>
+              <span className="text-sm md:text-base font-medium text-gray-800 wrap-break-word flex-1">
+                {question}
+              </span>
+            </div>
+          </div>
+
+          {/* Action Buttons - Stacked on mobile */}
+          <div className="flex items-center justify-between md:justify-end gap-2">
+            {/* Mobile Action Buttons (visible always on mobile) */}
+            <div className="flex md:hidden items-center gap-1">
+              {/* Pin Button Mobile */}
+              <Button
+                variant={"ghost"}
+                onClick={handleTogglePin}
+                disabled={showLearnMoreLoading || showStudyMaterialsLoading}
+                size="sm"
+                className="h-8 w-8 p-0 text-indigo-800 bg-indigo-50 hover:bg-indigo-100 border transition-colors duration-150"
+              >
+                {isPinned ? (
+                  <PinOff className="size-3.5" />
+                ) : (
+                  <Pin className="size-3.5" />
+                )}
+              </Button>
+
+              {/* Study Materials Button Mobile */}
+              <Button
+                variant="ghost"
+                onClick={handleStudyMaterials}
+                disabled={showStudyMaterialsLoading}
+                size="sm"
+                className="h-8 w-8 p-0 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border"
+              >
+                {showStudyMaterialsLoading ? (
+                  <Spinner className="size-3.5" />
+                ) : (
+                  <BookOpen className="size-3.5" />
+                )}
+              </Button>
+
+              {/* Learn More Button Mobile */}
+              <Button
+                variant={"ghost"}
+                onClick={handleLearnMore}
+                disabled={showLearnMoreLoading}
+                size="sm"
+                className="h-8 w-8 p-0 text-cyan-800 bg-cyan-50 hover:bg-cyan-100 border transition-colors duration-150"
+              >
+                {showLearnMoreLoading ? (
+                  <Spinner className="size-3.5" />
+                ) : (
+                  <Sparkles className="size-3.5" />
+                )}
+              </Button>
+            </div>
+
+            {/* Desktop Action Buttons (hidden on mobile) */}
+            <div
+              className={`hidden md:flex items-center gap-2 ${
                 isExpanded ? "md:flex" : "md:hidden group-hover:flex"
               }`}
             >
-              {/* Pin Button */}
+              {/* Pin Button Desktop */}
               <Button
                 variant={"ghost"}
                 onClick={handleTogglePin}
@@ -231,11 +284,11 @@ const QuestionCard = memo(
                 )}
               </Button>
 
-              {/* Study Materials Button */}
+              {/* Study Materials Button Desktop */}
               <Button
                 variant="ghost"
                 onClick={handleStudyMaterials}
-                disabled={showStudyMaterialsLoading}
+                disabled={showStudyMaterialsLoading || showLearnMoreLoading}
                 className="text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border"
               >
                 {showStudyMaterialsLoading ? (
@@ -251,11 +304,11 @@ const QuestionCard = memo(
                 )}
               </Button>
 
-              {/* Learn More Button */}
+              {/* Learn More Button Desktop */}
               <Button
                 variant={"ghost"}
                 onClick={handleLearnMore}
-                disabled={showLearnMoreLoading}
+                disabled={showLearnMoreLoading || showStudyMaterialsLoading}
                 className="text-cyan-800 bg-cyan-50 hover:bg-cyan-100 border text-xs text-nowrap transition-colors duration-150"
               >
                 {showLearnMoreLoading ? (
@@ -270,30 +323,33 @@ const QuestionCard = memo(
                   </>
                 )}
               </Button>
-            </ItemActions>
+            </div>
+
+            {/* Expand Button */}
             <Button
               variant={"ghost"}
               onClick={toggleExpand}
               disabled={showLearnMoreLoading || showStudyMaterialsLoading}
-              className="text-gray-400 hover:text-gray-500 transition-colors duration-150"
+              className="h-8 w-8 md:h-auto md:w-auto text-gray-400 hover:text-gray-500 transition-colors duration-150 p-0 md:p-2"
             >
               <ChevronDown
-                className={`size-5 transform transition-transform duration-300 ${
+                className={`size-4 md:size-5 transform transition-transform duration-300 ${
                   isExpanded ? "rotate-180" : ""
                 }`}
               />
             </Button>
-          </ItemContent>
-        </Item>
+          </div>
+        </div>
+
         <div
           className="overflow-hidden transition-all duration-300 ease-in-out"
           style={{ maxHeight: `${height}px` }}
         >
           <div
             ref={contentRef}
-            className="mt-4 text-gray-700 bg-gray-50 px-5 py-5 rounded-lg"
+            className="mt-4 text-gray-700 bg-gray-50 px-4 md:px-5 py-4 md:py-5 rounded-lg"
           >
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
               {/* Left: Listening */}
               {speechStatus === "playing" ? (
                 <div className="flex items-center gap-2">
@@ -301,7 +357,7 @@ const QuestionCard = memo(
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75" />
                     <span className="relative inline-flex h-2 w-2 rounded-full bg-green-600" />
                   </span>
-                  <span className="hidden sm:inline text-xs text-green-600 font-medium">
+                  <span className="text-xs text-green-600 font-medium">
                     Listening
                   </span>
                 </div>
@@ -310,25 +366,40 @@ const QuestionCard = memo(
               )}
 
               {/* Right: Buttons */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 self-end sm:self-auto">
                 {speechStatus === "idle" && (
-                  <Button size="sm" variant="outline" onClick={speak}>
-                    <Play className="size-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Listen</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={speak}
+                    className="h-8"
+                  >
+                    <Play className="size-4 mr-1" />
+                    <span>Listen</span>
                   </Button>
                 )}
 
                 {speechStatus === "playing" && (
-                  <Button size="sm" variant="outline" onClick={pause}>
-                    <Pause className="size-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Pause</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={pause}
+                    className="h-8"
+                  >
+                    <Pause className="size-4 mr-1" />
+                    <span>Pause</span>
                   </Button>
                 )}
 
                 {speechStatus === "paused" && (
-                  <Button size="sm" variant="outline" onClick={resume}>
-                    <Play className="size-4 sm:mr-1" />
-                    <span className="hidden sm:inline">Resume</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={resume}
+                    className="h-8"
+                  >
+                    <Play className="size-4 mr-1" />
+                    <span>Resume</span>
                   </Button>
                 )}
               </div>
@@ -350,8 +421,7 @@ const QuestionCard = memo(
       prevProps.studyMaterialsLoading === nextProps.studyMaterialsLoading &&
       prevProps.questionId === nextProps.questionId
     );
-  }
+  },
 );
 
 export default QuestionCard;
-

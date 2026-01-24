@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -9,6 +9,24 @@ import QuizTimer from "@/components/Quiz/QuizTimer";
 import QuizProgress from "@/components/Quiz/QuizProgress";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ArrowLeft,
   Send,
@@ -40,19 +58,21 @@ const QuizPage = () => {
   const [results, setResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [sessionInfo, setSessionInfo] = useState(null);
-  
+
   // Timer states
-  const [questionTimeLimit, setQuestionTimeLimit] = useState(180); // 3 minutes per question
+  const [questionTimeLimit] = useState(180); // 3 minutes per question
   const [totalQuizTimeLimit, setTotalQuizTimeLimit] = useState(0);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [autoSubmitTriggered, setAutoSubmitTriggered] = useState(false);
   const [timeWarningShown, setTimeWarningShown] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [timeExtensionUsed, setTimeExtensionUsed] = useState({});
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+
+  // Submission states
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [unansweredCount, setUnansweredCount] = useState(0);
 
   const reviewQuizId = searchParams.get("review");
-
 
   // Load quiz for review
   useEffect(() => {
@@ -67,36 +87,56 @@ const QuizPage = () => {
       const totalTime = quizData.totalQuestions * questionTimeLimit;
       setTotalQuizTimeLimit(totalTime);
       setIsTimerActive(true);
-      setQuestionStartTime(Date.now());
-      
+
       // Track initial question time
       trackQuestionTime(currentQuestion);
     }
-  }, [quizData, quizState, questionTimeLimit]);
+  }, [quizData, quizState, questionTimeLimit, currentQuestion]);
 
   // Track question changes
   useEffect(() => {
     if (quizState === "active" && quizData) {
-      setQuestionStartTime(Date.now());
       trackQuestionTime(currentQuestion);
     }
   }, [currentQuestion, quizState, quizData]);
 
   // Auto-submit check
   useEffect(() => {
-    if (quizState === "active" && totalQuizTimeLimit > 0 && timeSpent >= totalQuizTimeLimit) {
+    if (
+      quizState === "active" &&
+      totalQuizTimeLimit > 0 &&
+      timeSpent >= totalQuizTimeLimit
+    ) {
       if (!autoSubmitTriggered) {
         setAutoSubmitTriggered(true);
         handleAutoSubmit();
       }
     }
-    
+
     // Show warning when 1 minute remaining
-    if (totalQuizTimeLimit > 0 && timeSpent >= totalQuizTimeLimit - 60 && !timeWarningShown) {
+    if (
+      totalQuizTimeLimit > 0 &&
+      timeSpent >= totalQuizTimeLimit - 60 &&
+      !timeWarningShown
+    ) {
       setTimeWarningShown(true);
-      toast.warning("⚠️ Less than 1 minute remaining! Quiz will auto-submit soon.");
+      toast.warning(
+        "⚠️ Less than 1 minute remaining! Quiz will auto-submit soon.",
+      );
     }
   }, [timeSpent, totalQuizTimeLimit, quizState, autoSubmitTriggered]);
+
+  // Handle submission when dialog is shown
+  useEffect(() => {
+    if (showSubmitDialog && !autoSubmitTriggered) {
+      // Add a small delay to show the dialog before starting submission
+      const timer = setTimeout(() => {
+        submitQuiz();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showSubmitDialog, autoSubmitTriggered]);
 
   const loadQuizForReview = async (quizId) => {
     setIsLoading(true);
@@ -149,10 +189,10 @@ const QuizPage = () => {
 
   const trackQuestionTime = async (questionIndex) => {
     if (!quizData?.quizId) return;
-    
+
     try {
       await axiosInstance.post(API_PATHS.QUIZ.TRACK_TIME(quizData.quizId), {
-        questionIndex
+        questionIndex,
       });
     } catch (error) {
       console.error("Failed to track question time:", error);
@@ -160,36 +200,39 @@ const QuizPage = () => {
   };
 
   const startQuiz = useCallback(
-  async (questionCount) => {
-    setIsLoading(true);
-    try {
-      const response = await axiosInstance.post(API_PATHS.QUIZ.GENERATE, {
-        sessionId,
-        numberOfQuestions: questionCount,
-      });
+    async (questionCount) => {
+      setIsLoading(true);
+      try {
+        const response = await axiosInstance.post(API_PATHS.QUIZ.GENERATE, {
+          sessionId,
+          numberOfQuestions: questionCount,
+        });
 
-      setQuizData({
-        ...response.data,
-        totalTimeLimit: response.data.totalTimeLimit || questionCount * 180,
-        timeLimitPerQuestion: response.data.timeLimitPerQuestion || 180,
-      });
-      setUserAnswers(new Array(response.data.totalQuestions).fill(null));
-      setQuizState("active");
-      setShowStartDialog(false);
-      setAutoSubmitTriggered(false);
-      setTimeWarningShown(false);
-      setIsPaused(false);
-      setTimeSpent(0);
-      setTimeExtensionUsed({}); // ADD THIS LINE - Reset extensions
-      
-      toast.success(`Quiz started! You have ${questionCount * 3} minutes total.`);
-    } catch (error) {
-      toast.error(error.response?.data?.detail || "Failed to generate quiz");
-    } finally {
-      setIsLoading(false);
-    }
-  },
-  [sessionId],
+        setQuizData({
+          ...response.data,
+          totalTimeLimit: response.data.totalTimeLimit || questionCount * 180,
+          timeLimitPerQuestion: response.data.timeLimitPerQuestion || 180,
+        });
+        setUserAnswers(new Array(response.data.totalQuestions).fill(null));
+        setQuizState("active");
+        setShowStartDialog(false);
+        setAutoSubmitTriggered(false);
+        setTimeWarningShown(false);
+        setTimeSpent(0);
+        setTimeExtensionUsed({});
+        setShowSubmitDialog(false);
+        setShowConfirmDialog(false);
+
+        toast.success(
+          `Quiz started! You have ${questionCount * 3} minutes total.`,
+        );
+      } catch (error) {
+        toast.error(error.response?.data?.detail || "Failed to generate quiz");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [sessionId],
   );
 
   const handleAnswerSelect = useCallback(
@@ -203,17 +246,26 @@ const QuizPage = () => {
     [currentQuestion],
   );
 
-  const handleSubmitQuiz = useCallback(async () => {
-    const unanswered = userAnswers.filter((a) => a === null || a === undefined).length;
-    if (unanswered > 0) {
-      const confirmSubmit = window.confirm(
-        `You have ${unanswered} unanswered question(s). Submit anyway?`
-      );
-      if (!confirmSubmit) return;
-    }
+  const initiateSubmit = useCallback(() => {
+    // Count unanswered questions
+    const unanswered = userAnswers.filter(
+      (a) => a === null || a === undefined,
+    ).length;
+    setUnansweredCount(unanswered);
 
-    setIsLoading(true);
+    // Always stop timer first
     setIsTimerActive(false);
+
+    if (unanswered > 0) {
+      // Show confirmation dialog for unanswered questions
+      setShowConfirmDialog(true);
+    } else {
+      // Show submit dialog for all answered questions too
+      setShowSubmitDialog(true);
+    }
+  }, [userAnswers]);
+
+  const submitQuiz = useCallback(async () => {
     try {
       const response = await axiosInstance.post(
         API_PATHS.QUIZ.SUBMIT(quizData.quizId),
@@ -221,29 +273,41 @@ const QuizPage = () => {
           quizId: quizData.quizId,
           answers: userAnswers,
           timeSpent,
+          isAutoSubmit: autoSubmitTriggered, // Include auto-submit flag
         },
       );
 
       setResults(response.data);
       setQuizState("results");
-      toast.success("Quiz submitted! View your results.");
+
+      // Close dialog after 1.5 seconds
+      setTimeout(() => {
+        setShowSubmitDialog(false);
+        if (autoSubmitTriggered) {
+          toast.info("⏰ Time's up! Quiz auto-submitted.");
+        } else {
+          toast.success("Quiz submitted! View your results.");
+        }
+      }, 1500);
     } catch (error) {
+      setShowSubmitDialog(false);
+      setIsTimerActive(true); // Restart timer if submit fails
       toast.error(error.response?.data?.detail || "Failed to submit quiz");
-    } finally {
-      setIsLoading(false);
     }
-  }, [quizData, userAnswers, timeSpent]);
+  }, [quizData, userAnswers, timeSpent, autoSubmitTriggered]);
 
   const handleAutoSubmit = useCallback(async () => {
     if (quizState !== "active" || !quizData || autoSubmitTriggered) return;
 
-    setIsTimerActive(false);
+    setIsTimerActive(false); // Stop timer
     setAutoSubmitTriggered(true);
-    
-    // Fill unanswered questions with null
-    const finalAnswers = userAnswers.map(answer => answer === null || answer === undefined ? -1 : answer);
-    
-    setIsLoading(true);
+    setShowSubmitDialog(true);
+
+    // Fill unanswered questions with -1
+    const finalAnswers = userAnswers.map((answer) =>
+      answer === null || answer === undefined ? -1 : answer,
+    );
+
     try {
       const response = await axiosInstance.post(
         API_PATHS.QUIZ.SUBMIT(quizData.quizId),
@@ -257,35 +321,49 @@ const QuizPage = () => {
 
       setResults(response.data);
       setQuizState("results");
-      toast.info("⏰ Time's up! Quiz auto-submitted.");
+
+      // Close dialog after 1.5 seconds
+      setTimeout(() => {
+        setShowSubmitDialog(false);
+        toast.info("⏰ Time's up! Quiz auto-submitted.");
+      }, 1500);
     } catch (error) {
+      setShowSubmitDialog(false);
       toast.error("Failed to auto-submit quiz. Please submit manually.");
-    } finally {
-      setIsLoading(false);
     }
-  }, [quizData, userAnswers, quizState, totalQuizTimeLimit, autoSubmitTriggered]);
+  }, [
+    quizData,
+    userAnswers,
+    quizState,
+    totalQuizTimeLimit,
+    autoSubmitTriggered,
+  ]);
 
   const handleQuestionTimeUp = useCallback(() => {
-    toast.warning(`Time's up for question ${currentQuestion + 1}! Moving to next question.`);
-    
+    toast.warning(
+      `Time's up for question ${currentQuestion + 1}! Moving to next question.`,
+    );
+
     // Auto-select first option if not answered
-    if (userAnswers[currentQuestion] === null || userAnswers[currentQuestion] === undefined) {
-      setUserAnswers(prev => {
+    if (
+      userAnswers[currentQuestion] === null ||
+      userAnswers[currentQuestion] === undefined
+    ) {
+      setUserAnswers((prev) => {
         const newAnswers = [...prev];
         newAnswers[currentQuestion] = 0;
         return newAnswers;
       });
     }
 
-    // Move to next question or submit if last question
+    // Move to next question only (don't submit)
     if (currentQuestion < quizData.totalQuestions - 1) {
       setTimeout(() => {
-        setCurrentQuestion(prev => prev + 1);
+        setCurrentQuestion((prev) => prev + 1);
       }, 500);
-    } else {
-      handleSubmitQuiz();
     }
-  }, [currentQuestion, userAnswers, quizData, handleSubmitQuiz]);
+    // Don't auto-submit when last question time's up - let total timer handle it
+  }, [currentQuestion, userAnswers, quizData]);
 
   const handleTimeUpdate = useCallback((newTime) => {
     setTimeSpent(newTime);
@@ -305,26 +383,29 @@ const QuizPage = () => {
     [currentQuestion, quizData?.totalQuestions],
   );
 
-  const handleExtendQuestionTime = useCallback((extraSeconds) => {
-    if (!timeExtensionUsed[currentQuestion]) {
-      // Add time to total quiz time
-      setTotalQuizTimeLimit(prev => {
-        const newLimit = prev + extraSeconds;
-        return newLimit;
-      });
-      
-      // Mark as used for this question
-      setTimeExtensionUsed(prev => ({
-        ...prev,
-        [currentQuestion]: true
-      }));
-      
-      toast.success(`Added ${extraSeconds} seconds to quiz time`);
-      
-      // Force update to trigger re-evaluation of critical state
-      setTimeSpent(prev => prev);
-    }
-  }, [currentQuestion, timeExtensionUsed]);
+  const handleExtendQuestionTime = useCallback(
+    (extraSeconds) => {
+      if (!timeExtensionUsed[currentQuestion]) {
+        // Add time to total quiz time
+        setTotalQuizTimeLimit((prev) => {
+          const newLimit = prev + extraSeconds;
+          return newLimit;
+        });
+
+        // Mark as used for this question
+        setTimeExtensionUsed((prev) => ({
+          ...prev,
+          [currentQuestion]: true,
+        }));
+
+        toast.success(`Added ${extraSeconds} seconds to quiz time`);
+
+        // Force update to trigger re-evaluation of critical state
+        setTimeSpent((prev) => prev);
+      }
+    },
+    [currentQuestion, timeExtensionUsed],
+  );
 
   const handleRetry = useCallback(() => {
     setQuizState("start");
@@ -338,7 +419,9 @@ const QuizPage = () => {
     setIsTimerActive(false);
     setAutoSubmitTriggered(false);
     setTimeWarningShown(false);
-    setIsPaused(false);
+    setTimeExtensionUsed({});
+    setShowSubmitDialog(false);
+    setShowConfirmDialog(false);
   }, []);
 
   const handleDownloadResults = useCallback(async () => {
@@ -404,10 +487,77 @@ const QuizPage = () => {
   if (quizState === "active" && quizData) {
     const currentQ = quizData.questions[currentQuestion];
     const totalQuestions = quizData.totalQuestions;
-    const answeredCount = userAnswers.filter((a) => a !== null && a !== undefined).length;
+    const answeredCount = userAnswers.filter(
+      (a) => a !== null && a !== undefined,
+    ).length;
 
     return (
       <DashboardLayout>
+        {/* Confirmation Dialog - Shows when unanswered questions exist */}
+        <AlertDialog
+          open={showConfirmDialog}
+          onOpenChange={setShowConfirmDialog}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Unanswered Questions</AlertDialogTitle>
+              <AlertDialogDescription>
+                You have{" "}
+                <span className="font-bold text-red-600">
+                  {unansweredCount} unanswered question(s)
+                </span>
+                . Are you sure you want to submit the quiz?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => {
+                  setShowConfirmDialog(false);
+                  setIsTimerActive(true); // Resume timer
+                }}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setShowConfirmDialog(false);
+                  setShowSubmitDialog(true); // Show submit dialog first
+                }}
+              >
+                Yes, Submit Anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Submit Dialog - Shows loader for both manual and auto submit */}
+        <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-center">
+                {autoSubmitTriggered
+                  ? "Auto-Submitting Quiz"
+                  : "Submitting Quiz"}
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                Please wait while we process your answers...
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
+              <p className="text-lg font-semibold">
+                {autoSubmitTriggered
+                  ? "⏰ Time's up! Auto-submitting..."
+                  : "Processing your answers..."}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                This may take a few seconds
+              </p>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div className="container mx-auto px-4 py-8 max-w-[1400px]">
           {/* Header */}
           <div className="flex flex-col justify-between mb-8 gap-4">
@@ -416,6 +566,7 @@ const QuizPage = () => {
                 variant="ghost"
                 onClick={() => navigate(`/interview-prep/${sessionId}`)}
                 className="gap-2"
+                disabled={showSubmitDialog || showConfirmDialog}
               >
                 <ArrowLeft className="h-4 w-4" />
                 <p className="hidden md:block">Back to Session</p>
@@ -433,6 +584,7 @@ const QuizPage = () => {
                 variant="outline"
                 onClick={() => navigate(`/quiz/${sessionId}/history`)}
                 className="gap-2"
+                disabled={showSubmitDialog || showConfirmDialog}
               >
                 <History className="h-4 w-4" />
                 <p className="hidden md:block">History</p>
@@ -444,31 +596,36 @@ const QuizPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <QuizTimer
               onTimeUpdate={handleTimeUpdate}
-              isActive={isTimerActive && !isPaused && !autoSubmitTriggered}
+              isActive={
+                isTimerActive &&
+                !autoSubmitTriggered &&
+                !showSubmitDialog &&
+                !showConfirmDialog
+              }
               timeLimit={totalQuizTimeLimit}
               onTimeUp={handleAutoSubmit}
               currentQuestion={currentQuestion + 1}
               totalQuestions={quizData.totalQuestions}
               initialTimeSpent={timeSpent}
-              isPaused={isPaused}
-              onPauseToggle={(paused) => setIsPaused(paused)}
               onExtendTime={handleExtendQuestionTime}
               timeExtensionUsed={timeExtensionUsed[currentQuestion] || false}
             />
-            
+
             <QuizProgress
               current={currentQuestion + 1}
               total={quizData.totalQuestions}
               answers={userAnswers}
             />
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Time Stats</p>
                     <div className="space-y-1">
-                      <p className="text-sm">Total: {Math.floor(totalQuizTimeLimit / 60)}:00</p>
+                      <p className="text-sm">
+                        Total: {Math.floor(totalQuizTimeLimit / 60)}:00
+                      </p>
                       <p className="text-sm">Per Q: 3:00</p>
                     </div>
                   </div>
@@ -493,7 +650,8 @@ const QuizPage = () => {
                 <span
                   className={`px-3 py-1 rounded-full text-sm ${userAnswers[currentQuestion] !== null && userAnswers[currentQuestion] !== undefined ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
                 >
-                  {userAnswers[currentQuestion] !== null && userAnswers[currentQuestion] !== undefined ? (
+                  {userAnswers[currentQuestion] !== null &&
+                  userAnswers[currentQuestion] !== undefined ? (
                     <span className="flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3" />
                       Answered
@@ -513,15 +671,23 @@ const QuizPage = () => {
               {quizData.questions.map((_, index) => (
                 <button
                   key={index}
-                  onClick={() => !autoSubmitTriggered && setCurrentQuestion(index)}
+                  onClick={() =>
+                    !autoSubmitTriggered &&
+                    !showSubmitDialog &&
+                    !showConfirmDialog &&
+                    setCurrentQuestion(index)
+                  }
                   className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
                     index === currentQuestion
                       ? "bg-primary text-white scale-110"
-                      : userAnswers[index] !== null && userAnswers[index] !== undefined
+                      : userAnswers[index] !== null &&
+                          userAnswers[index] !== undefined
                         ? "bg-green-100 text-green-800 hover:bg-green-200"
                         : "bg-red-100 text-red-700 hover:bg-gray-200"
-                  } ${autoSubmitTriggered ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-                  disabled={autoSubmitTriggered}
+                  } ${autoSubmitTriggered || showSubmitDialog || showConfirmDialog ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                  disabled={
+                    autoSubmitTriggered || showSubmitDialog || showConfirmDialog
+                  }
                 >
                   {index + 1}
                 </button>
@@ -543,7 +709,9 @@ const QuizPage = () => {
                 index={currentQuestion}
                 selectedAnswer={userAnswers[currentQuestion]}
                 onAnswerSelect={handleAnswerSelect}
-                disabled={autoSubmitTriggered}
+                disabled={
+                  autoSubmitTriggered || showSubmitDialog || showConfirmDialog
+                }
               />
             </motion.div>
           </AnimatePresence>
@@ -554,7 +722,12 @@ const QuizPage = () => {
               <Button
                 variant="ghost"
                 onClick={() => handleQuestionNavigation("prev")}
-                disabled={currentQuestion === 0 || autoSubmitTriggered}
+                disabled={
+                  currentQuestion === 0 ||
+                  autoSubmitTriggered ||
+                  showSubmitDialog ||
+                  showConfirmDialog
+                }
                 className="gap-2 hover:bg-gray-100"
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -565,8 +738,15 @@ const QuizPage = () => {
                 <Button
                   className="hidden md:block"
                   variant="ghost"
-                  onClick={() => !autoSubmitTriggered && setCurrentQuestion(0)}
-                  disabled={autoSubmitTriggered}
+                  onClick={() =>
+                    !autoSubmitTriggered &&
+                    !showSubmitDialog &&
+                    !showConfirmDialog &&
+                    setCurrentQuestion(0)
+                  }
+                  disabled={
+                    autoSubmitTriggered || showSubmitDialog || showConfirmDialog
+                  }
                 >
                   First Question
                 </Button>
@@ -579,18 +759,22 @@ const QuizPage = () => {
                   onClick={() => handleQuestionNavigation("next")}
                   className="gap-2 hover:bg-gray-100"
                   variant="ghost"
-                  disabled={autoSubmitTriggered}
+                  disabled={
+                    autoSubmitTriggered || showSubmitDialog || showConfirmDialog
+                  }
                 >
                   Next Question
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
                 <Button
-                  onClick={handleSubmitQuiz}
-                  disabled={isLoading || autoSubmitTriggered}
+                  onClick={initiateSubmit}
+                  disabled={
+                    autoSubmitTriggered || showSubmitDialog || showConfirmDialog
+                  }
                   className="gap-2 hover:bg-green-700"
                 >
-                  {isLoading ? (
+                  {showSubmitDialog ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Submitting...
@@ -607,21 +791,14 @@ const QuizPage = () => {
           </div>
 
           {/* Auto-submit warning */}
-          {autoSubmitTriggered && (
+          {autoSubmitTriggered && !showSubmitDialog && (
             <div className="mt-6 p-4 bg-orange-100 border border-orange-300 rounded-lg text-center">
               <div className="flex items-center justify-center gap-2">
                 <Clock className="h-5 w-5 text-orange-600" />
                 <p className="text-orange-700 font-semibold">
-                  Time's up! Submitting your quiz automatically...
+                  Time's up! Quiz will auto-submit...
                 </p>
               </div>
-            </div>
-          )}
-
-          {/* Pause Info */}
-          {isPaused && (
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-              <p className="text-yellow-700">⏸ Quiz is paused. Timer will resume when you continue.</p>
             </div>
           )}
         </div>
@@ -746,7 +923,8 @@ const QuizPage = () => {
                 </div>
                 <h3 className="font-semibold">Timed Questions</h3>
                 <p className="text-sm text-muted-foreground">
-                  Each question has a 3-minute limit. Quiz auto-submits when time expires.
+                  Each question has a 3-minute limit. Quiz auto-submits when
+                  time expires.
                 </p>
               </div>
 

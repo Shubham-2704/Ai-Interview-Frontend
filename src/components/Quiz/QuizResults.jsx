@@ -15,12 +15,32 @@ import {
   Award,
   AlertCircle,
   HelpCircle,
+  Zap,
+  Timer,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 
-const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, timePerQuestion = [] }) => {
-  const { score, total, percentage, questions, feedback, submissionType } = results;
+const QuizResults = ({
+  results,
+  onRetry,
+  onDownload,
+  timeSpent,
+  totalTimeLimit,
+  timePerQuestion = [],
+  timeExtensions = [], // Add timeExtensions prop to track added time
+}) => {
+  const { score, total, percentage, questions, feedback, submissionType } =
+    results;
+
+  // Calculate total extended time (time added through extensions)
+  const totalExtendedTime = timeExtensions.reduce(
+    (sum, ext) => sum + ext.seconds,
+    0,
+  );
+
+  // Calculate actual time spent including extensions
+  const actualTimeSpent = timeSpent + totalExtendedTime;
 
   // Get correct, wrong, and unanswered question numbers
   const correctQuestions = [];
@@ -29,12 +49,13 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, 
 
   questions.forEach((q, index) => {
     const questionNumber = q.number || index + 1;
-    
+
     // Check if question was answered (userAnswer is not null/undefined and not -1)
-    const isAnswered = q.userAnswer !== null && 
-                      q.userAnswer !== undefined && 
-                      q.userAnswer !== -1;
-    
+    const isAnswered =
+      q.userAnswer !== null &&
+      q.userAnswer !== undefined &&
+      q.userAnswer !== -1;
+
     if (!isAnswered) {
       unansweredQuestions.push(questionNumber);
     } else if (q.isCorrect) {
@@ -88,11 +109,27 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, 
   };
 
   const formatTime = (seconds) => {
-    if (!seconds) return "0:00";
+    if (seconds === undefined || seconds === null || isNaN(seconds))
+      return "0s";
+    if (seconds === 0) return "0s";
+
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+
+    if (mins > 0 && secs === 0) {
+      return `${mins}m`;
+    } else if (mins > 0) {
+      return `${mins}m : ${secs.toString().padStart(2, "0")}s`;
+    } else {
+      return `${secs}s`;
+    }
   };
+
+  // Calculate time usage percentage
+  const timeUsagePercentage =
+    totalTimeLimit > 0
+      ? Math.min(100, Math.round((actualTimeSpent / totalTimeLimit) * 100))
+      : 0;
 
   const performance = getPerformanceLevel(percentage);
 
@@ -118,6 +155,15 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, 
               <Badge variant="destructive" className="flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
                 Auto-Submitted (Time Expired)
+              </Badge>
+            )}
+            {totalExtendedTime > 0 && (
+              <Badge
+                variant="outline"
+                className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1"
+              >
+                <Zap className="h-3 w-3" />
+                Time Extended: +{totalExtendedTime}s
               </Badge>
             )}
           </div>
@@ -151,44 +197,112 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, 
             <Card className="text-center p-6 border-2">
               <div className="text-5xl font-bold mb-2 flex items-center justify-center gap-2">
                 <Clock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-                {formatTime(timeSpent)}
+                {formatTime(actualTimeSpent)}
               </div>
-              <p className="text-sm text-muted-foreground">Time Spent</p>
+              <p className="text-sm text-muted-foreground">
+                Time Spent (Incl. Extensions)
+              </p>
             </Card>
 
             <Card className="text-center p-6 border-2">
               <div className="text-5xl font-bold mb-2">
-                {totalTimeLimit ? formatTime(totalTimeLimit) : '∞'}
+                {totalTimeLimit ? formatTime(totalTimeLimit) : "∞"}
               </div>
-              <p className="text-sm text-muted-foreground">Time Limit</p>
+              <p className="text-sm text-muted-foreground">
+                Original Time Limit
+              </p>
             </Card>
           </div>
 
-          {/* Time Analysis Card */}
+          {/* Enhanced Time Analysis Card */}
           <Card className="p-6 border-2">
             <div className="flex items-center gap-3 mb-4">
-              <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              <h3 className="text-xl font-semibold">Time Analysis</h3>
+              <Timer className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-xl font-semibold">Detailed Time Analysis</h3>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 border rounded-lg">
-                <div className="text-3xl font-bold">{formatTime(timeSpent)}</div>
-                <div className="text-sm text-muted-foreground">Time Spent</div>
-              </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="text-center p-4 border rounded-lg">
                 <div className="text-3xl font-bold">
-                  {totalTimeLimit ? formatTime(totalTimeLimit) : '∞'}
+                  {formatTime(actualTimeSpent)}
                 </div>
-                <div className="text-sm text-muted-foreground">Total Limit</div>
+                <div className="text-sm text-muted-foreground">
+                  Total Time Spent
+                </div>
               </div>
               <div className="text-center p-4 border rounded-lg">
                 <div className="text-3xl font-bold">
-                  {totalTimeLimit ? `${Math.round((timeSpent / totalTimeLimit) * 100)}%` : 'N/A'}
+                  {totalTimeLimit ? formatTime(totalTimeLimit) : "∞"}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Original Limit
+                </div>
+              </div>
+              {/* // In the Detailed Time Analysis section, change the 3rd card: */}
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-3xl font-bold">
+                  {formatTime(Math.max(0, actualTimeSpent - totalTimeLimit))}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Time Extended
+                </div>
+                {totalExtendedTime > 0 && (
+                  <div className="text-xs text-green-600 mt-1">
+                    {timeExtensions.length} extension(s) used
+                  </div>
+                )}
+              </div>
+              <div className="text-center p-4 border rounded-lg">
+                <div className="text-3xl font-bold">
+                  {totalTimeLimit ? `${timeUsagePercentage}%` : "N/A"}
                 </div>
                 <div className="text-sm text-muted-foreground">Time Used</div>
+                <Progress
+                  value={timeUsagePercentage}
+                  className={`h-1.5 mt-2 ${
+                    timeUsagePercentage > 90
+                      ? "bg-red-500"
+                      : timeUsagePercentage > 75
+                        ? "bg-orange-500"
+                        : timeUsagePercentage > 50
+                          ? "bg-yellow-500"
+                          : "bg-green-500"
+                  }`}
+                />
               </div>
             </div>
+
+            {/* Time extensions used */}
+            {timeExtensions.length > 0 && (
+              <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400 mb-2">
+                  <Zap className="h-4 w-4" />
+                  <span className="font-medium">Time Extensions Used:</span>
+                </div>
+                <div className="space-y-2">
+                  {timeExtensions.map((ext, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <span className="text-gray-700 dark:text-gray-300">
+                        Question {ext.questionNumber + 1}: +{ext.seconds}{" "}
+                        seconds
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {ext.timestamp
+                          ? new Date(ext.timestamp).toLocaleTimeString()
+                          : ""}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <div className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                  💡 You used time extensions to carefully consider your
+                  answers!
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Performance Stats - Now 3 columns */}
@@ -238,7 +352,9 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, 
                   <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{wrongQuestions.length}</div>
+                  <div className="text-2xl font-bold">
+                    {wrongQuestions.length}
+                  </div>
                   <div className="text-sm text-muted-foreground">
                     Wrong Answers
                   </div>
@@ -276,7 +392,9 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, 
                   <HelpCircle className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{unansweredQuestions.length}</div>
+                  <div className="text-2xl font-bold">
+                    {unansweredQuestions.length}
+                  </div>
                   <div className="text-sm text-muted-foreground">
                     Unanswered
                   </div>
@@ -311,7 +429,7 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, 
             </Card>
           </div>
 
-          {/* Feedback - Updated to include unanswered questions */}
+          {/* Feedback - Updated to include time management insights */}
           <Card className="p-6 border-2">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
@@ -325,52 +443,85 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, 
                 {feedback ||
                   `You scored ${percentage.toFixed(1)}% on this quiz.`}
               </p>
-              
+
               <div className="space-y-2">
                 {wrongQuestions.length > 0 && (
                   <div className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-red-500" />
                     <p className="text-sm">
-                      <span className="font-medium">Focus on reviewing:</span> Questions {wrongQuestions.join(", ")}
+                      <span className="font-medium">Focus on reviewing:</span>{" "}
+                      Questions {wrongQuestions.join(", ")}
                     </p>
                   </div>
                 )}
-                
+
                 {unansweredQuestions.length > 0 && (
                   <div className="flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-yellow-500" />
                     <p className="text-sm">
-                      <span className="font-medium">Unanswered questions:</span> {unansweredQuestions.join(", ")} - Practice time management
+                      <span className="font-medium">Unanswered questions:</span>{" "}
+                      {unansweredQuestions.join(", ")} - Practice time
+                      management
                     </p>
                   </div>
                 )}
-                
-                {wrongQuestions.length === 0 && unansweredQuestions.length === 0 && (
+
+                {totalExtendedTime > 0 && (
                   <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-green-500" />
-                    <p className="text-sm text-muted-foreground">
-                      Excellent work! You answered all questions correctly!
+                    <Zap className="h-4 w-4 text-blue-500" />
+                    <p className="text-sm">
+                      <span className="font-medium">Time extensions used:</span>{" "}
+                      You added {totalExtendedTime} seconds total
                     </p>
                   </div>
                 )}
+
+                {wrongQuestions.length === 0 &&
+                  unansweredQuestions.length === 0 && (
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-green-500" />
+                      <p className="text-sm text-muted-foreground">
+                        Excellent work! You answered all questions correctly!
+                      </p>
+                    </div>
+                  )}
               </div>
-              
+
               {submissionType === "auto" && (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="flex items-center gap-2 text-yellow-700">
                     <AlertCircle className="h-4 w-4" />
                     <span className="font-medium">Time Management Tip:</span>
-                    <span>Try to pace yourself better next time. Each question has a 3-minute limit.</span>
+                    <span>
+                      Try to pace yourself better next time. Each question has a
+                      3-minute limit.
+                    </span>
                   </div>
                 </div>
               )}
-              
+
               {unansweredQuestions.length > 0 && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex items-center gap-2 text-blue-700">
                     <Clock className="h-4 w-4" />
                     <span className="font-medium">Quick Tip:</span>
-                    <span>If you're running out of time, try to at least select an answer for every question.</span>
+                    <span>
+                      If you're running out of time, try to at least select an
+                      answer for every question.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {totalExtendedTime > 0 && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <Zap className="h-4 w-4" />
+                    <span className="font-medium">Smart Strategy:</span>
+                    <span>
+                      Using time extensions wisely shows good time management
+                      skills!
+                    </span>
                   </div>
                 </div>
               )}
@@ -401,12 +552,16 @@ const QuizResults = ({ results, onRetry, onDownload, timeSpent, totalTimeLimit, 
           {/* Tips - Updated */}
           <div className="text-center text-sm text-muted-foreground pt-4 border-t">
             <p>
-              📝 <strong>Pro Tip:</strong> {unansweredQuestions.length > 0 
-                ? 'Always try to answer every question, even if you have to guess!' 
-                : 'Great job answering all questions!'}
+              📝 <strong>Pro Tip:</strong>{" "}
+              {unansweredQuestions.length > 0
+                ? "Always try to answer every question, even if you have to guess!"
+                : "Great job answering all questions!"}
             </p>
             <p className="mt-1">
-              ⏰ <strong>Time Management:</strong> Practice with timers to improve your speed!
+              ⏰ <strong>Time Management:</strong>{" "}
+              {totalExtendedTime > 0
+                ? `You wisely used ${totalExtendedTime} seconds of extra time to think carefully!`
+                : "Practice with timers to improve your speed!"}
             </p>
           </div>
         </CardContent>

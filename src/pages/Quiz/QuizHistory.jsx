@@ -16,7 +16,8 @@ import {
   BarChart3,
   Eye,
   Plus,
-  Loader2, // Added Loader2 for loading spinner
+  Loader2,
+  Info, // Added Loader2 for loading spinner
 } from "lucide-react";
 import {
   Table,
@@ -208,9 +209,9 @@ const QuizHistory = () => {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-8 max-w-[1400px]">
+      <div className="container mx-auto px-4 py-4 md:py-8 max-w-[1400px]">
         {/* Header */}
-        <div className="flex justify-between mb-8 gap-4">
+        <div className="flex justify-between mb-4 md:mb-8 gap-4">
           <div>
             <Button
               variant="outline"
@@ -223,7 +224,9 @@ const QuizHistory = () => {
           </div>
           <div className="flex gap-2">
             <h1 className="text-3xl font-bold hidden md:block">Quiz</h1>
-            <h1 className="text-2xl md:text-3xl font-bold hidden md:block">History</h1>
+            <h1 className="text-2xl md:text-3xl font-bold hidden md:block">
+              History
+            </h1>
           </div>
 
           <div className="flex items-center gap-3">
@@ -514,33 +517,164 @@ const QuizHistory = () => {
         {quizzes.length > 1 && (
           <Card className="mt-8">
             <CardHeader>
-              <CardTitle>Performance Trends</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64 flex items-end gap-2">
-                {quizzes.slice(0, 10).map((quiz, index) => (
-                  <div
-                    key={index}
-                    className="flex-1 flex flex-col items-center"
-                  >
-                    <div
-                      className="w-full bg-primary rounded-t-lg transition-all hover:opacity-80"
-                      style={{
-                        height: `${(quiz.percentage || 0) * 0.6}px`,
-                        backgroundColor:
-                          quiz.percentage >= 80
-                            ? "#10b981"
-                            : quiz.percentage >= 60
-                              ? "#f59e0b"
-                              : "#ef4444",
-                      }}
-                      title={`${quiz.percentage?.toFixed(1)}% on ${format(new Date(quiz.createdAt), "MMM dd")}`}
-                    />
-                    <div className="text-xs text-muted-foreground mt-2">
-                      {format(new Date(quiz.createdAt), "MM/dd")}
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  Performance Trends
+                  <div className="relative group">
+                    <Info className="h-4 w-4 text-gray-400 cursor-help hidden md:block" />
+                    <div className="absolute left-1/2 transform -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 w-64">
+                      <p className="font-semibold mb-1">📊 Performance Chart</p>
+                      <ul className="space-y-1">
+                        <li>• Bar height = Your score percentage</li>
+                        <li>• Green: 80%+ (Excellent)</li>
+                        <li>• Yellow: 60-79% (Good)</li>
+                        <li>• Red: Below 60% (Needs Practice)</li>
+                        <li>• Hover over bars for details</li>
+                      </ul>
                     </div>
                   </div>
-                ))}
+                </CardTitle>
+                <div className="text-sm text-muted-foreground">
+                  Last {Math.min(quizzes.length, 10)} attempts
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Bar Chart with Enhanced Tooltips */}
+                <div className="h-64 flex items-end gap-2 relative">
+                  {/* Y-axis labels */}
+                  <div className="absolute left-0 top-0 bottom-0 w-8 flex flex-col justify-between text-xs text-muted-foreground">
+                    <span>100%</span>
+                    <span>80%</span>
+                    <span>60%</span>
+                    <span>40%</span>
+                    <span>20%</span>
+                    <span>0%</span>
+                  </div>
+
+                  {/* Bars */}
+                  <div className="ml-8 flex-1 flex items-end gap-2">
+                    {quizzes.slice(0, 10).map((quiz, index) => (
+                      <div
+                        key={index}
+                        className="flex-1 flex flex-col items-center group relative"
+                      >
+                        {/* Bar */}
+                        <div
+                          className="w-full rounded-t-lg transition-all duration-200 hover:opacity-90 relative"
+                          style={{
+                            height: `${(quiz.percentage || 0) * 0.6}px`,
+                            backgroundColor:
+                              quiz.percentage >= 80
+                                ? "#10b981"
+                                : quiz.percentage >= 60
+                                  ? "#f59e0b"
+                                  : "#ef4444",
+                          }}
+                        >
+                          {/* Hover Tooltip */}
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
+                            <div className="font-semibold">
+                              {quiz.percentage?.toFixed(1) || 0}%
+                            </div>
+                            <div className="text-gray-300">
+                              {format(new Date(quiz.createdAt), "MMM dd, yyyy")}
+                            </div>
+                            <div className="text-gray-300">
+                              Score: {quiz.score || 0}/
+                              {quiz.totalQuestions || 0}
+                            </div>
+                            <div className="text-gray-300">
+                              Time:{" "}
+                              {quiz.timeSpent
+                                ? `${Math.floor(quiz.timeSpent / 60)}m ${quiz.timeSpent % 60}s`
+                                : "N/A"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Date Label */}
+                        <div className="text-xs text-muted-foreground mt-2">
+                          {format(new Date(quiz.createdAt), "MM/dd")}
+                        </div>
+
+                        {/* Attempt Number */}
+                        <div className="text-xs text-gray-500 mt-1">
+                          #{quizzes.length - index}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Performance Zones Legend */}
+                <div className="flex flex-wrap items-center justify-center gap-4 text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-green-500 rounded"></div>
+                    <span className="text-gray-700">Excellent (80-100%)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                    <span className="text-gray-700">Good (60-79%)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-red-500 rounded"></div>
+                    <span className="text-gray-700">
+                      Needs Practice (0-59%)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Performance Summary */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                  {(() => {
+                    const recentQuizzes = quizzes.slice(
+                      0,
+                      Math.min(quizzes.length, 5),
+                    );
+                    const avgScore =
+                      recentQuizzes.reduce(
+                        (sum, q) => sum + (q.percentage || 0),
+                        0,
+                      ) / recentQuizzes.length;
+                    const highestScore = Math.max(
+                      ...recentQuizzes.map((q) => q.percentage || 0),
+                    );
+                    const lowestScore = Math.min(
+                      ...recentQuizzes.map((q) => q.percentage || 0),
+                    );
+
+                    return (
+                      <>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-gray-900">
+                            {avgScore.toFixed(1)}%
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Avg Score (Last 5)
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-600">
+                            {highestScore.toFixed(1)}%
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Best Score
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-red-600">
+                            {lowestScore.toFixed(1)}%
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            Lowest Score
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </CardContent>
           </Card>
