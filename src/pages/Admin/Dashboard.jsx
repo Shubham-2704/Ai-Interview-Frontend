@@ -28,8 +28,6 @@ import {
 import {
   LineChart,
   Line,
-  BarChart,
-  Bar,
   PieChart,
   Pie,
   Cell,
@@ -46,16 +44,12 @@ import {
   MessageSquare,
   BookOpen,
   Eye,
-  Edit,
-  Trash2,
   RefreshCw,
   Plus,
   TrendingUp,
   TrendingDown,
   Activity,
-  Clock,
   Target,
-  DollarSign,
   Loader2,
   Database,
   Zap,
@@ -88,6 +82,7 @@ const Dashboard = () => {
     totalSessions: 0,
     totalQuestions: 0,
     totalStudyMaterials: 0,
+    totalQuizzes: 0, // NEW: Added total quizzes
     activeUsersToday: 0,
     avgSessionTime: 0,
     sessionsPerDay: [],
@@ -163,6 +158,7 @@ const Dashboard = () => {
           totalSessions: data?.totalSessions || 0,
           totalQuestions: data?.totalQuestions || 0,
           totalStudyMaterials: data?.totalStudyMaterials || 0,
+          totalQuizzes: data?.totalQuizzes || 0, // NEW: Added total quizzes
           activeUsersToday: data?.activeUsersToday || 0,
           avgSessionTime: data?.avgSessionTime || 0,
           sessionsPerDay: Array.isArray(data?.sessionsPerDay)
@@ -191,6 +187,14 @@ const Dashboard = () => {
           console.log("First top user:", formattedData.topUsers[0]);
           console.log("First top user id:", formattedData.topUsers[0].id);
           console.log("First top user _id:", formattedData.topUsers[0]._id);
+          console.log(
+            "First top user quizzes:",
+            formattedData.topUsers[0].quizzes,
+          );
+          console.log(
+            "First top user avgQuizScore:",
+            formattedData.topUsers[0].avgQuizScore,
+          );
         }
 
         // Validate and fix sessionsPerDay data
@@ -261,6 +265,7 @@ const Dashboard = () => {
         totalSessions: 0,
         totalQuestions: 0,
         totalStudyMaterials: 0,
+        totalQuizzes: 0, // NEW: Added total quizzes
         activeUsersToday: 0,
         avgSessionTime: 0,
         sessionsPerDay: [],
@@ -519,7 +524,7 @@ const Dashboard = () => {
           icon={Users}
           trend={calculateTrend(stats.totalUsers, 1000)}
           color="text-blue-500"
-          loading={false} // Never show loading in stats cards during refresh
+          loading={false}
         />
         <StatCard
           title="Total Sessions"
@@ -539,7 +544,7 @@ const Dashboard = () => {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Questions"
           value={stats.totalQuestions}
@@ -554,6 +559,15 @@ const Dashboard = () => {
           icon={BookOpen}
           trend={calculateTrend(stats.totalStudyMaterials, 4000)}
           color="text-indigo-500"
+          loading={false}
+        />
+        {/* NEW: Total Quizzes Card */}
+        <StatCard
+          title="Total Quizzes"
+          value={stats.totalQuizzes}
+          icon={Target}
+          trend={calculateTrend(stats.totalQuizzes, 500)}
+          color="text-purple-500"
           loading={false}
         />
       </div>
@@ -652,7 +666,7 @@ const Dashboard = () => {
 
       {/* Top Users & Recent Users */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Top Performing Users */}
+        {/* Top Performing Users - UPDATED with quiz data */}
         <Card>
           <CardHeader>
             <CardTitle>Top Performing Users</CardTitle>
@@ -667,7 +681,7 @@ const Dashboard = () => {
                       <TableHead>User</TableHead>
                       <TableHead>Sessions</TableHead>
                       <TableHead>Questions</TableHead>
-                      <TableHead>Score</TableHead>
+                      <TableHead>Quizzes</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -706,16 +720,16 @@ const Dashboard = () => {
                           <Badge
                             variant="outline"
                             className={`${
-                              (user.score || 0) >= 90
+                              (user.quizzes || 0) >= 10
                                 ? "bg-green-50 text-green-700"
-                                : (user.score || 0) >= 80
+                                : (user.quizzes || 0) >= 5
                                   ? "bg-blue-50 text-blue-700"
-                                  : (user.score || 0) >= 70
+                                  : (user.quizzes || 0) >= 1
                                     ? "bg-yellow-50 text-yellow-700"
-                                    : "bg-red-50 text-red-700"
+                                    : "bg-gray-50 text-gray-700"
                             }`}
                           >
-                            {user.score ? `${user.score}%` : "N/A"}
+                            {user.quizzes || 0}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
@@ -743,7 +757,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Users */}
+        {/* Recent Users - UNCHANGED */}
         <Card>
           <CardHeader>
             <CardTitle>Recent Users</CardTitle>

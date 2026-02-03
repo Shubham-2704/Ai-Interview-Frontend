@@ -25,6 +25,9 @@ import {
   Activity,
   Loader2,
   AlertTriangle,
+  Target,
+  Trophy,
+  BarChart3,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -50,7 +53,18 @@ const UserDetails = () => {
   const [stats, setStats] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
+  // ✅ State for quiz data
+  const [quizStats, setQuizStats] = useState({
+    totalQuizzes: 0,
+    avgQuizScore: 0,
+    totalQuestionsAttempted: 0,
+    quizCompletionRate: 0,
+  });
+
+  // ✅ State for session-wise quiz data
+  const [sessionQuizzes, setSessionQuizzes] = useState({});
+
   // ✅ State for delete dialogs
   const [deleteUserDialogOpen, setDeleteUserDialogOpen] = useState(false);
   const [deleteSessionDialog, setDeleteSessionDialog] = useState({
@@ -66,26 +80,69 @@ const UserDetails = () => {
   const fetchUserDetails = async () => {
     setLoading(true);
     try {
-      const response = await axiosInstance.get(
-        API_PATHS.ADMIN.USER_DETAILS(id)
+      // Fetch basic user details
+      const userResponse = await axiosInstance.get(
+        API_PATHS.ADMIN.USER_DETAILS(id),
       );
 
-      const data = response.data;
+      const data = userResponse.data;
 
       setUser(data.user);
       setStats(data.stats);
       setSessions(data.sessions || []);
+
+      // ✅ Fetch quiz statistics separately
+      try {
+        const quizResponse = await axiosInstance.get(
+          API_PATHS.ADMIN.USER_QUIZ_STATS(id),
+        );
+
+        if (quizResponse.data) {
+          setQuizStats({
+            totalQuizzes: quizResponse.data.totalQuizzes || 0,
+            avgQuizScore: quizResponse.data.avgQuizScore || 0,
+            totalQuestionsAttempted:
+              quizResponse.data.totalQuestionsAttempted || 0,
+            quizCompletionRate: quizResponse.data.quizCompletionRate || 0,
+          });
+
+          // Set session-wise quiz data
+          if (quizResponse.data.sessionQuizzes) {
+            setSessionQuizzes(quizResponse.data.sessionQuizzes);
+          }
+        }
+      } catch (quizError) {
+        console.error("Error fetching quiz stats:", quizError);
+        // Set default values if quiz API fails
+        setQuizStats({
+          totalQuizzes: 0,
+          avgQuizScore: 0,
+          totalQuestionsAttempted: 0,
+          quizCompletionRate: 0,
+        });
+        setSessionQuizzes({});
+      }
     } catch (error) {
       console.error("Error fetching user details:", error);
       toast.error(
         error.response?.data?.detail ||
           error.response?.data?.message ||
-          "Failed to fetch user details"
+          "Failed to fetch user details",
       );
       navigate("/admin/users");
     } finally {
       setLoading(false);
     }
+  };
+
+  // ✅ Get quiz count for a specific session
+  const getSessionQuizCount = (sessionId) => {
+    return sessionQuizzes[sessionId]?.quizCount || 0;
+  };
+
+  // ✅ Get average quiz score for a specific session
+  const getSessionAvgScore = (sessionId) => {
+    return sessionQuizzes[sessionId]?.avgScore || 0;
   };
 
   const handleDeleteUser = async () => {
@@ -99,19 +156,23 @@ const UserDetails = () => {
       toast.error(
         error.response?.data?.detail ||
           error.response?.data?.message ||
-          "Failed to delete user"
+          "Failed to delete user",
       );
     }
   };
 
   const handleDeleteSession = async () => {
     const { sessionId, sessionTitle } = deleteSessionDialog;
-    
+
     try {
       await axiosInstance.delete(API_PATHS.ADMIN.DELETE_SESSION(sessionId));
       toast.success("Session deleted successfully");
-      setDeleteSessionDialog({ open: false, sessionId: null, sessionTitle: "" });
-      
+      setDeleteSessionDialog({
+        open: false,
+        sessionId: null,
+        sessionTitle: "",
+      });
+
       // Refresh user details to update the session list
       fetchUserDetails();
     } catch (error) {
@@ -119,7 +180,7 @@ const UserDetails = () => {
       toast.error(
         error.response?.data?.detail ||
           error.response?.data?.message ||
-          "Failed to delete session"
+          "Failed to delete session",
       );
     }
   };
@@ -128,11 +189,11 @@ const UserDetails = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading user details...</p>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading user details...</p>
+          </div>
         </div>
-      </div>
       </div>
     );
   }
@@ -154,7 +215,10 @@ const UserDetails = () => {
   return (
     <div className="space-y-6 p-6">
       {/* ✅ Delete User Dialog */}
-      <AlertDialog open={deleteUserDialogOpen} onOpenChange={setDeleteUserDialogOpen}>
+      <AlertDialog
+        open={deleteUserDialogOpen}
+        onOpenChange={setDeleteUserDialogOpen}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center space-x-2">
@@ -180,6 +244,7 @@ const UserDetails = () => {
                 <li>All interview sessions ({stats?.totalSessions || 0})</li>
                 <li>All questions ({stats?.totalQuestions || 0})</li>
                 <li>All study materials ({stats?.totalMaterials || 0})</li>
+                <li>All quizzes ({quizStats?.totalQuizzes || 0})</li>
               </ul>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -196,9 +261,17 @@ const UserDetails = () => {
       </AlertDialog>
 
       {/* ✅ Delete Session Dialog */}
-      <AlertDialog open={deleteSessionDialog.open} onOpenChange={(open) => {
-        if (!open) setDeleteSessionDialog({ open: false, sessionId: null, sessionTitle: "" });
-      }}>
+      <AlertDialog
+        open={deleteSessionDialog.open}
+        onOpenChange={(open) => {
+          if (!open)
+            setDeleteSessionDialog({
+              open: false,
+              sessionId: null,
+              sessionTitle: "",
+            });
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center space-x-2">
@@ -207,10 +280,15 @@ const UserDetails = () => {
             </div>
             <AlertDialogDescription className="pt-4">
               <p className="font-medium text-gray-800">
-                Are you sure you want to delete <span className="text-blue-600">"{deleteSessionDialog.sessionTitle}"</span> session?
+                Are you sure you want to delete{" "}
+                <span className="text-blue-600">
+                  "{deleteSessionDialog.sessionTitle}"
+                </span>{" "}
+                session?
               </p>
               <p className="mt-2 text-sm text-gray-600">
-                This will delete all questions and materials associated with this session.
+                This will delete all questions, materials, and quizzes
+                associated with this session.
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -246,9 +324,9 @@ const UserDetails = () => {
             <Edit className="mr-2 h-4 w-4" />
             Edit User
           </Button>
-          
+
           {/* ✅ Updated Delete Button - NO AlertDialogTrigger needed */}
-          <Button 
+          <Button
             variant="destructive"
             onClick={() => setDeleteUserDialogOpen(true)}
           >
@@ -258,7 +336,7 @@ const UserDetails = () => {
         </div>
       </div>
 
-      {/* Rest of your component remains the same */}
+      {/* User Info and Stats */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* User Info Card */}
         <Card className="lg:col-span-1">
@@ -279,9 +357,11 @@ const UserDetails = () => {
               </Avatar>
               <div className="text-center">
                 <h3 className="text-xl font-semibold">{user.name}</h3>
-                <div className="flex items-center justify-center mt-1">
+                <div className="flex justify-center mt-1">
                   <Mail className="mr-2 h-4 w-4 text-gray-500" />
-                  <span className="text-gray-600">{user.email}</span>
+                  <span className="text-gray-600 text-sm w-auto text-wrap break-all">
+                    {user.email}
+                  </span>
                 </div>
                 <div className="mt-2">
                   <Badge
@@ -289,8 +369,8 @@ const UserDetails = () => {
                       user.role === "admin"
                         ? "bg-red-100 text-red-800"
                         : user.role === "moderator"
-                        ? "bg-purple-100 text-purple-800"
-                        : "bg-blue-100 text-blue-800"
+                          ? "bg-purple-100 text-purple-800"
+                          : "bg-blue-100 text-blue-800"
                     }
                   >
                     <Shield className="mr-1 h-3 w-3" />
@@ -335,7 +415,7 @@ const UserDetails = () => {
           </CardContent>
         </Card>
 
-        {/* Stats Card */}
+        {/* Stats Card - UPDATED with quiz stats */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>User Statistics</CardTitle>
@@ -344,7 +424,7 @@ const UserDetails = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <Card>
                 <CardContent className="pt-6">
                   <div className="text-center">
@@ -380,15 +460,21 @@ const UserDetails = () => {
                   </div>
                 </CardContent>
               </Card>
+              {/* ✅ New Quiz Stats Card */}
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <Target className="h-8 w-8 mx-auto text-red-500" />
+                    <div className="mt-2 text-2xl font-bold">
+                      {quizStats?.totalQuizzes || 0}
+                    </div>
+                    <p className="text-sm text-gray-500">Total Quizzes</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <div className="space-y-1">
-                <p className="text-sm text-gray-500">Completion Rate</p>
-                <p className="text-2xl font-bold">
-                  {stats?.completionRate || 0}%
-                </p>
-              </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-3 text-center">
               <div className="space-y-1">
                 <p className="text-sm text-gray-500">Avg Questions/Session</p>
                 <p className="text-2xl font-bold">
@@ -403,16 +489,78 @@ const UserDetails = () => {
                     : "Never"}
                 </p>
               </div>
+              {/* ✅ New Quiz Average Score */}
+              <div className="space-y-1">
+                <p className="text-sm text-gray-500">Avg Quiz Score</p>
+                <p className="text-2xl font-bold">
+                  {quizStats?.avgQuizScore || 0}%
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Sessions */}
+      {/* ✅ Quiz Statistics Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quiz Performance</CardTitle>
+          <CardDescription>
+            User's quiz statistics and performance
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6 md:grid-cols-4">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mb-2">
+                <Target className="h-6 w-6 text-blue-600" />
+              </div>
+              <p className="text-3xl font-bold">
+                {quizStats?.totalQuizzes || 0}
+              </p>
+              <p className="text-sm text-gray-500">Total Quizzes Taken</p>
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-2">
+                <Trophy className="h-6 w-6 text-green-600" />
+              </div>
+              <p className="text-3xl font-bold">
+                {quizStats?.avgQuizScore || 0}%
+              </p>
+              <p className="text-sm text-gray-500">Average Score</p>
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-purple-100 mb-2">
+                <BarChart3 className="h-6 w-6 text-purple-600" />
+              </div>
+              <p className="text-3xl font-bold">
+                {quizStats?.totalQuestionsAttempted || 0}
+              </p>
+              <p className="text-sm text-gray-500">Questions Attempted</p>
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 mb-2">
+                <Activity className="h-6 w-6 text-yellow-600" />
+              </div>
+              <p className="text-3xl font-bold">
+                {quizStats?.quizCompletionRate || 0}%
+              </p>
+              <p className="text-sm text-gray-500">Completion Rate</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Recent Sessions - UPDATED with quiz data */}
       <Card>
         <CardHeader>
           <CardTitle>Recent Sessions</CardTitle>
-          <CardDescription>User's recent interview sessions</CardDescription>
+          <CardDescription>
+            User's recent interview sessions with quiz data
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {sessions.length === 0 ? (
@@ -422,46 +570,68 @@ const UserDetails = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {sessions.slice(0, 5).map((session) => (
-                <Card key={session.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="font-medium">
-                          {session.role} Interview
-                        </h4>
-                        <p className="text-sm text-gray-500">
-                          {format(new Date(session.createdAt), "MMM dd, yyyy")}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <Badge variant="outline">
-                          {session.questionCount || 0} Questions
-                        </Badge>
-                        <Badge variant="outline">
-                          {session.materialCount || 0} Materials
-                        </Badge>
-                        <div className="flex items-center space-x-2">
-                          {/* ✅ Updated Delete Session Button */}
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              setDeleteSessionDialog({
-                                open: true,
-                                sessionId: session.id,
-                                sessionTitle: session.role,
-                              })
+              {sessions.slice(0, 5).map((session) => {
+                const sessionQuizCount = getSessionQuizCount(session.id);
+                const sessionAvgScore = getSessionAvgScore(session.id);
+
+                return (
+                  <Card key={session.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-medium">
+                            {session.role} Interview
+                          </h4>
+                          <p className="text-sm text-gray-500">
+                            {format(
+                              new Date(session.createdAt),
+                              "MMM dd, yyyy",
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <Badge variant="outline">
+                            {session.questionCount || 0} Questions
+                          </Badge>
+                          <Badge variant="outline">
+                            {session.materialCount || 0} Materials
+                          </Badge>
+                          {/* ✅ Session Quiz Count Badge */}
+                          <Badge
+                            variant="outline"
+                            className={
+                              sessionQuizCount > 0
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-gray-50 text-gray-700"
                             }
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            <Target className="mr-1 h-3 w-3" />
+                            {sessionQuizCount} Quizzes
+                            {sessionAvgScore > 0 &&
+                              ` (${sessionAvgScore}% avg)`}
+                          </Badge>
+                          <div className="flex items-center space-x-2">
+                            {/* ✅ Delete Session Button */}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() =>
+                                setDeleteSessionDialog({
+                                  open: true,
+                                  sessionId: session.id,
+                                  sessionTitle: session.role,
+                                })
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           )}
         </CardContent>
