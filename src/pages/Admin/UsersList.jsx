@@ -46,6 +46,7 @@ import {
   CheckCircle,
   XCircle,
   Loader2,
+  Target,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -58,13 +59,14 @@ const UsersList = () => {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState({
     totalUsers: 0,
-    roleDistribution: { user: 0, admin: 0},
+    roleDistribution: { user: 0, admin: 0 },
     activeUsers: 0,
     inactiveUsers: 0,
     newUsersThisWeek: 0,
     avgSessionsPerUser: 0,
     avgQuestionsPerUser: 0,
     avgMaterialsPerUser: 0,
+    avgQuizzesPerUser: 0, // NEW
   });
   const [loading, setLoading] = useState(true);
   const [usersLoading, setUsersLoading] = useState(true);
@@ -94,7 +96,7 @@ const UsersList = () => {
       toast.error(
         error.response?.data?.detail ||
           error.response?.data?.message ||
-          "Failed to load user statistics"
+          "Failed to load user statistics",
       );
     }
   };
@@ -108,28 +110,54 @@ const UsersList = () => {
           pagination.limit,
           searchTerm,
           roleFilter,
-          statusFilter
-        )
+          statusFilter,
+        ),
       );
 
       // Direct access to response data
       const result = response.data;
 
-      setUsers(result.users || []);
+      // Fetch quiz data for each user
+      const usersWithQuizData = await Promise.all(
+        (result.users || []).map(async (user) => {
+          try {
+            const quizResponse = await axiosInstance.get(
+              API_PATHS.ADMIN.USER_QUIZ_STATS(user.id),
+            );
+            return {
+              ...user,
+              quizCount: quizResponse.data?.totalQuizzes || 0,
+              avgQuizScore: quizResponse.data?.avgQuizScore || 0,
+            };
+          } catch (quizError) {
+            console.error(
+              `Error fetching quiz data for user ${user.id}:`,
+              quizError,
+            );
+            return {
+              ...user,
+              quizCount: 0,
+              avgQuizScore: 0,
+            };
+          }
+        }),
+      );
+
+      setUsers(usersWithQuizData || []);
       setPagination(
         result.pagination || {
           page: 1,
           limit: 10,
           total: result.users?.length || 0,
           pages: 1,
-        }
+        },
       );
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error(
         error.response?.data?.detail ||
           error.response?.data?.message ||
-          "Failed to load users"
+          "Failed to load users",
       );
 
       // Fallback to mock data for development
@@ -138,16 +166,18 @@ const UsersList = () => {
           id: `user-${i + 1}`,
           name: `User ${i + 1}`,
           email: `user${i + 1}@example.com`,
-          role: i % 3 === 0 ? "admin" : i % 3 === 1 ,
+          role: i % 3 === 0 ? "admin" : "user",
           sessions: Math.floor(Math.random() * 100),
           questions: Math.floor(Math.random() * 500),
           materials: Math.floor(Math.random() * 200),
+          quizCount: Math.floor(Math.random() * 50), // NEW
+          avgQuizScore: Math.floor(Math.random() * 100), // NEW
           isActive: i % 5 !== 0,
           createdAt: new Date(
-            Date.now() - Math.random() * 31536000000
+            Date.now() - Math.random() * 31536000000,
           ).toISOString(),
           lastLogin: new Date(
-            Date.now() - Math.random() * 86400000
+            Date.now() - Math.random() * 86400000,
           ).toISOString(),
         }));
         setUsers(mockUsers);
@@ -178,7 +208,7 @@ const UsersList = () => {
       toast.error(
         error.response?.data?.detail ||
           error.response?.data?.message ||
-          "Failed to delete user"
+          "Failed to delete user",
       );
     }
   };
@@ -189,7 +219,7 @@ const UsersList = () => {
         API_PATHS.ADMIN.USERS_LIST(1, 1000), // Get all users for export
         {
           responseType: "blob", // Important for file download
-        }
+        },
       );
 
       // Create download link
@@ -198,7 +228,7 @@ const UsersList = () => {
       link.href = url;
       link.setAttribute(
         "download",
-        `users-export-${format(new Date(), "yyyy-MM-dd")}.csv`
+        `users-export-${format(new Date(), "yyyy-MM-dd")}.csv`,
       );
       document.body.appendChild(link);
       link.click();
@@ -241,6 +271,19 @@ const UsersList = () => {
       )}
     </Badge>
   );
+
+  const QuizScoreBadge = ({ score }) => {
+    let className = "bg-gray-100 text-gray-800";
+    if (score >= 90) className = "bg-green-100 text-green-800";
+    else if (score >= 80) className = "bg-blue-100 text-blue-800";
+    else if (score >= 70) className = "bg-yellow-100 text-yellow-800";
+    else if (score >= 60) className = "bg-orange-100 text-orange-800";
+    else if (score > 0) className = "bg-red-100 text-red-800";
+
+    return (
+      <Badge className={className}>{score > 0 ? `${score}%` : "N/A"}</Badge>
+    );
+  };
 
   return (
     <div className="space-y-6 p-6">
@@ -316,6 +359,7 @@ const UsersList = () => {
       </Card>
 
       {/* Users Table */}
+      {/* Users Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Users</CardTitle>
@@ -324,131 +368,163 @@ const UsersList = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Sessions</TableHead>
-                  <TableHead>Questions</TableHead>
-                  <TableHead>Materials</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {usersLoading ? (
+          {/* Scrollable container - ADD THIS WRAPPER */}
+          <div className="relative overflow-x-auto rounded-lg border">
+            <div className="min-w-[1000px] md:min-w-0">
+              {" "}
+              {/* Responsive min-width */}
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
-                      <p className="mt-2 text-gray-500">Loading users...</p>
-                    </TableCell>
+                    <TableHead className="whitespace-nowrap">User</TableHead>
+                    <TableHead className="whitespace-nowrap">Role</TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      Sessions
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      Questions
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      Materials
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">Quizzes</TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      Quiz Score
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    <TableHead className="whitespace-nowrap">Joined</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">
+                      Actions
+                    </TableHead>
                   </TableRow>
-                ) : users.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <p className="text-gray-500">No users found</p>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  users.map((user) => (
-                    <TableRow key={user.id} className="hover:bg-gray-50">
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <Avatar>
-                            <AvatarImage
-                              src={
-                                user.profileImageUrl ||
-                                `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
-                              }
-                            />
-                            <AvatarFallback>
-                              {user.name?.charAt(0) || "U"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">
-                              {user.name || "Unknown User"}
-                            </div>
-                            <div className="text-sm text-gray-500 flex items-center">
-                              <Mail className="mr-1 h-3 w-3" />
-                              {user.email || "No email"}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <RoleBadge role={user.role || "user"} />
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {user.sessionCount || 0}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {user.questionCount || 0}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {user.materialCount || 0}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <StatusBadge isActive={user.isActive !== false} />
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center">
-                          <Calendar className="mr-1 h-3 w-3 text-gray-500" />
-                          {user.createdAt
-                            ? format(new Date(user.createdAt), "MMM dd, yyyy")
-                            : "N/A"}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem className="cursor-pointer"
-                              onClick={() =>
-                                navigate(`/admin/users/${user.id}`)
-                              }
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer"
-                              onClick={() =>
-                                navigate(`/admin/users/${user.id}/edit`)
-                              }
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit User
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600 cursor-pointer"
-                              onClick={() =>
-                                handleDeleteUser(user.id, user.name)
-                              }
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete User
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                </TableHeader>
+                <TableBody>
+                  {usersLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
+                        <p className="mt-2 text-gray-500">Loading users...</p>
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={10} className="text-center py-8">
+                        <p className="text-gray-500">No users found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.map((user) => (
+                      <TableRow key={user.id} className="hover:bg-gray-50">
+                        {/* REMOVE overflow-x-auto from here */}
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <Avatar>
+                              <AvatarImage
+                                src={
+                                  user.profileImageUrl ||
+                                  `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
+                                }
+                              />
+                              <AvatarFallback>
+                                {user.name?.charAt(0) || "U"}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-medium w-20 truncate">
+                                {user.name || "Unknown User"}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <RoleBadge role={user.role || "user"} />
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {user.sessionCount || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {user.questionCount || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {user.materialCount || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              user.quizCount > 0
+                                ? "bg-purple-50 text-purple-700 border-purple-200"
+                                : "bg-gray-50 text-gray-700"
+                            }
+                          >
+                            <Target className="mr-1 h-3 w-3" />
+                            {user.quizCount || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <QuizScoreBadge score={user.avgQuizScore || 0} />
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge isActive={user.isActive !== false} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Calendar className="mr-1 h-3 w-3 text-gray-500" />
+                            {user.createdAt
+                              ? format(new Date(user.createdAt), "MMM dd, yyyy")
+                              : "N/A"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={() =>
+                                  navigate(`/admin/users/${user.id}`)
+                                }
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="cursor-pointer"
+                                onClick={() =>
+                                  navigate(`/admin/users/${user.id}/edit`)
+                                }
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit User
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-red-600 cursor-pointer"
+                                onClick={() =>
+                                  handleDeleteUser(user.id, user.name)
+                                }
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           {/* Pagination */}
@@ -566,6 +642,10 @@ const UsersList = () => {
                 <Badge variant="outline">
                   {stats.avgMaterialsPerUser || 0}
                 </Badge>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Avg Quizzes/User</span>
+                <Badge variant="outline">{stats.avgQuizzesPerUser || 0}</Badge>
               </div>
             </div>
           </CardContent>

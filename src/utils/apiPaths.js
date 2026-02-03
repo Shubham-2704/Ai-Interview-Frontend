@@ -54,7 +54,7 @@ export const API_PATHS = {
     DELETE: (materialId) => `/study-materials/${materialId}`,
   },
 
-   ADMIN: {
+  ADMIN: {
     DASHBOARD_STATS: (period = "7d") =>
       `/admin/dashboard/stats?period=${period}`,
     USERS_LIST: (
@@ -62,7 +62,7 @@ export const API_PATHS = {
       limit = 20,
       search = "",
       role = "all",
-      status = "all"
+      status = "all",
     ) =>
       `/admin/users?page=${page}&limit=${limit}&search=${search}&role=${role}&status=${status}`,
     USER_DETAILS: (userId) => `/admin/users/${userId}`,
@@ -78,8 +78,13 @@ export const API_PATHS = {
     CREATE_USER: "/admin/users", // For creating new users
     SESSION_DETAILS: (sessionId) => `/admin/sessions/${sessionId}`,
     SESSION_QUESTIONS: (sessionId) => `/admin/sessions/${sessionId}/questions`,
-    SESSION_STUDY_MATERIALS: (sessionId) => `/admin/sessions/${sessionId}/study-materials`,
-    STUDY_MATERIALS_BY_QUESTION: (questionId) => `/admin/study-materials/question/${questionId}`,
+    SESSION_STUDY_MATERIALS: (sessionId) =>
+      `/admin/sessions/${sessionId}/study-materials`,
+    STUDY_MATERIALS_BY_QUESTION: (questionId) =>
+      `/admin/study-materials/question/${questionId}`,
+    USER_QUIZ_STATS: (userId) => `/admin/users/${userId}/quiz-stats`,
+    SESSION_QUIZZES: (sessionId) => `/admin/sessions/${sessionId}/quizzes`,
+    QUIZ_DETAILS: (quizId) => `/admin/quizzes/${quizId}`,
   },
 
   SYSTEM: {
