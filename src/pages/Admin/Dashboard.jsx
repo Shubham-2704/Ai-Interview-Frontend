@@ -307,13 +307,13 @@ const Dashboard = () => {
     suffix = "",
     loading: cardLoading = false,
   }) => (
-    <Card className="hover:shadow-lg transition-shadow duration-300">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-gray-500">
+    <Card className="hover:shadow-lg transition-shadow duration-300 h-full min-h-[120px] sm:min-h-[140px] overflow-hidden">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-sm font-medium text-gray-500 truncate">
           {title}
         </CardTitle>
-        <div className={`p-2 rounded-lg ${color} bg-opacity-10`}>
-          <Icon className={`h-5 w-5 ${color}`} />
+        <div className={`p-2 rounded-lg ${color} bg-opacity-10 shrink-0`}>
+          <Icon className={`h-4 w-4 sm:h-5 sm:w-5 ${color}`} />
         </div>
       </CardHeader>
       <CardContent>
@@ -324,7 +324,7 @@ const Dashboard = () => {
           </div>
         ) : (
           <>
-            <div className="text-2xl font-bold">
+            <div className="text-xl sm:text-2xl md:text-3xl font-bold truncate">
               {prefix}
               {typeof value === "number" &&
               title !== "Avg Session Time" &&
@@ -338,9 +338,9 @@ const Dashboard = () => {
             {trend !== undefined && (
               <div className="flex items-center text-xs mt-2">
                 {trend > 0 ? (
-                  <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-500 mr-1" />
                 ) : (
-                  <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+                  <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-500 mr-1" />
                 )}
                 <span className={trend > 0 ? "text-green-500" : "text-red-500"}>
                   {Math.abs(trend)}% from last week
@@ -354,7 +354,10 @@ const Dashboard = () => {
   );
 
   const UserStatusBadge = ({ isActive }) => (
-    <Badge variant={isActive ? "default" : "secondary"} className="ml-2">
+    <Badge
+      variant={isActive ? "default" : "secondary"}
+      className="ml-2 text-xs"
+    >
       {isActive ? "Active" : "Inactive"}
     </Badge>
   );
@@ -367,7 +370,9 @@ const Dashboard = () => {
     };
 
     return (
-      <Badge className={roleColors[role] || "bg-gray-100 text-gray-800"}>
+      <Badge
+        className={`${roleColors[role] || "bg-gray-100 text-gray-800"} text-xs`}
+      >
         {role}
       </Badge>
     );
@@ -392,15 +397,17 @@ const Dashboard = () => {
     return (
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-gray-600">{label}</span>
-          <span className="font-medium">
+          <span className="text-gray-600 truncate text-xs sm:text-sm">
+            {label}
+          </span>
+          <span className="font-medium text-xs sm:text-sm">
             {typeof value === "number" ? value.toLocaleString() : value}
             {unit}
           </span>
         </div>
         <Progress
           value={percentage}
-          className="h-2"
+          className="h-1.5 sm:h-2"
           indicatorClassName={colorClasses[color]}
         />
       </div>
@@ -451,30 +458,30 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 w-full overflow-x-hidden">
+      {/* Header - FIXED: Prevent cutting off */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">
             Admin Dashboard
           </h1>
-          <p className="text-gray-500">
+          <p className="text-gray-500 text-sm sm:text-base truncate">
             Welcome back! Here's what's happening with your platform.
             {lastUpdated && !refreshing && (
-              <span className="ml-2 text-sm text-green-600">
+              <span className="ml-2 text-xs sm:text-sm text-green-600">
                 • Updated: {lastUpdated.toLocaleTimeString()}
               </span>
             )}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <Select
             value={timeRange}
             onValueChange={setTimeRange}
             disabled={refreshing}
           >
-            <SelectTrigger className="w-32">
-              <Calendar className="mr-2 h-4 w-4" />
+            <SelectTrigger className="w-full sm:w-32">
+              <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
               <SelectValue placeholder="Time Range" />
             </SelectTrigger>
             <SelectContent>
@@ -490,17 +497,17 @@ const Dashboard = () => {
             variant="outline"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="relative min-w-[100px]"
+            className="flex-1 sm:flex-none relative min-w-0 sm:min-w-[100px] h-9 sm:h-10"
           >
             {refreshing ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Refreshing
+                <Loader2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                <span className="text-xs sm:text-sm truncate">Refreshing</span>
               </>
             ) : (
               <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh
+                <RefreshCw className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="text-xs sm:text-sm truncate">Refresh</span>
               </>
             )}
           </Button>
@@ -508,16 +515,17 @@ const Dashboard = () => {
           <Button
             onClick={() => navigate("/admin/users/create")}
             disabled={refreshing}
-            className={refreshing ? "opacity-50 cursor-not-allowed" : ""}
+            className={`flex-1 sm:flex-none h-9 sm:h-10 text-xs sm:text-sm ${refreshing ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            <Plus className="mr-2 h-4 w-4" />
-            Add User
+            <Plus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden xs:inline truncate">Add User</span>
+            <span className="xs:hidden">Add</span>
           </Button>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* Stats Grid - FIXED: Better mobile layout */}
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 xs:grid-cols-2 md:grid-cols-3 w-full">
         <StatCard
           title="Total Users"
           value={stats.totalUsers}
@@ -542,9 +550,6 @@ const Dashboard = () => {
           color="text-yellow-500"
           loading={false}
         />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title="Total Questions"
           value={stats.totalQuestions}
@@ -572,33 +577,42 @@ const Dashboard = () => {
         />
       </div>
 
-      {/* Charts Section */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+      {/* Charts Section - FIXED: Better mobile handling */}
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-7 w-full">
         {/* Sessions Chart */}
-        <Card className="lg:col-span-4">
+        <Card className="lg:col-span-4 w-full overflow-hidden">
           <CardHeader>
-            <CardTitle>Sessions Activity</CardTitle>
-            <CardDescription>Last 7 days overview</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">
+              Sessions Activity
+            </CardTitle>
+            <CardDescription className="text-sm sm:text-base">
+              Last 7 days overview
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
+            <div className="h-64 sm:h-80 w-full">
               {stats.sessionsPerDay.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={stats.sessionsPerDay}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" />
-                    <YAxis />
+                    <XAxis
+                      dataKey="day"
+                      fontSize={12}
+                      tick={{ fontSize: 10 }}
+                    />
+                    <YAxis fontSize={12} tick={{ fontSize: 10 }} />
                     <Tooltip
                       labelFormatter={(label) => `Day: ${label}`}
                       formatter={(value) => [`${value} sessions`, "Sessions"]}
+                      contentStyle={{ fontSize: "12px" }}
                     />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: "12px" }} />
                     <Line
                       type="monotone"
                       dataKey="sessions"
                       stroke="#3b82f6"
                       strokeWidth={2}
-                      activeDot={{ r: 8 }}
+                      activeDot={{ r: 6 }}
                       name="Sessions"
                     />
                   </LineChart>
@@ -613,13 +627,15 @@ const Dashboard = () => {
         </Card>
 
         {/* Users by Role Chart */}
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3 w-full overflow-hidden">
           <CardHeader>
-            <CardTitle>Users by Role</CardTitle>
-            <CardDescription>Distribution of user roles</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Users by Role</CardTitle>
+            <CardDescription className="text-sm sm:text-base">
+              Distribution of user roles
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
+            <div className="h-64 sm:h-80 w-full">
               {Object.keys(stats.usersByRole).length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -636,7 +652,8 @@ const Dashboard = () => {
                       label={({ name, percent }) =>
                         `${name}: ${(percent * 100).toFixed(0)}%`
                       }
-                      outerRadius={80}
+                      outerRadius={60}
+                      innerRadius={30}
                       fill="#8884d8"
                       dataKey="value"
                     >
@@ -651,7 +668,9 @@ const Dashboard = () => {
                     </Pie>
                     <Tooltip
                       formatter={(value, name) => [`${value} users`, name]}
+                      contentStyle={{ fontSize: "12px" }}
                     />
+                    <Legend wrapperStyle={{ fontSize: "12px" }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -665,61 +684,79 @@ const Dashboard = () => {
       </div>
 
       {/* Top Users & Recent Users */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Top Performing Users - UPDATED with quiz data */}
-        <Card>
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 w-full">
+        {/* Top Performing Users */}
+        <Card className="w-full overflow-hidden">
           <CardHeader>
-            <CardTitle>Top Performing Users</CardTitle>
-            <CardDescription>Users with highest engagement</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">
+              Top Performing Users
+            </CardTitle>
+            <CardDescription className="text-sm sm:text-base">
+              Users with highest engagement
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {stats.topUsers.length > 0 ? (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Sessions</TableHead>
-                      <TableHead>Questions</TableHead>
-                      <TableHead>Quizzes</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="text-xs sm:text-sm min-w-[120px]">
+                        User
+                      </TableHead>
+                      <TableHead className="text-xs sm:text-sm">
+                        Sessions
+                      </TableHead>
+                      <TableHead className="text-xs sm:text-sm">
+                        Questions
+                      </TableHead>
+                      <TableHead className="text-xs sm:text-sm">
+                        Quizzes
+                      </TableHead>
+                      <TableHead className="text-right text-xs sm:text-sm">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {stats.topUsers.map((user, index) => (
+                    {stats.topUsers.slice(0, 5).map((user, index) => (
                       <TableRow key={user.id || index}>
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <Avatar>
+                        <TableCell className="py-2">
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <Avatar className="h-7 w-7 sm:h-8 sm:w-8 shrink-0">
                               <AvatarImage src={user.profileImageUrl} />
-                              <AvatarFallback>
+                              <AvatarFallback className="text-xs">
                                 {user.name?.charAt(0) || "U"}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <div className="font-medium">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-xs sm:text-sm truncate">
                                 {user.name || "Unknown User"}
                               </div>
-                              <div className="text-sm text-gray-500">
+                              <div className="text-xs text-gray-500 truncate hidden sm:block">
                                 {user.email || "No email"}
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <div className="flex items-center">
-                            <span className="mr-2">{user.sessions || 0}</span>
+                            <span className="mr-2 text-xs sm:text-sm">
+                              {user.sessions || 0}
+                            </span>
                             <Progress
                               value={((user.sessions || 0) / 50) * 100}
-                              className="w-20"
+                              className="w-12 sm:w-20 h-1.5 sm:h-2"
                             />
                           </div>
                         </TableCell>
-                        <TableCell>{user.questions || 0}</TableCell>
-                        <TableCell>
+                        <TableCell className="py-2 text-xs sm:text-sm">
+                          {user.questions || 0}
+                        </TableCell>
+                        <TableCell className="py-2">
                           <Badge
                             variant="outline"
-                            className={`${
+                            className={`text-xs ${
                               (user.quizzes || 0) >= 10
                                 ? "bg-green-50 text-green-700"
                                 : (user.quizzes || 0) >= 5
@@ -732,7 +769,7 @@ const Dashboard = () => {
                             {user.quizzes || 0}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="py-2 text-right">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -740,8 +777,9 @@ const Dashboard = () => {
                               navigate(`/admin/users/${user.id || "1"}`)
                             }
                             disabled={refreshing}
+                            className="h-7 w-7 p-0"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -757,63 +795,74 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Recent Users - UNCHANGED */}
-        <Card>
+        {/* Recent Users */}
+        <Card className="w-full overflow-hidden">
           <CardHeader>
-            <CardTitle>Recent Users</CardTitle>
-            <CardDescription>Newly registered users</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Recent Users</CardTitle>
+            <CardDescription className="text-sm sm:text-base">
+              Newly registered users
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {stats.recentUsers.length > 0 ? (
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Joined</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead className="text-xs sm:text-sm min-w-[120px]">
+                        User
+                      </TableHead>
+                      <TableHead className="text-xs sm:text-sm">Role</TableHead>
+                      <TableHead className="text-xs sm:text-sm">
+                        Status
+                      </TableHead>
+                      <TableHead className="text-xs sm:text-sm">
+                        Joined
+                      </TableHead>
+                      <TableHead className="text-right text-xs sm:text-sm">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {stats.recentUsers.slice(0, 5).map((user, index) => (
                       <TableRow key={user.id || index}>
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <Avatar>
+                        <TableCell className="py-2">
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <Avatar className="h-7 w-7 sm:h-8 sm:w-8 shrink-0">
                               <AvatarImage src={user.profileImageUrl} />
-                              <AvatarFallback>
+                              <AvatarFallback className="text-xs">
                                 {user.name?.charAt(0) || "U"}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <div className="font-medium">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-xs sm:text-sm truncate">
                                 {user.name || "Unknown User"}
                               </div>
-                              <div className="text-sm text-gray-500">
+                              <div className="text-xs text-gray-500 truncate hidden sm:block">
                                 {user.email || "No email"}
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <RoleBadge role={user.role || "user"} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <UserStatusBadge isActive={user.isActive || false} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2 text-xs sm:text-sm">
                           {user.joined || format(new Date(), "MMM dd")}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="py-2 text-right">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => navigate(`/admin/users/${user.id}`)}
                             disabled={refreshing}
+                            className="h-7 w-7 p-0"
                           >
-                            <Eye className="h-4 w-4" />
+                            <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -831,30 +880,34 @@ const Dashboard = () => {
       </div>
 
       {/* System Status */}
-      <Card>
+      <Card className="w-full overflow-hidden">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>System Status</CardTitle>
-              <CardDescription>Current platform health metrics</CardDescription>
+          <div className="flex items-center justify-between w-full">
+            <div className="min-w-0">
+              <CardTitle className="text-lg sm:text-xl truncate">
+                System Status
+              </CardTitle>
+              <CardDescription className="text-sm sm:text-base truncate">
+                Current platform health metrics
+              </CardDescription>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="h-8 w-8"
+              className="h-7 w-7 sm:h-8 sm:w-8 shrink-0"
             >
               <RefreshCw
-                className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                className={`h-3 w-3 sm:h-4 sm:w-4 ${refreshing ? "animate-spin" : ""}`}
               />
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-4 sm:gap-6 md:grid-cols-3 w-full">
             {/* Performance Column */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <h3 className="text-sm font-semibold text-gray-700">
                 Performance
               </h3>
@@ -864,10 +917,10 @@ const Dashboard = () => {
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="space-y-2">
                       <div className="flex justify-between">
-                        <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
-                        <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
+                        <div className="h-3 sm:h-4 bg-gray-200 rounded w-20 sm:w-24 animate-pulse"></div>
+                        <div className="h-3 sm:h-4 bg-gray-200 rounded w-10 sm:w-12 animate-pulse"></div>
                       </div>
-                      <div className="h-2 bg-gray-200 rounded-full w-full animate-pulse"></div>
+                      <div className="h-1.5 sm:h-2 bg-gray-200 rounded-full w-full animate-pulse"></div>
                     </div>
                   ))}
                 </div>
@@ -899,7 +952,7 @@ const Dashboard = () => {
             </div>
 
             {/* Resources Column */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <h3 className="text-sm font-semibold text-gray-700">Resources</h3>
               {refreshing ? (
                 // Skeleton for Resources
@@ -907,10 +960,10 @@ const Dashboard = () => {
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="space-y-2">
                       <div className="flex justify-between">
-                        <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
-                        <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
+                        <div className="h-3 sm:h-4 bg-gray-200 rounded w-24 sm:w-28 animate-pulse"></div>
+                        <div className="h-3 sm:h-4 bg-gray-200 rounded w-10 sm:w-12 animate-pulse"></div>
                       </div>
-                      <div className="h-2 bg-gray-200 rounded-full w-full animate-pulse"></div>
+                      <div className="h-1.5 sm:h-2 bg-gray-200 rounded-full w-full animate-pulse"></div>
                     </div>
                   ))}
                 </div>
@@ -940,7 +993,7 @@ const Dashboard = () => {
             </div>
 
             {/* Quick Actions Column */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <h3 className="text-sm font-semibold text-gray-700">
                 Quick Actions
               </h3>
@@ -954,8 +1007,8 @@ const Dashboard = () => {
                       className="w-full justify-start"
                       disabled
                     >
-                      <div className="h-4 w-4 bg-gray-200 rounded mr-2 animate-pulse"></div>
-                      <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
+                      <div className="h-3 w-3 sm:h-4 sm:w-4 bg-gray-200 rounded mr-2 animate-pulse"></div>
+                      <div className="h-3 sm:h-4 bg-gray-200 rounded w-full animate-pulse"></div>
                     </Button>
                   ))}
                 </div>
@@ -963,30 +1016,30 @@ const Dashboard = () => {
                 <div className="space-y-2">
                   <Button
                     variant="outline"
-                    className="w-full justify-start"
+                    className="w-full justify-start text-xs sm:text-sm"
                     onClick={() => navigate("/admin/users")}
                     disabled={refreshing}
                   >
-                    <Users className="mr-2 h-4 w-4" />
-                    Manage Users
+                    <Users className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="truncate">Manage Users</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full justify-start"
+                    className="w-full justify-start text-xs sm:text-sm"
                     onClick={() => navigate("/admin/sessions")}
                     disabled={refreshing}
                   >
-                    <FileText className="mr-2 h-4 w-4" />
-                    View Sessions
+                    <FileText className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="truncate">View Sessions</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full justify-start"
+                    className="w-full justify-start text-xs sm:text-sm"
                     onClick={() => navigate("/admin/analytics")}
                     disabled={refreshing}
                   >
-                    <Shield className="mr-2 h-4 w-4" />
-                    System Analytics
+                    <Shield className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="truncate">System Analytics</span>
                   </Button>
                 </div>
               )}
@@ -994,6 +1047,50 @@ const Dashboard = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Global CSS for mobile zoom issues */}
+      <style jsx global>{`
+        /* Prevent zoom on mobile */
+        @media screen and (max-width: 768px) {
+          html {
+            -webkit-text-size-adjust: 100%;
+            -moz-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            text-size-adjust: 100%;
+          }
+
+          /* Fix for zoom causing layout issues */
+          body {
+            touch-action: pan-y;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          /* Prevent horizontal scrolling */
+          .overflow-x-hidden {
+            overflow-x: hidden !important;
+          }
+
+          /* Ensure cards fit within viewport */
+          .min-h-\[120px\] {
+            min-height: 120px !important;
+          }
+        }
+
+        /* Fix for very small screens */
+        @media screen and (max-width: 320px) {
+          .text-xs {
+            font-size: 0.7rem !important;
+          }
+
+          .h-7 {
+            height: 1.5rem !important;
+          }
+
+          .w-7 {
+            width: 1.5rem !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
