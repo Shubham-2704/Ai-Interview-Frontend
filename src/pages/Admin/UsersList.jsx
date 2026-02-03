@@ -47,6 +47,8 @@ import {
   XCircle,
   Loader2,
   Target,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -243,74 +245,101 @@ const UsersList = () => {
 
   const RoleBadge = ({ role }) => {
     const roleConfig = {
-      admin: { label: "Admin", className: "bg-red-100 text-red-800" },
-      user: { label: "User", className: "bg-blue-100 text-blue-800" },
+      admin: {
+        label: "Admin",
+        className: "bg-red-100 text-red-800 text-xs sm:text-sm",
+      },
+      user: {
+        label: "User",
+        className: "bg-blue-100 text-blue-800 text-xs sm:text-sm",
+      },
     };
     const config = roleConfig[role] || roleConfig.user;
 
     return (
       <Badge className={config.className}>
         <Shield className="mr-1 h-3 w-3" />
-        {config.label}
+        <span className="truncate">{config.label}</span>
       </Badge>
     );
   };
 
   const StatusBadge = ({ isActive }) => (
-    <Badge variant={isActive ? "default" : "secondary"}>
+    <Badge
+      variant={isActive ? "default" : "secondary"}
+      className="text-xs sm:text-sm"
+    >
       {isActive ? (
         <>
           <CheckCircle className="mr-1 h-3 w-3" />
-          Active
+          <span className="truncate">Active</span>
         </>
       ) : (
         <>
           <XCircle className="mr-1 h-3 w-3" />
-          Inactive
+          <span className="truncate">Inactive</span>
         </>
       )}
     </Badge>
   );
 
   const QuizScoreBadge = ({ score }) => {
-    let className = "bg-gray-100 text-gray-800";
-    if (score >= 90) className = "bg-green-100 text-green-800";
-    else if (score >= 80) className = "bg-blue-100 text-blue-800";
-    else if (score >= 70) className = "bg-yellow-100 text-yellow-800";
-    else if (score >= 60) className = "bg-orange-100 text-orange-800";
-    else if (score > 0) className = "bg-red-100 text-red-800";
+    let className = "bg-gray-100 text-gray-800 text-xs sm:text-sm";
+    if (score >= 90)
+      className = "bg-green-100 text-green-800 text-xs sm:text-sm";
+    else if (score >= 80)
+      className = "bg-blue-100 text-blue-800 text-xs sm:text-sm";
+    else if (score >= 70)
+      className = "bg-yellow-100 text-yellow-800 text-xs sm:text-sm";
+    else if (score >= 60)
+      className = "bg-orange-100 text-orange-800 text-xs sm:text-sm";
+    else if (score > 0)
+      className = "bg-red-100 text-red-800 text-xs sm:text-sm";
 
     return (
-      <Badge className={className}>{score > 0 ? `${score}%` : "N/A"}</Badge>
+      <Badge className={className}>
+        <span className="truncate">{score > 0 ? `${score}%` : "N/A"}</span>
+      </Badge>
     );
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 w-full overflow-x-hidden">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Users Management</h1>
-          <p className="text-gray-500">Manage all users in the system</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">
+            Users Management
+          </h1>
+          <p className="text-gray-500 text-sm sm:text-base truncate">
+            Manage all users in the system
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={handleExport}
+            className="flex-1 sm:flex-none h-9 sm:h-10 text-xs sm:text-sm"
+          >
+            <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="truncate">Export</span>
           </Button>
-          <Button onClick={() => navigate("/admin/users/create")}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add User
+          <Button
+            onClick={() => navigate("/admin/users/create")}
+            className="flex-1 sm:flex-none h-9 sm:h-10 text-xs sm:text-sm"
+          >
+            <UserPlus className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="truncate">Add User</span>
           </Button>
         </div>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+      <Card className="w-full">
+        <CardContent className="pt-2 sm:pt-0">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-12">
+            <div className="relative col-span-1 sm:col-span-2 lg:col-span-6 ">
+              <Search className="absolute left-2.5 top-2.5 h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
               <Input
                 placeholder="Search users..."
                 value={searchTerm}
@@ -320,80 +349,96 @@ const UsersList = () => {
                     fetchUsers();
                   }
                 }}
-                className="pl-8"
+                className="pl-8 h-9 sm:h-10 text-sm"
               />
             </div>
 
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger>
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="user">User</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center justify-between lg:gap-4 lg:col-span-4">
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="h-9 sm:h-10">
+                  <Filter className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <SelectValue placeholder="Filter by role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active Only</SelectItem>
-                <SelectItem value="inactive">Inactive Only</SelectItem>
-              </SelectContent>
-            </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-9 sm:h-10">
+                  <Filter className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active Only</SelectItem>
+                  <SelectItem value="inactive">Inactive Only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div className="flex items-center justify-end gap-2">
-              <Button onClick={fetchUsers} variant="outline" size="sm">
+            <div className="flex items-center md:justify-end justify-center gap-2 lg:col-span-2">
+              <Button
+                onClick={fetchUsers}
+                variant="outline"
+                size="sm"
+                className="h-9 sm:h-10 text-xs sm:text-sm"
+              >
                 Apply Filters
               </Button>
-              <Badge variant="outline">{pagination.total} users found</Badge>
+              {/* <Badge variant="outline" className="text-xs sm:text-sm">
+                {pagination.total} users
+              </Badge> */}
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Users Table */}
-      {/* Users Table */}
-      <Card>
+      <Card className="w-full overflow-hidden">
         <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg sm:text-xl">All Users</CardTitle>
+          <CardDescription className="text-sm sm:text-base">
             Showing {users.length} of {pagination.total} users
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {/* Scrollable container - ADD THIS WRAPPER */}
-          <div className="relative overflow-x-auto rounded-lg border">
-            <div className="min-w-[1000px] md:min-w-0">
-              {" "}
-              {/* Responsive min-width */}
+        <CardContent className="p-4 pt-0 pb-0">
+          {/* Scrollable container for mobile */}
+          <div className="overflow-x-auto rounded-lg border">
+            <div className="min-w-[800px] sm:min-w-0">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">User</TableHead>
-                    <TableHead className="whitespace-nowrap">Role</TableHead>
-                    <TableHead className="whitespace-nowrap">
+                    <TableHead className="whitespace-nowrap text-xs sm:text-sm">
+                      User
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap text-xs sm:text-sm">
+                      Role
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap text-xs sm:text-sm">
                       Sessions
                     </TableHead>
-                    <TableHead className="whitespace-nowrap">
+                    <TableHead className="whitespace-nowrap text-xs sm:text-sm">
                       Questions
                     </TableHead>
-                    <TableHead className="whitespace-nowrap">
+                    <TableHead className="whitespace-nowrap text-xs sm:text-sm">
                       Materials
                     </TableHead>
-                    <TableHead className="whitespace-nowrap">Quizzes</TableHead>
-                    <TableHead className="whitespace-nowrap">
+                    <TableHead className="whitespace-nowrap text-xs sm:text-sm">
+                      Quizzes
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap text-xs sm:text-sm">
                       Quiz Score
                     </TableHead>
-                    <TableHead className="whitespace-nowrap">Status</TableHead>
-                    <TableHead className="whitespace-nowrap">Joined</TableHead>
-                    <TableHead className="whitespace-nowrap text-right">
+                    <TableHead className="whitespace-nowrap text-xs sm:text-sm">
+                      Status
+                    </TableHead>
+                    <TableHead className="whitespace-nowrap text-xs sm:text-sm">
+                      Joined
+                    </TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -403,118 +448,140 @@ const UsersList = () => {
                     <TableRow>
                       <TableCell colSpan={10} className="text-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
-                        <p className="mt-2 text-gray-500">Loading users...</p>
+                        <p className="mt-2 text-gray-500 text-sm">
+                          Loading users...
+                        </p>
                       </TableCell>
                     </TableRow>
                   ) : users.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={10} className="text-center py-8">
-                        <p className="text-gray-500">No users found</p>
+                        <p className="text-gray-500 text-sm">No users found</p>
                       </TableCell>
                     </TableRow>
                   ) : (
                     users.map((user) => (
                       <TableRow key={user.id} className="hover:bg-gray-50">
-                        {/* REMOVE overflow-x-auto from here */}
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <Avatar>
+                        <TableCell className="py-2">
+                          <div className="flex items-center space-x-2 sm:space-x-3">
+                            <Avatar className="h-7 w-7 sm:h-8 sm:w-8 shrink-0">
                               <AvatarImage
                                 src={
                                   user.profileImageUrl ||
                                   `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
                                 }
                               />
-                              <AvatarFallback>
+                              <AvatarFallback className="text-xs">
                                 {user.name?.charAt(0) || "U"}
                               </AvatarFallback>
                             </Avatar>
-                            <div>
-                              <div className="font-medium w-20 truncate">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-medium text-xs sm:text-sm truncate">
                                 {user.name || "Unknown User"}
+                              </div>
+                              <div className="text-xs text-gray-500 truncate hidden sm:block">
+                                {user.email || "No email"}
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <RoleBadge role={user.role || "user"} />
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
+                        <TableCell className="py-2">
+                          <Badge
+                            variant="outline"
+                            className="text-xs sm:text-sm"
+                          >
                             {user.sessionCount || 0}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
+                        <TableCell className="py-2">
+                          <Badge
+                            variant="outline"
+                            className="text-xs sm:text-sm"
+                          >
                             {user.questionCount || 0}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
+                        <TableCell className="py-2">
+                          <Badge
+                            variant="outline"
+                            className="text-xs sm:text-sm"
+                          >
                             {user.materialCount || 0}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <Badge
                             variant="outline"
-                            className={
+                            className={`text-xs sm:text-sm ${
                               user.quizCount > 0
                                 ? "bg-purple-50 text-purple-700 border-purple-200"
                                 : "bg-gray-50 text-gray-700"
-                            }
+                            }`}
                           >
                             <Target className="mr-1 h-3 w-3" />
                             {user.quizCount || 0}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <QuizScoreBadge score={user.avgQuizScore || 0} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <StatusBadge isActive={user.isActive !== false} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-2">
                           <div className="flex items-center">
-                            <Calendar className="mr-1 h-3 w-3 text-gray-500" />
-                            {user.createdAt
-                              ? format(new Date(user.createdAt), "MMM dd, yyyy")
-                              : "N/A"}
+                            <Calendar className="mr-1 h-3 w-3 text-gray-500 shrink-0" />
+                            <span className="text-xs sm:text-sm truncate">
+                              {user.createdAt
+                                ? format(
+                                    new Date(user.createdAt),
+                                    "MMM dd, yyyy",
+                                  )
+                                : "N/A"}
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="py-2 text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreVertical className="h-4 w-4" />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                              >
+                                <MoreVertical className="h-3 w-3 sm:h-4 sm:w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
+                            <DropdownMenuContent align="end" className="w-40">
                               <DropdownMenuItem
-                                className="cursor-pointer"
+                                className="cursor-pointer text-xs sm:text-sm"
                                 onClick={() =>
                                   navigate(`/admin/users/${user.id}`)
                                 }
                               >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
+                                <Eye className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="truncate">View Details</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="cursor-pointer"
+                                className="cursor-pointer text-xs sm:text-sm"
                                 onClick={() =>
                                   navigate(`/admin/users/${user.id}/edit`)
                                 }
                               >
-                                <Edit className="mr-2 h-4 w-4" />
-                                Edit User
+                                <Edit className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="truncate">Edit User</span>
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="text-red-600 cursor-pointer"
+                                className="text-red-600 cursor-pointer text-xs sm:text-sm"
                                 onClick={() =>
                                   handleDeleteUser(user.id, user.name)
                                 }
                               >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete User
+                                <Trash2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="truncate">Delete User</span>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -527,10 +594,10 @@ const UsersList = () => {
             </div>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination - Responsive */}
           {pagination.pages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-gray-500">
+            <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3 sm:gap-0">
+              <div className="text-xs sm:text-sm text-gray-500">
                 Page {pagination.page} of {pagination.pages}
               </div>
               <div className="flex gap-2">
@@ -547,8 +614,11 @@ const UsersList = () => {
                     }
                   }}
                   disabled={pagination.page === 1}
+                  className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
                 >
-                  Previous
+                  <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden sm:inline">Previous</span>
+                  <span className="sm:hidden">Prev</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -563,8 +633,11 @@ const UsersList = () => {
                     }
                   }}
                   disabled={pagination.page === pagination.pages}
+                  className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
                 >
-                  Next
+                  <span className="hidden sm:inline">Next</span>
+                  <span className="sm:hidden">Next</span>
+                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                 </Button>
               </div>
             </div>
@@ -573,23 +646,31 @@ const UsersList = () => {
       </Card>
 
       {/* User Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="h-full">
           <CardHeader>
-            <CardTitle>User Distribution</CardTitle>
-            <CardDescription>Users by role</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">
+              User Distribution
+            </CardTitle>
+            <CardDescription className="text-sm sm:text-base">
+              Users by role
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Regular Users</span>
-                <Badge variant="outline">
+                <span className="text-gray-600 text-sm sm:text-base">
+                  Regular Users
+                </span>
+                <Badge variant="outline" className="text-xs sm:text-sm">
                   {stats.roleDistribution.user || 0}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Admins</span>
-                <Badge variant="outline">
+                <span className="text-gray-600 text-sm sm:text-base">
+                  Admins
+                </span>
+                <Badge variant="outline" className="text-xs sm:text-sm">
                   {stats.roleDistribution.admin || 0}
                 </Badge>
               </div>
@@ -597,55 +678,85 @@ const UsersList = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full">
           <CardHeader>
-            <CardTitle>Activity Status</CardTitle>
-            <CardDescription>User activity overview</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">
+              Activity Status
+            </CardTitle>
+            <CardDescription className="text-sm sm:text-base">
+              User activity overview
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Active Users</span>
-                <Badge variant="outline">{stats.activeUsers || 0}</Badge>
+                <span className="text-gray-600 text-sm sm:text-base">
+                  Active Users
+                </span>
+                <Badge variant="outline" className="text-xs sm:text-sm">
+                  {stats.activeUsers || 0}
+                </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Inactive Users</span>
-                <Badge variant="outline">{stats.inactiveUsers || 0}</Badge>
+                <span className="text-gray-600 text-sm sm:text-base">
+                  Inactive Users
+                </span>
+                <Badge variant="outline" className="text-xs sm:text-sm">
+                  {stats.inactiveUsers || 0}
+                </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">New This Week</span>
-                <Badge variant="outline">{stats.newUsersThisWeek || 0}</Badge>
+                <span className="text-gray-600 text-sm sm:text-base">
+                  New This Week
+                </span>
+                <Badge variant="outline" className="text-xs sm:text-sm">
+                  {stats.newUsersThisWeek || 0}
+                </Badge>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full md:col-span-2 lg:col-span-1">
           <CardHeader>
-            <CardTitle>Engagement</CardTitle>
-            <CardDescription>Average user metrics</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Engagement</CardTitle>
+            <CardDescription className="text-sm sm:text-base">
+              Average user metrics
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Avg Sessions/User</span>
-                <Badge variant="outline">{stats.avgSessionsPerUser || 0}</Badge>
+                <span className="text-gray-600 text-sm sm:text-base">
+                  Avg Sessions/User
+                </span>
+                <Badge variant="outline" className="text-xs sm:text-sm">
+                  {stats.avgSessionsPerUser || 0}
+                </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Avg Questions/User</span>
-                <Badge variant="outline">
+                <span className="text-gray-600 text-sm sm:text-base">
+                  Avg Questions/User
+                </span>
+                <Badge variant="outline" className="text-xs sm:text-sm">
                   {stats.avgQuestionsPerUser || 0}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Avg Materials/User</span>
-                <Badge variant="outline">
+                <span className="text-gray-600 text-sm sm:text-base">
+                  Avg Materials/User
+                </span>
+                <Badge variant="outline" className="text-xs sm:text-sm">
                   {stats.avgMaterialsPerUser || 0}
                 </Badge>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600">Avg Quizzes/User</span>
-                <Badge variant="outline">{stats.avgQuizzesPerUser || 0}</Badge>
+                <span className="text-gray-600 text-sm sm:text-base">
+                  Avg Quizzes/User
+                </span>
+                <Badge variant="outline" className="text-xs sm:text-sm">
+                  {stats.avgQuizzesPerUser || 0}
+                </Badge>
               </div>
             </div>
           </CardContent>

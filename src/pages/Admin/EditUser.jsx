@@ -4,7 +4,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -30,7 +29,6 @@ import {
   Mail,
   Shield,
   Save,
-  Calendar,
   Key,
   Eye,
   EyeOff,
@@ -69,7 +67,7 @@ const EditUser = () => {
     notes: "",
     experience: "beginner",
   });
-  
+
   // ✅ State for delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
@@ -83,7 +81,7 @@ const EditUser = () => {
     setFetching(true);
     try {
       const response = await axiosInstance.get(
-        API_PATHS.ADMIN.USER_DETAILS(userId)
+        API_PATHS.ADMIN.USER_DETAILS(userId),
       );
       console.log("User data response:", response.data);
 
@@ -155,10 +153,7 @@ const EditUser = () => {
       console.log("Sending update payload:", payload);
 
       // Make the API call
-      await axiosInstance.put(
-        API_PATHS.ADMIN.UPDATE_USER(userId),
-        payload
-      );
+      await axiosInstance.put(API_PATHS.ADMIN.UPDATE_USER(userId), payload);
       toast.success("User updated successfully!");
       navigate(`/admin/users/${userId}`);
     } catch (error) {
@@ -167,7 +162,8 @@ const EditUser = () => {
       let errorMessage = "Failed to update user";
       if (error.response) {
         if (error.response.status === 400) {
-          errorMessage = error.response.data?.message || "Invalid data provided";
+          errorMessage =
+            error.response.data?.message || "Invalid data provided";
         } else if (error.response.status === 401) {
           errorMessage = "Unauthorized - Please login again";
           navigate("/login");
@@ -204,66 +200,86 @@ const EditUser = () => {
       console.error("Error deleting user:", error);
       toast.error(
         error.response?.data?.detail ||
-        error.response?.data?.message ||
-        "Failed to delete user"
+          error.response?.data?.message ||
+          "Failed to delete user",
       );
     }
   };
 
   if (fetching) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading user data...</p>
-        </div>
-      </div>
+          <p className="mt-4 text-gray-600 text-sm sm:text-base">
+            Loading user data...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 w-full overflow-x-hidden">
       {/* ✅ Delete User Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex items-center space-x-2">
-              <AlertTriangle className="h-6 w-6 text-red-500" />
-              <AlertDialogTitle>Delete User</AlertDialogTitle>
+        <AlertDialogContent className="w-[95vw] max-w-md sm:max-w-lg rounded-lg">
+          <AlertDialogHeader className="space-y-4">
+            {/* Title */}
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-500 shrink-0" />
+              <AlertDialogTitle className="text-base sm:text-xl">
+                Delete User
+              </AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="pt-4">
-              <div className="flex items-start space-x-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage src={avatar} />
-                  <AvatarFallback>
-                    {formData.name ? formData.name.charAt(0) : "U"}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="font-medium">{formData.name}</p>
-                  <p className="text-sm text-gray-500">{formData.email}</p>
+
+            {/* IMPORTANT: asChild FIX */}
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 text-left">
+                {/* User info */}
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
+                    <AvatarImage src={avatar} />
+                    <AvatarFallback className="text-xs sm:text-sm">
+                      {formData.name?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm sm:text-base truncate">
+                      {formData.name}
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                      {formData.email}
+                    </p>
+                  </div>
                 </div>
+
+                {/* Warning text */}
+                <p className="text-sm sm:text-base font-medium text-red-600">
+                  This action cannot be undone. This will permanently delete:
+                </p>
+
+                {/* LEFT-ALIGNED LIST (mobile safe) */}
+                <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm text-muted-foreground">
+                  <li>User account and profile</li>
+                  <li>All interview sessions</li>
+                  <li>All questions and answers</li>
+                  <li>All study materials</li>
+                </ul>
               </div>
-              <p className="mt-4 text-red-600 font-medium">
-                This action cannot be undone. This will permanently delete:
-              </p>
-              <ul className="list-disc list-inside mt-2 space-y-1 text-sm text-gray-600">
-                <li>User account and profile</li>
-                <li>All interview sessions</li>
-                <li>All questions and answers</li>
-                <li>All study materials</li>
-              </ul>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+
+          {/* Footer */}
+          <AlertDialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+            <AlertDialogCancel className="h-9 sm:h-10 text-sm">
+              Cancel
+            </AlertDialogCancel>
+
             <AlertDialogAction
               onClick={handleDeleteUser}
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="h-9 sm:h-10 bg-red-600 hover:bg-red-700 text-white"
             >
               Delete User
             </AlertDialogAction>
@@ -272,51 +288,71 @@ const EditUser = () => {
       </AlertDialog>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="relative flex items-center">
+        {/* Left: Back button */}
+        <div className="flex items-center">
           <Button
             variant="ghost"
             onClick={() => navigate(`/admin/users/${userId}`)}
+            className="h-9 sm:h-10 text-xs sm:text-sm"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to User Details
+            <ArrowLeft className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            Back
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Edit User</h1>
-            <p className="text-gray-500">Update user information</p>
-          </div>
         </div>
+
+        {/* Center: Title */}
+        <div className="absolute left-1/2 -translate-x-1/2 text-center">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">
+            Edit User
+          </h1>
+          <p className="text-gray-500 text-sm sm:text-base truncate hidden md:block">
+            Update user information
+          </p>
+        </div>
+
+        {/* Right: Spacer */}
+        <div className="ml-auto w-[72px] sm:w-24" />
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 lg:grid-cols-3">
+      <form onSubmit={handleSubmit} className="w-full">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
           {/* Left Column - Profile & Basic Info */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Profile Card */}
-            <Card>
+            <Card className="w-full">
               <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>Update basic user information</CardDescription>
+                <CardTitle className="text-lg sm:text-xl">
+                  Profile Information
+                </CardTitle>
+                <CardDescription className="text-sm sm:text-base">
+                  Update basic user information
+                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center space-x-6">
-                  <div>
-                    <Avatar className="h-24 w-24">
+              <CardContent className="space-y-4 sm:space-y-6 pt-0">
+                <div className="flex flex-col xs:flex-row items-center xs:items-center space-y-4 xs:space-y-0 xs:space-x-4 sm:space-x-6">
+                  <div className="shrink-0">
+                    <Avatar className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24">
                       <AvatarImage src={avatar} />
-                      <AvatarFallback>
+                      <AvatarFallback className="text-lg sm:text-xl">
                         {formData.name ? (
-                          formData.name.charAt(0)
+                          formData.name.charAt(0).toUpperCase()
                         ) : (
-                          <User className="h-12 w-12" />
+                          <User className="h-6 w-6 sm:h-8 sm:w-8 md:h-12 md:w-12" />
                         )}
                       </AvatarFallback>
                     </Avatar>
                   </div>
-                  <div className="flex-1">
-                    <Label htmlFor="avatar-upload" className="cursor-pointer">
-                      <div className="flex items-center space-x-2 p-2 border rounded-lg hover:bg-gray-50">
-                        <Upload className="h-4 w-4" />
-                        <span>Change Profile Picture</span>
+                  <div className="flex-1 w-full xs:w-auto">
+                    <Label
+                      htmlFor="avatar-upload"
+                      className="cursor-pointer w-full"
+                    >
+                      <div className="flex items-center justify-center xs:justify-start space-x-2 p-2 border rounded-lg hover:bg-gray-50 w-full">
+                        <Upload className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="text-xs sm:text-sm truncate">
+                          Change Profile Picture
+                        </span>
                       </div>
                       <Input
                         id="avatar-upload"
@@ -326,17 +362,17 @@ const EditUser = () => {
                         onChange={handleImageUpload}
                       />
                     </Label>
-                    <p className="text-sm text-gray-500 mt-2">
+                    <p className="text-xs sm:text-sm text-gray-500 mt-2 text-center xs:text-left">
                       Recommended: Square image, 400x400px or larger
                     </p>
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="name">
+                    <Label htmlFor="name" className="text-sm sm:text-base">
                       <div className="flex items-center">
-                        <User className="mr-2 h-4 w-4" />
+                        <User className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                         Full Name *
                       </div>
                     </Label>
@@ -346,13 +382,14 @@ const EditUser = () => {
                       onChange={(e) => handleChange("name", e.target.value)}
                       placeholder="John Doe"
                       required
+                      className="h-9 sm:h-10 text-sm sm:text-base"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">
+                    <Label htmlFor="email" className="text-sm sm:text-base">
                       <div className="flex items-center">
-                        <Mail className="mr-2 h-4 w-4" />
+                        <Mail className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                         Email Address *
                       </div>
                     </Label>
@@ -363,6 +400,7 @@ const EditUser = () => {
                       onChange={(e) => handleChange("email", e.target.value)}
                       placeholder="john@example.com"
                       required
+                      className="h-9 sm:h-10 text-sm sm:text-base"
                     />
                   </div>
                 </div>
@@ -370,18 +408,20 @@ const EditUser = () => {
             </Card>
 
             {/* Role & Status Card */}
-            <Card>
+            <Card className="w-full">
               <CardHeader>
-                <CardTitle>Role & Status</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg sm:text-xl">
+                  Role & Status
+                </CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Set user role and account status
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 sm:space-y-6 pt-0">
                 <div className="space-y-2">
-                  <Label htmlFor="role">
+                  <Label htmlFor="role" className="text-sm sm:text-base">
                     <div className="flex items-center">
-                      <Shield className="mr-2 h-4 w-4" />
+                      <Shield className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       User Role *
                     </div>
                   </Label>
@@ -389,20 +429,26 @@ const EditUser = () => {
                     value={formData.role}
                     onValueChange={(value) => handleChange("role", value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="h-9 w-full sm:h-10 text-sm sm:text-base">
                       <SelectValue placeholder="Select a role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="user" className="text-sm">
+                        User
+                      </SelectItem>
+                      <SelectItem value="admin" className="text-sm">
+                        Admin
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-base">Account Active</Label>
-                    <p className="text-sm text-gray-500">
+                  <div className="min-w-0 flex-1 mr-4">
+                    <Label className="text-sm sm:text-base truncate">
+                      Account Active
+                    </Label>
+                    <p className="text-xs sm:text-sm text-gray-500 truncate">
                       User can login immediately
                     </p>
                   </div>
@@ -411,95 +457,108 @@ const EditUser = () => {
                     onCheckedChange={(checked) =>
                       handleChange("isActive", checked)
                     }
+                    className="shrink-0"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Additional Notes</Label>
+                  <Label htmlFor="notes" className="text-sm sm:text-base">
+                    Additional Notes
+                  </Label>
                   <Textarea
                     id="notes"
                     value={formData.notes}
                     onChange={(e) => handleChange("notes", e.target.value)}
                     placeholder="Any additional information about this user..."
                     rows={3}
+                    className="text-sm sm:text-base min-h-20"
                   />
                 </div>
               </CardContent>
             </Card>
 
             {/* Gemini API Key Card */}
-            <Card>
+            <Card className="w-full">
               <CardHeader>
-                <CardTitle>Gemini API Configuration</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-lg sm:text-xl">
+                  Gemini API Configuration
+                </CardTitle>
+                <CardDescription className="text-sm sm:text-base">
                   Manage Gemini API key for this user
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-3 sm:space-y-4 pt-0">
                 <div className="space-y-2">
-                  <Label htmlFor="geminiApiKey" className="flex items-center">
-                    <Key className="mr-2 h-4 w-4" />
+                  <Label
+                    htmlFor="geminiApiKey"
+                    className="flex items-center text-sm sm:text-base"
+                  >
+                    <Key className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     Gemini API Key
-                    </Label>
+                  </Label>
 
-                    <div className="relative">
+                  <div className="relative">
                     <Input
-                        id="geminiApiKey"
-                        type={showGeminiKey ? "text" : "password"}
-                        value={formData.geminiApiKey}
-                        onChange={(e) =>
+                      id="geminiApiKey"
+                      type={showGeminiKey ? "text" : "password"}
+                      value={formData.geminiApiKey}
+                      onChange={(e) =>
                         handleChange("geminiApiKey", e.target.value)
-                        }
-                        placeholder="Enter or update Gemini API key"
-                        className="pr-10"
+                      }
+                      placeholder="Enter or update Gemini API key"
+                      className="h-9 sm:h-10 text-sm sm:text-base pr-10"
                     />
 
                     {/* Show / Hide Button INSIDE input */}
                     <button
-                        type="button"
-                        onClick={() => setShowGeminiKey(!showGeminiKey)}
-                        className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
-                        tabIndex={-1}
+                      type="button"
+                      onClick={() => setShowGeminiKey(!showGeminiKey)}
+                      className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700"
+                      tabIndex={-1}
                     >
-                        {showGeminiKey ? (
-                        <EyeOff className="h-4 w-4 cursor-pointer" />
-                        ) : (
-                        <Eye className="h-4 w-4 cursor-pointer" />
-                        )}
+                      {showGeminiKey ? (
+                        <EyeOff className="h-3 w-3 sm:h-4 sm:w-4 cursor-pointer" />
+                      ) : (
+                        <Eye className="h-3 w-3 sm:h-4 sm:w-4 cursor-pointer" />
+                      )}
                     </button>
-                    </div>
+                  </div>
 
-                    <p className="text-sm text-gray-500">
+                  <p className="text-xs sm:text-sm text-gray-500">
                     {formData.geminiApiKey
-                        ? "Note: Updating will replace the existing key"
-                        : "User will be able to generate AI content with this key"}
-                    </p>
+                      ? "Note: Updating will replace the existing key"
+                      : "User will be able to generate AI content with this key"}
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
           {/* Right Column - Preview & Actions */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Preview Card */}
-            <Card>
+            <Card className="w-full">
               <CardHeader>
-                <CardTitle>Preview Changes</CardTitle>
+                <CardTitle className="text-lg sm:text-xl">
+                  Preview Changes
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Avatar>
+              <CardContent className="pt-0">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
                       <AvatarImage src={avatar} />
-                      <AvatarFallback>
-                        {formData.name ? formData.name.charAt(0) : "?"}
+                      <AvatarFallback className="text-xs sm:text-sm">
+                        {formData.name
+                          ? formData.name.charAt(0).toUpperCase()
+                          : "?"}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
-                      <div className="font-semibold">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm sm:text-base truncate">
                         {formData.name || "No name provided"}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-xs sm:text-sm text-gray-500 truncate">
                         {formData.email || "No email provided"}
                       </div>
                     </div>
@@ -508,36 +567,50 @@ const EditUser = () => {
                   <Separator />
 
                   <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Role:</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 text-sm sm:text-base truncate mr-2">
+                        Role:
+                      </span>
                       <Badge
-                        className={
+                        className={`text-xs sm:text-sm ${
                           formData.role === "admin"
                             ? "bg-red-100 text-red-800"
                             : formData.role === "moderator"
-                            ? "bg-purple-100 text-purple-800"
-                            : "bg-blue-100 text-blue-800"
-                        }
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-blue-100 text-blue-800"
+                        }`}
                       >
-                        {formData.role?.toUpperCase()}
+                        <span className="truncate">
+                          {formData.role?.toUpperCase()}
+                        </span>
                       </Badge>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Status:</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 text-sm sm:text-base truncate mr-2">
+                        Status:
+                      </span>
                       <Badge
                         variant={formData.isActive ? "default" : "secondary"}
+                        className="text-xs sm:text-sm"
                       >
-                        {formData.isActive ? "Active" : "Inactive"}
+                        <span className="truncate">
+                          {formData.isActive ? "Active" : "Inactive"}
+                        </span>
                       </Badge>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">API Key:</span>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600 text-sm sm:text-base truncate mr-2">
+                        API Key:
+                      </span>
                       <Badge
                         variant={
                           formData.geminiApiKey ? "default" : "secondary"
                         }
+                        className="text-xs sm:text-sm"
                       >
-                        {formData.geminiApiKey ? "Set" : "Not Set"}
+                        <span className="truncate">
+                          {formData.geminiApiKey ? "Set" : "Not Set"}
+                        </span>
                       </Badge>
                     </div>
                   </div>
@@ -546,55 +619,53 @@ const EditUser = () => {
             </Card>
 
             {/* Actions Card */}
-            <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    size="lg"
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Card className="w-full">
+              <CardContent className="space-y-3 sm:space-y-4">
+                <Button
+                  type="submit"
+                  className="w-full h-10 sm:h-11 md:h-12"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                      <span className="text-xs sm:text-sm">
                         Saving Changes...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-2 h-4 w-4" />
-                        Save Changes
-                      </>
-                    )}
-                  </Button>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="text-xs sm:text-sm">Save Changes</span>
+                    </>
+                  )}
+                </Button>
 
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-10 sm:h-11 md:h-12 text-xs sm:text-sm"
+                  onClick={() => navigate(`/admin/users/${userId}`)}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+
+                <Separator />
+
+                <div className="text-center">
                   <Button
                     type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate(`/admin/users/${userId}`)}
-                    disabled={loading}
+                    variant="destructive"
+                    size="sm"
+                    className="w-full h-9 sm:h-10 text-xs sm:text-sm"
+                    onClick={() => setDeleteDialogOpen(true)}
                   >
-                    Cancel
+                    Delete User Account
                   </Button>
-
-                  <Separator />
-
-                  <div className="text-center">
-                    {/* ✅ Updated Delete Button - NO AlertDialogTrigger needed */}
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => setDeleteDialogOpen(true)}
-                    >
-                      Delete User Account
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-2">
-                      This will permanently delete the user and all their data
-                    </p>
-                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    This will permanently delete the user and all their data
+                  </p>
                 </div>
               </CardContent>
             </Card>

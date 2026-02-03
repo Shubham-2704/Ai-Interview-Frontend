@@ -27,6 +27,9 @@ import {
   HelpCircle,
   BarChart3,
   RefreshCw,
+  X,
+  Home,
+  ChevronRight,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -38,6 +41,19 @@ const AdminLayout = () => {
   const location = useLocation();
   const { user } = useContext(UserContext);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [screenSize, setScreenSize] = useState(() => {
+    if (typeof window !== "undefined") {
+      const width = window.innerWidth;
+      if (width < 640) return "xs";
+      if (width < 768) return "sm";
+      if (width < 1024) return "md";
+      if (width < 1280) return "lg";
+      return "xl";
+    }
+    return "lg";
+  });
+
   const [systemStatus, setSystemStatus] = useState({
     cpu: 0,
     memory: 0,
@@ -55,6 +71,22 @@ const AdminLayout = () => {
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalSessions, setTotalSessions] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Screen size detection
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+      if (width < 640) setScreenSize("xs");
+      else if (width < 768) setScreenSize("sm");
+      else if (width < 1024) setScreenSize("md");
+      else if (width < 1280) setScreenSize("lg");
+      else setScreenSize("xl");
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const navigationItems = [
     {
@@ -97,9 +129,8 @@ const AdminLayout = () => {
       fetchInitialData();
     }
 
-    // Set up auto-refresh intervals
-    const systemStatusInterval = setInterval(fetchSystemStatus, 30000); // Every 30 seconds
-    const dashboardStatsInterval = setInterval(fetchDashboardStats, 120000); // Every 2 minutes
+    const systemStatusInterval = setInterval(fetchSystemStatus, 30000);
+    const dashboardStatsInterval = setInterval(fetchDashboardStats, 120000);
 
     return () => {
       clearInterval(systemStatusInterval);
@@ -121,7 +152,6 @@ const AdminLayout = () => {
   const fetchSystemStatus = async () => {
     try {
       setSystemStatus((prev) => ({ ...prev, loading: true }));
-
       const response = await adminService.getSystemStatus();
 
       if (response.status === "success") {
@@ -140,7 +170,6 @@ const AdminLayout = () => {
           },
         });
       } else {
-        // Fallback to default values if API returns error
         setSystemStatus({
           cpu: 0,
           memory: 0,
@@ -165,11 +194,8 @@ const AdminLayout = () => {
   const fetchDashboardStats = async () => {
     try {
       const response = await adminService.getDashboardStats("7d");
-
-      // if (response.status === "success") {
       setTotalUsers(response?.totalUsers || 0);
       setTotalSessions(response?.totalSessions || 0);
-      // }
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
     }
@@ -205,13 +231,23 @@ const AdminLayout = () => {
   };
 
   const Sidebar = ({ isMobile = false }) => (
-    <div className={`${isMobile ? "w-full" : "w-64"} h-full flex flex-col`}>
+    <div
+      className={`${isMobile ? "w-full max-w-xs" : "w-64 lg:w-72 xl:w-80"} h-full flex flex-col`}
+    >
       {/* Logo */}
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex items-center justify-between">
         <div className="flex items-center space-x-2">
+          <div className="h-8 w-8 rounded-lg bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <Home className="h-4 w-4 text-white" />
+          </div>
           <div>
-            <span className="text-xl font-bold">InterviewPrep</span>
-            <Badge variant="outline" className="ml-2">
+            <span className="text-lg font-bold whitespace-nowrap">
+              InterviewPrep
+            </span>
+            <Badge
+              variant="outline"
+              className="ml-2 text-xs hidden sm:inline-flex"
+            >
               Admin
             </Badge>
           </div>
@@ -219,7 +255,7 @@ const AdminLayout = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 overflow-y-auto">
+      <nav className="flex-1 p-3 md:p-4 overflow-y-auto">
         <div className="space-y-1">
           {navigationItems.map((item) => {
             const Icon = item.icon;
@@ -228,20 +264,27 @@ const AdminLayout = () => {
                 key={item.title}
                 variant={item.active ? "secondary" : "ghost"}
                 className={cn(
-                  "w-full justify-start mb-1",
-                  item.active && "bg-blue-50 text-blue-700",
+                  "w-full justify-start mb-1 px-3 py-2 h-auto rounded-lg",
+                  item.active && "bg-blue-50 text-blue-700 border-blue-200",
                 )}
                 onClick={() => {
                   navigate(item.path);
                   if (isMobile) setMobileMenuOpen(false);
                 }}
               >
-                <Icon className="mr-2 h-4 w-4" />
-                {item.title}
+                <Icon className="mr-3 h-4 w-4 shrink-0" />
+                <span className="flex-1 text-left truncate text-sm">
+                  {item.title}
+                </span>
                 {item.badge !== undefined && (
-                  <Badge className="ml-auto" variant="secondary">
-                    {item.badge.toLocaleString()}
+                  <Badge className="ml-2 shrink-0 text-xs" variant="secondary">
+                    {item.badge > 999
+                      ? `${(item.badge / 1000).toFixed(1)}k`
+                      : item.badge}
                   </Badge>
+                )}
+                {screenSize === "xs" && !isMobile && item.active && (
+                  <ChevronRight className="h-4 w-4 ml-2" />
                 )}
               </Button>
             );
@@ -250,8 +293,8 @@ const AdminLayout = () => {
 
         <Separator className="my-4" />
 
-        {/* Quick Stats */}
-        <div className="p-4 bg-gray-50 rounded-lg">
+        {/* System Status */}
+        <div className="p-3 bg-gray-50 rounded-lg border">
           <div className="flex justify-between items-center mb-3">
             <h3 className="text-sm font-semibold">System Status</h3>
             <div className="flex items-center gap-2">
@@ -279,7 +322,7 @@ const AdminLayout = () => {
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div key={i}>
-                  <div className="flex justify-between text-sm mb-1">
+                  <div className="flex justify-between text-xs mb-1">
                     <span className="text-gray-600">Loading...</span>
                     <span className="font-semibold">--%</span>
                   </div>
@@ -290,25 +333,23 @@ const AdminLayout = () => {
               ))}
             </div>
           ) : systemStatus.status === "error" ? (
-            <div className="text-center py-4">
-              <p className="text-sm text-red-600">
-                Failed to load system status
-              </p>
+            <div className="text-center py-2">
+              <p className="text-xs text-red-600">Failed to load</p>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={fetchSystemStatus}
-                className="mt-2"
+                className="mt-1 text-xs h-6 px-2"
               >
                 Retry
               </Button>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {/* CPU Usage */}
               <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">CPU Usage</span>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-gray-600 truncate">CPU</span>
                   <span
                     className={`font-semibold ${getStatusColor(systemStatus.cpu, "text")}`}
                   >
@@ -318,15 +359,15 @@ const AdminLayout = () => {
                 <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${getStatusColor(systemStatus.cpu, "bg")}`}
-                    style={{ width: `${systemStatus.cpu}%` }}
+                    style={{ width: `${Math.min(systemStatus.cpu, 100)}%` }}
                   ></div>
                 </div>
               </div>
 
               {/* Memory Usage */}
               <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Memory</span>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-gray-600 truncate">Memory</span>
                   <span
                     className={`font-semibold ${getStatusColor(systemStatus.memory, "text")}`}
                   >
@@ -336,15 +377,15 @@ const AdminLayout = () => {
                 <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${getStatusColor(systemStatus.memory, "bg")}`}
-                    style={{ width: `${systemStatus.memory}%` }}
+                    style={{ width: `${Math.min(systemStatus.memory, 100)}%` }}
                   ></div>
                 </div>
               </div>
 
               {/* Database Usage */}
               <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Database</span>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-gray-600 truncate">Database</span>
                   <span
                     className={`font-semibold ${getStatusColor(systemStatus.database, "text")}`}
                   >
@@ -354,7 +395,9 @@ const AdminLayout = () => {
                 <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
                   <div
                     className={`h-full ${getStatusColor(systemStatus.database, "bg")}`}
-                    style={{ width: `${systemStatus.database}%` }}
+                    style={{
+                      width: `${Math.min(systemStatus.database, 100)}%`,
+                    }}
                   ></div>
                 </div>
               </div>
@@ -373,14 +416,13 @@ const AdminLayout = () => {
                       ? `${Math.round(systemStatus.details.uptime_hours)}h`
                       : "0h"}
                   </div>
-                  <div className="truncate">Documents:</div>
+                  <div className="truncate">Docs:</div>
                   <div className="text-right font-medium">
                     {systemStatus.details?.total_docs?.toLocaleString() || 0}
                   </div>
                 </div>
                 {systemStatus.timestamp && (
-                  <div className="text-gray-500 text-right mt-1">
-                    Updated:{" "}
+                  <div className="text-gray-500 text-right mt-1 text-xs">
                     {new Date(systemStatus.timestamp).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -394,19 +436,29 @@ const AdminLayout = () => {
       </nav>
 
       {/* User Profile */}
-      <div className="p-2 border-t">
+      <div className="p-3 border-t">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="w-full justify-start p-2">
-              <Avatar className="h-8 w-8 mr-2">
+              <Avatar className="h-8 w-8 mr-2 shrink-0">
                 <AvatarImage src={user?.profileImageUrl} />
-                <AvatarFallback>AD</AvatarFallback>
+                <AvatarFallback className="text-xs">
+                  {user?.name
+                    ?.split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase() || "AD"}
+                </AvatarFallback>
               </Avatar>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold">{user?.name}</p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-semibold ">
+                  {user?.name || "Admin"}
+                </p>
+                <p className="text-xs text-gray-500 truncate">
+                  {user?.email || "admin@example.com"}
+                </p>
               </div>
-              <ChevronDown className="h-4 w-4 cursor-pointer" />
+              <ChevronDown className="h-4 w-4 cursor-pointer shrink-0" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end">
@@ -414,21 +466,27 @@ const AdminLayout = () => {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="cursor-pointer"
-              onClick={() => navigate(`/admin/users/${user?.id}`)}
+              onClick={() => {
+                navigate(`/admin/users/${user?.id}`);
+                if (isMobile) setMobileMenuOpen(false);
+              }}
             >
               <UserIcon className="mr-2 h-4 w-4" />
-              Profile
+              <span>Profile</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               className="cursor-pointer"
-              onClick={() => navigate("/admin/settings")}
+              onClick={() => {
+                navigate("/admin/settings");
+                if (isMobile) setMobileMenuOpen(false);
+              }}
             >
               <Settings className="mr-2 h-4 w-4" />
-              Settings
+              <span>Settings</span>
             </DropdownMenuItem>
             <DropdownMenuItem className="cursor-pointer">
               <HelpCircle className="mr-2 h-4 w-4" />
-              Help & Support
+              <span>Help & Support</span>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -436,7 +494,7 @@ const AdminLayout = () => {
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Log out
+              <span>Log out</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -446,7 +504,7 @@ const AdminLayout = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading admin panel...</p>
@@ -456,71 +514,128 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Mobile Header */}
-      <header className="lg:hidden sticky top-0 z-50 w-full border-b bg-white">
-        <div className="flex h-16 items-center px-4">
+    <div className="min-h-screen bg-gray-50 overflow-hidden">
+      {/* Mobile Header - FIXED: Prevent cutting off */}
+      <header className="lg:hidden sticky top-0 z-50 w-full border-b bg-white shadow-sm overflow-visible">
+        <div className="flex h-14 items-center px-3">
           <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="mr-2 h-9 w-9">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="p-0">
+            <SheetContent
+              side="left"
+              className="p-0 w-full max-w-xs overflow-y-auto"
+            >
               <Sidebar isMobile />
             </SheetContent>
           </Sheet>
-          <div className="ml-4 flex-1">
+
+          {/* Logo/Title */}
+          <div className="ml-1 flex-1 min-w-0">
             <div className="flex items-center space-x-2">
-              <div className="h-6 w-6 rounded-lg bg-linear-to-br from-blue-500 to-purple-600" />
-              <span className="text-lg font-bold">Admin Panel</span>
+              <div className="h-7 w-7 rounded-lg bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center shrink-0">
+                <Home className="h-3 w-3 text-white" />
+              </div>
+              <div className="min-w-0">
+                <span className="text-base font-bold truncate">
+                  Admin Panel
+                </span>
+              </div>
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs flex items-center justify-center text-white">
-              3
-            </span>
-          </Button>
+
+          {/* Mobile Right Actions */}
+          <div className="flex items-center space-x-1">
+            {searchOpen ? (
+              <div className="absolute inset-x-0 top-14 z-50 bg-white border-b p-2 shadow-md">
+                <div className="relative">
+                  {/* <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" /> */}
+                  <Input
+                    type="search"
+                    placeholder="Search..."
+                    // className="pl-9 text-sm"
+                    autoFocus
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7"
+                    onClick={() => setSearchOpen(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setSearchOpen(true)}
+                  className="h-9 w-9"
+                >
+                  <Search className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 relative"
+                >
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-xs flex items-center justify-center text-white">
+                    3
+                  </span>
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
+      {/* Desktop Layout */}
       <div className="flex">
         {/* Desktop Sidebar */}
-        <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 border-r bg-white">
+        <aside className="hidden lg:flex fixed left-0 top-0 h-screen border-r bg-white shadow-lg z-30">
           <Sidebar />
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:pl-64 min-h-screen">
+        <main className="flex-1 lg:ml-64 xl:ml-72 2xl:ml-80 min-h-screen w-full overflow-x-hidden">
           {/* Desktop Header */}
-          <header className="hidden lg:flex sticky top-0 z-40 h-16 items-center gap-4 border-b bg-white px-6">
-            <div className="flex flex-1 items-center space-x-4">
-              <div className="relative flex-1 max-w-xl">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+          <header className="hidden lg:flex sticky top-0 z-40 h-16 items-center gap-4 border-b bg-white px-4 xl:px-6 shadow-sm">
+            <div className="flex flex-1 items-center">
+              <div className="relative flex-1 max-w-2xl">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input
                   type="search"
                   placeholder="Search users, sessions, questions, materials..."
-                  className="pl-8"
+                  className="pl-10 pr-4 h-10 text-sm"
                 />
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="ghost" size="icon" className="relative">
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-10 w-10"
+              >
                 <Bell className="h-5 w-5" />
                 <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-xs flex items-center justify-center text-white">
                   3
                 </span>
               </Button>
-              <div className="hidden md:block">
-                <div className="text-sm font-medium">
-                  {user?.name}'s Dashboard
+
+              {/* User Info */}
+              <div className="hidden md:block min-w-0">
+                <div className="text-sm font-medium truncate">
+                  {user?.name || "Admin"}'s Dashboard
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-500 truncate">
                   {new Date().toLocaleDateString("en-US", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
+                    weekday: "short",
+                    month: "short",
                     day: "numeric",
                   })}
                 </div>
@@ -528,12 +643,85 @@ const AdminLayout = () => {
             </div>
           </header>
 
-          {/* Content Area */}
-          <div className="p-6">
+          {/* Content Area - IMPORTANT FIX: Added overflow control */}
+          <div className="p-3 sm:p-4 lg:p-6 w-full max-w-full box-border">
             <Outlet />
           </div>
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t shadow-lg z-40">
+        <div className="flex items-center justify-around h-14 px-2">
+          {navigationItems.slice(0, 3).map((item) => {
+            const Icon = item.icon;
+            return (
+              <Button
+                key={item.title}
+                variant="ghost"
+                size="icon"
+                className={cn(
+                  "h-12 w-12 rounded-lg flex flex-col items-center justify-center",
+                  item.active && "bg-blue-50 text-blue-600",
+                )}
+                onClick={() => navigate(item.path)}
+              >
+                <Icon className="h-5 w-5 mb-0.5" />
+                <span className="text-xs">{item.title.slice(0, 3)}</span>
+              </Button>
+            );
+          })}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-12 w-12 rounded-lg flex flex-col items-center justify-center"
+            onClick={() => navigate("/admin/settings")}
+          >
+            <Settings className="h-5 w-5 mb-0.5" />
+            <span className="text-xs">More</span>
+          </Button>
+        </div>
+      </nav>
+
+      {/* Adjust padding for mobile bottom nav */}
+      <style jsx global>{`
+        /* Prevent zoom issues on mobile */
+        @media screen and (max-width: 768px) {
+          html {
+            touch-action: manipulation;
+          }
+
+          body {
+            overflow-x: hidden;
+            width: 100%;
+            position: relative;
+          }
+        }
+
+        /* Main content padding adjustment */
+        main {
+          padding-bottom: 3.5rem;
+        }
+
+        @media (min-width: 1024px) {
+          main {
+            padding-bottom: 0;
+          }
+        }
+
+        /* Prevent horizontal overflow */
+        .max-w-full {
+          max-width: 100vw;
+        }
+
+        /* Fix for zoom issues */
+        @media screen and (max-width: 640px) {
+          .container-padding {
+            padding-left: max(1rem, env(safe-area-inset-left));
+            padding-right: max(1rem, env(safe-area-inset-right));
+          }
+        }
+      `}</style>
     </div>
   );
 };
