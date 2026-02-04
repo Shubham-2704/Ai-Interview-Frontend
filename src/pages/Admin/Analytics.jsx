@@ -31,6 +31,16 @@ import {
   Wifi,
   Shield,
   RefreshCw,
+  BarChart3,
+  Smartphone,
+  MapPin,
+  Server,
+  User,
+  Home,
+  Monitor,
+  PieChart as PieChartIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   LineChart,
@@ -55,16 +65,16 @@ const Analytics = () => {
   const [systemMetrics, setSystemMetrics] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
   const [userBehavior, setUserBehavior] = useState(null);
-  const [refreshing, setRefreshing] = useState(false); // ADD THIS for refresh button loader
-  const [lastUpdated, setLastUpdated] = useState(null); // ADD THIS to show last update time
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
-  // Update in your Analytics.jsx component
   const fetchAnalyticsData = async (isManualRefresh = false) => {
-    // Add parameter
     if (isManualRefresh) {
-      setRefreshing(true); // Set refreshing state for button
+      setRefreshing(true);
     } else {
-      setLoading(true); // Set main loading state
+      setLoading(true);
     }
 
     try {
@@ -80,7 +90,6 @@ const Analytics = () => {
 
       console.log("Fetching dashboard data...");
 
-      // Fetch GA4 analytics data
       const analyticsResponse = await fetch(
         `http://localhost:8000/api/analytics/dashboard?time_range=${timeRange}`,
         {
@@ -102,11 +111,9 @@ const Analytics = () => {
       const analyticsResult = await analyticsResponse.json();
       console.log("Analytics response:", analyticsResult);
 
-      // Store analytics data
       setAnalyticsData(analyticsResult.data || analyticsResult);
-      setLastUpdated(new Date()); // Update last updated timestamp
+      setLastUpdated(new Date());
 
-      // Fetch system metrics
       try {
         const systemResponse = await fetch(
           "http://localhost:8000/api/admin/system/status",
@@ -131,12 +138,9 @@ const Analytics = () => {
       }
     } catch (error) {
       console.error("Error in fetchAnalyticsData:", error);
-
-      // Use fallback data
       setAnalyticsData(getFallbackData());
       setSystemMetrics(getFallbackSystemMetrics());
 
-      // Show error to user
       if (error.message.includes("401") || error.message.includes("403")) {
         alert("Please login again. Your session may have expired.");
       } else if (error.message.includes("404")) {
@@ -146,11 +150,10 @@ const Analytics = () => {
       }
     } finally {
       setLoading(false);
-      setRefreshing(false); // Reset refreshing state
+      setRefreshing(false);
     }
   };
 
-  // Update in your Analytics.jsx component
   const fetchTabData = async (tab) => {
     setLoading(true);
     try {
@@ -214,7 +217,6 @@ const Analytics = () => {
       const result = await response.json();
       console.log(`Received ${tab} data:`, result);
 
-      // Handle response based on endpoint
       if (tab === "behavior") {
         setUserBehavior(result.data || result);
         return result.data || result;
@@ -222,11 +224,9 @@ const Analytics = () => {
         setSystemMetrics(result.data || result);
         return result.data || result;
       } else if (isDashboard) {
-        // Dashboard endpoint returns full structure
         setAnalyticsData(result.data || result);
         return result.data || result;
       } else {
-        // Other analytics endpoints return {status, data}
         const data = result.data || result;
         setAnalyticsData((prev) => ({
           ...prev,
@@ -236,19 +236,15 @@ const Analytics = () => {
       }
     } catch (error) {
       console.error(`Error fetching ${tab} data:`, error);
-
-      // Show user-friendly error
       if (tab === "dashboard") {
         alert(`Failed to load analytics data: ${error.message}`);
       }
-
       return null;
     } finally {
       setLoading(false);
     }
   };
 
-  // Track custom event
   const trackEvent = async (
     eventName,
     eventCategory,
@@ -277,7 +273,6 @@ const Analytics = () => {
     }
   };
 
-  // Track page view
   const trackPageView = async (pagePath, pageTitle) => {
     try {
       const token = localStorage.getItem("token");
@@ -298,17 +293,16 @@ const Analytics = () => {
       console.error("Page view tracking error:", error);
     }
   };
+
   useEffect(() => {
     fetchAnalyticsData();
-    // Track initial page view
     trackPageView(window.location.pathname, document.title);
   }, [timeRange]);
 
   const handleTabChange = async (value) => {
     setActiveTab(value);
-
-    // Track tab change
     trackEvent("tab_change", "navigation", value, 1);
+    setMobileMenuOpen(false);
 
     if (!analyticsData?.[value] && value !== "system" && value !== "behavior") {
       await fetchTabData(value);
@@ -321,7 +315,6 @@ const Analytics = () => {
 
   const handleExport = () => {
     trackEvent("export_data", "engagement", "analytics_export", 1);
-    // Add export functionality here
     alert("Export functionality would be implemented here");
   };
 
@@ -333,16 +326,16 @@ const Analytics = () => {
     color,
     description,
   }) => (
-    <Card>
-      <CardContent className="pt-6">
+    <Card className="h-full">
+      <CardContent>
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-gray-500">{title}</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs sm:text-sm text-gray-500 truncate">{title}</p>
             <div className="flex items-baseline mt-1">
-              <p className="text-2xl font-bold">{value}</p>
+              <p className="text-lg sm:text-2xl font-bold truncate">{value}</p>
               {change !== undefined && (
                 <span
-                  className={`ml-2 text-sm ${
+                  className={`ml-2 text-xs ${
                     change > 0
                       ? "text-green-500"
                       : change < 0
@@ -356,11 +349,13 @@ const Analytics = () => {
               )}
             </div>
             {description && (
-              <p className="text-xs text-gray-400 mt-1">{description}</p>
+              <p className="text-xs text-gray-400 mt-1 truncate">
+                {description}
+              </p>
             )}
           </div>
-          <div className={`p-3 rounded-lg ${color}`}>
-            <Icon className="h-6 w-6 text-white" />
+          <div className={`p-2 sm:p-3 rounded-lg ${color} ml-2 shrink-0`}>
+            <Icon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
           </div>
         </div>
       </CardContent>
@@ -389,22 +384,28 @@ const Analytics = () => {
     };
 
     return (
-      <Card>
-        <CardContent className="pt-6">
+      <Card className="h-full">
+        <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">{title}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm text-gray-500 truncate">
+                {title}
+              </p>
               <div className="flex items-baseline mt-1">
-                <p className={`text-2xl font-bold ${getStatusColor()}`}>
+                <p
+                  className={`text-lg sm:text-2xl font-bold ${getStatusColor()}`}
+                >
                   {value}
                 </p>
                 {unit && (
-                  <span className="ml-1 text-sm text-gray-500">{unit}</span>
+                  <span className="ml-1 text-xs sm:text-sm text-gray-500">
+                    {unit}
+                  </span>
                 )}
               </div>
             </div>
-            <div className={`p-3 rounded-lg ${color}`}>
-              <Icon className="h-6 w-6 text-white" />
+            <div className={`p-2 sm:p-3 rounded-lg ${color} ml-2 shrink-0`}>
+              <Icon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
             </div>
           </div>
         </CardContent>
@@ -412,7 +413,6 @@ const Analytics = () => {
     );
   };
 
-  // Format data for charts
   const formatDailyData = (data) => {
     if (!data?.overview?.dailyData) return [];
     return data.overview.dailyData
@@ -422,7 +422,7 @@ const Analytics = () => {
         sessions: item.sessions,
         pageviews: item.pageviews,
       }))
-      .slice(-15); // Last 15 days
+      .slice(-15);
   };
 
   const formatAcquisitionData = (data) => {
@@ -489,7 +489,6 @@ const Analytics = () => {
     "#14b8a6",
   ];
 
-  // Fallback data
   const getFallbackData = () => ({
     overview: {
       totals: {
@@ -687,6 +686,11 @@ const Analytics = () => {
     })),
   });
 
+  const calculateChange = (current) => {
+    const base = current * 0.8;
+    return Math.round(((current - base) / base) * 100);
+  };
+
   if (loading && !analyticsData && !systemMetrics) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -702,27 +706,23 @@ const Analytics = () => {
   const system = systemMetrics || getFallbackSystemMetrics();
   const user = userBehavior || getFallbackUserBehavior();
 
-  // Calculate change percentages based on time range
-  const calculateChange = (current) => {
-    const base = current * 0.8; // Simulate 20% growth
-    return Math.round(((current - base) / base) * 100);
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6 p-3 xs:p-4 sm:p-6 max-w-[100vw] overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-          <p className="text-gray-500">
+      <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">
+            Analytics Dashboard
+          </h1>
+          <p className="text-gray-500 text-sm sm:text-base truncate">
             Google Analytics 4 & System Performance
           </p>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center flex-wrap gap-2">
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-40">
-              <Calendar className="mr-2 h-4 w-4" />
-              <SelectValue placeholder="Select time range" />
+            <SelectTrigger className="w-32 sm:w-40 h-9 sm:h-10 text-xs sm:text-sm">
+              <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <SelectValue placeholder="Time Range" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="24h">Last 24 hours</SelectItem>
@@ -733,33 +733,54 @@ const Analytics = () => {
           </Select>
           <Button
             variant="outline"
+            size="sm"
+            className="h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-3"
             onClick={() => {
-              fetchAnalyticsData(true); // Pass true for manual refresh
+              fetchAnalyticsData(true);
               trackEvent("refresh_data", "engagement", "manual_refresh", 1);
             }}
-            disabled={refreshing} // Disable button when refreshing
+            disabled={refreshing}
           >
             {refreshing ? (
               <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Refreshing...
+                <RefreshCw className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                <span className="hidden xs:inline">Refreshing...</span>
+                <span className="xs:hidden">...</span>
               </>
             ) : (
               <>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh
+                <RefreshCw className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Refresh</span>
+                <span className="xs:hidden">Refresh</span>
               </>
             )}
           </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" />
-            Export
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 sm:h-10 text-xs sm:text-sm px-2 sm:px-3"
+            onClick={handleExport}
+          >
+            <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden xs:inline">Export</span>
+            <span className="xs:hidden">Export</span>
           </Button>
         </div>
       </div>
 
+      {/* Last Updated */}
+      {lastUpdated && (
+        <div className="text-xs text-gray-500">
+          Last updated:{" "}
+          {lastUpdated.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </div>
+      )}
+
       {/* Google Analytics Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Active Users"
           value={data.realtime?.activeUsers || 0}
@@ -794,7 +815,7 @@ const Analytics = () => {
       </div>
 
       {/* Performance Stats */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           title="Avg. Session"
           value={`${Math.round(data.overview?.totals?.averageDuration || 0)}s`}
@@ -833,739 +854,908 @@ const Analytics = () => {
         />
       </div>
 
-      {/* Main Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={handleTabChange}
-        className="space-y-4"
-      >
-        <TabsList className="flex flex-wrap w-full">
-          <TabsTrigger className="cursor-pointer" value="overview">
-            Overview
-          </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="realtime">
-            Real-time
-          </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="acquisition">
-            Acquisition
-          </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="pages">
-            Pages
-          </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="geographic">
-            Geographic
-          </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="devices">
-            Devices
-          </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="events">
-            Events
-          </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="system">
-            System
-          </TabsTrigger>
-          <TabsTrigger className="cursor-pointer" value="behavior">
-            My Activity
-          </TabsTrigger>
-        </TabsList>
+      {/* Main Tabs - Now visible on all screens */}
+      <div className="relative">
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="space-y-4"
+        >
+          <div className="relative">
+            <div className="overflow-x-auto scrollbar-hide">
+              <TabsList className="inline-flex w-auto min-w-full px-1">
+                <TabsTrigger
+                  className="cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap shrink-0"
+                  value="overview"
+                >
+                  <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="truncate">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  className="cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap shrink-0"
+                  value="realtime"
+                >
+                  <Activity className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="truncate">Real-time</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  className="cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap shrink-0"
+                  value="acquisition"
+                >
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="truncate">Acquisition</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  className="cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap shrink-0"
+                  value="pages"
+                >
+                  <FileText className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="truncate">Pages</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  className="cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap shrink-0"
+                  value="geographic"
+                >
+                  <MapPin className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="truncate">Geographic</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  className="cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap shrink-0"
+                  value="devices"
+                >
+                  <Smartphone className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="truncate">Devices</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  className="cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap shrink-0"
+                  value="events"
+                >
+                  <Activity className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="truncate">Events</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  className="cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap shrink-0"
+                  value="system"
+                >
+                  <Server className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="truncate">System</span>
+                </TabsTrigger>
+                <TabsTrigger
+                  className="cursor-pointer text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap shrink-0"
+                  value="behavior"
+                >
+                  <User className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
+                  <span className="truncate">My Activity</span>
+                </TabsTrigger>
+              </TabsList>
+            </div>
+          </div>
 
-        {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* User Growth Chart */}
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-4">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    User Growth
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    New users and sessions over time
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-60 sm:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={formatDailyData(data)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" fontSize={10} />
+                        <YAxis fontSize={10} />
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: "12px" }} />
+                        <Line
+                          type="monotone"
+                          dataKey="users"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          dot={{ r: 2 }}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="sessions"
+                          stroke="#10b981"
+                          strokeWidth={2}
+                          dot={{ r: 2 }}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    Acquisition Channels
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Where your users come from
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-60 sm:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={formatAcquisitionData(data)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" fontSize={10} />
+                        <YAxis fontSize={10} />
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: "12px" }} />
+                        <Bar
+                          dataKey="users"
+                          fill="#8b5cf6"
+                          radius={[2, 2, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="sessions"
+                          fill="#f59e0b"
+                          radius={[2, 2, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    Device Distribution
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Users by device type
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-60 sm:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={formatDeviceData(data)}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ name, percent }) =>
+                            `${(percent * 100).toFixed(0)}%`
+                          }
+                          outerRadius={60}
+                          innerRadius={30}
+                          fill="#8884d8"
+                          dataKey="value"
+                        >
+                          {formatDeviceData(data).map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: "12px" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    Top Countries
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Users by country
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-60 sm:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={formatGeoData(data)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="name"
+                          angle={-45}
+                          textAnchor="end"
+                          height={40}
+                          fontSize={10}
+                        />
+                        <YAxis fontSize={10} />
+                        <Tooltip />
+                        <Bar
+                          dataKey="users"
+                          fill="#06b6d4"
+                          radius={[2, 2, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Real-time Tab */}
+          <TabsContent value="realtime" className="space-y-4">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    Active Users by Country
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Real-time geographic distribution
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-60 sm:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={data.realtime?.countries || []}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                          dataKey="country"
+                          angle={-45}
+                          textAnchor="end"
+                          height={40}
+                          fontSize={10}
+                        />
+                        <YAxis fontSize={10} />
+                        <Tooltip />
+                        <Bar
+                          dataKey="users"
+                          fill="#3b82f6"
+                          radius={[2, 2, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    Active Devices
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Current device usage
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-60 sm:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={data.realtime?.devices || []}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={({ device, users }) => `${device}: ${users}`}
+                          outerRadius={60}
+                          innerRadius={30}
+                          fill="#8884d8"
+                          dataKey="users"
+                        >
+                          {(data.realtime?.devices || []).map(
+                            (entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            ),
+                          )}
+                        </Pie>
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: "12px" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Acquisition Tab */}
+          <TabsContent value="acquisition" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>User Growth</CardTitle>
-                <CardDescription>
-                  New users and sessions over time
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg">
+                  User Acquisition
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Detailed channel performance
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={formatDailyData(data)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Line
-                        type="monotone"
-                        dataKey="users"
-                        stroke="#3b82f6"
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="sessions"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        dot={{ r: 4 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Acquisition Channels */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Acquisition Channels</CardTitle>
-                <CardDescription>Where your users come from</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={formatAcquisitionData(data)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="users" fill="#8b5cf6" />
-                      <Bar dataKey="sessions" fill="#f59e0b" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Device Distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Device Distribution</CardTitle>
-                <CardDescription>Users by device type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={formatDeviceData(data)}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) =>
-                          `${name}: ${(percent * 100).toFixed(0)}%`
-                        }
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {formatDeviceData(data).map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Geographic Distribution */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Countries</CardTitle>
-                <CardDescription>Users by country</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={formatGeoData(data)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="users" fill="#06b6d4" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Real-time Tab */}
-        <TabsContent value="realtime" className="space-y-4">
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Active Users by Country */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Users by Country</CardTitle>
-                <CardDescription>
-                  Real-time geographic distribution
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.realtime?.countries || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="country" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="users" fill="#3b82f6" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Active Devices */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Devices</CardTitle>
-                <CardDescription>Current device usage</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={data.realtime?.devices || []}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ device, users }) => `${device}: ${users}`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="users"
-                      >
-                        {(data.realtime?.devices || []).map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Acquisition Tab */}
-        <TabsContent value="acquisition" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>User Acquisition</CardTitle>
-              <CardDescription>Detailed channel performance</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.acquisition?.channels && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="font-semibold">Channel</div>
-                    <div className="font-semibold text-right">Users</div>
-                    <div className="font-semibold text-right">New Users</div>
-                    <div className="font-semibold text-right">Sessions</div>
-                    <div className="font-semibold text-right">Engaged</div>
-                  </div>
-                  {data.acquisition.channels.map((channel, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-5 gap-4 p-4 border-b"
-                    >
-                      <div>{channel.channel}</div>
-                      <div className="text-right font-medium">
-                        {channel.users?.toLocaleString()}
-                      </div>
-                      <div className="text-right">
-                        {channel.newUsers?.toLocaleString()}
-                      </div>
-                      <div className="text-right">
-                        {channel.sessions?.toLocaleString()}
-                      </div>
-                      <div className="text-right">
-                        {channel.engagedSessions?.toLocaleString()}
-                      </div>
+                {data.acquisition?.channels && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-5 gap-2 p-2 sm:p-4 bg-gray-50 rounded-lg text-xs sm:text-sm">
+                      <div className="font-semibold">Channel</div>
+                      <div className="font-semibold text-right">Users</div>
+                      <div className="font-semibold text-right">New Users</div>
+                      <div className="font-semibold text-right">Sessions</div>
+                      <div className="font-semibold text-right">Engaged</div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Pages Tab */}
-        <TabsContent value="pages" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Page Performance</CardTitle>
-              <CardDescription>Top performing pages</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.pages?.pages && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-6 gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="font-semibold col-span-2">Page Title</div>
-                    <div className="font-semibold text-right">Views</div>
-                    <div className="font-semibold text-right">Users</div>
-                    <div className="font-semibold text-right">Avg. Time</div>
-                    <div className="font-semibold text-right">Bounce Rate</div>
-                    <div className="font-semibold text-right">Events</div>
-                  </div>
-                  {data.pages.pages.slice(0, 10).map((page, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-6 gap-4 p-4 border-b"
-                    >
-                      <div className="col-span-2 truncate" title={page.title}>
-                        <div className="font-medium truncate">{page.title}</div>
-                        <div className="text-xs text-gray-500 truncate">
-                          {page.path}
-                        </div>
-                      </div>
-                      <div className="text-right font-medium">
-                        {page.views?.toLocaleString()}
-                      </div>
-                      <div className="text-right">
-                        {page.users?.toLocaleString()}
-                      </div>
-                      <div className="text-right">{page.avgDuration}s</div>
-                      <div className="text-right">{page.bounceRate}%</div>
-                      <div className="text-right">{page.events}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Geographic Tab */}
-        <TabsContent value="geographic" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Geographic Distribution</CardTitle>
-              <CardDescription>Users by location</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.geographic?.countries && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="font-semibold">Country</div>
-                    <div className="font-semibold text-right">Users</div>
-                    <div className="font-semibold text-right">Sessions</div>
-                    <div className="font-semibold text-right">Pageviews</div>
-                  </div>
-                  {data.geographic.countries
-                    .slice(0, 15)
-                    .map((country, index) => (
+                    {data.acquisition.channels.map((channel, index) => (
                       <div
                         key={index}
-                        className="grid grid-cols-4 gap-4 p-4 border-b"
+                        className="grid grid-cols-5 gap-2 p-2 sm:p-4 border-b text-xs sm:text-sm"
                       >
-                        <div className="flex items-center">
-                          <Globe className="w-4 h-4 mr-2 text-gray-400" />
-                          {country.country}
+                        <div className="truncate">{channel.channel}</div>
+                        <div className="text-right font-medium">
+                          {channel.users?.toLocaleString()}
+                        </div>
+                        <div className="text-right">
+                          {channel.newUsers?.toLocaleString()}
+                        </div>
+                        <div className="text-right">
+                          {channel.sessions?.toLocaleString()}
+                        </div>
+                        <div className="text-right">
+                          {channel.engagedSessions?.toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Pages Tab */}
+          <TabsContent value="pages" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg">
+                  Page Performance
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Top performing pages
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {data.pages?.pages && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-6 gap-2 p-2 sm:p-4 bg-gray-50 rounded-lg text-xs sm:text-sm">
+                      <div className="font-semibold col-span-2">Page Title</div>
+                      <div className="font-semibold text-right">Views</div>
+                      <div className="font-semibold text-right">Users</div>
+                      <div className="font-semibold text-right">Time</div>
+                      <div className="font-semibold text-right">Bounce</div>
+                      <div className="font-semibold text-right">Events</div>
+                    </div>
+                    {data.pages.pages.slice(0, 10).map((page, index) => (
+                      <div
+                        key={index}
+                        className="grid grid-cols-6 gap-2 p-2 sm:p-4 border-b text-xs sm:text-sm"
+                      >
+                        <div className="col-span-2 truncate" title={page.title}>
+                          <div className="font-medium truncate text-xs sm:text-sm">
+                            {page.title}
+                          </div>
+                          <div className="text-xs text-gray-500 truncate">
+                            {page.path}
+                          </div>
                         </div>
                         <div className="text-right font-medium">
-                          {country.users?.toLocaleString()}
+                          {page.views?.toLocaleString()}
                         </div>
                         <div className="text-right">
-                          {country.sessions?.toLocaleString()}
+                          {page.users?.toLocaleString()}
                         </div>
                         <div className="text-right">
-                          {country.pageviews?.toLocaleString()}
+                          {Math.round(page.avgDuration)}s
                         </div>
+                        <div className="text-right">
+                          {Math.round(page.bounceRate)}%
+                        </div>
+                        <div className="text-right">{page.events}</div>
                       </div>
                     ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Devices Tab */}
-        <TabsContent value="devices" className="space-y-4">
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Device Categories */}
-            <Card className="col-span-2">
-              <CardHeader>
-                <CardTitle>Device Categories</CardTitle>
-                <CardDescription>Usage by device type</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data.devices?.devices || []}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="device" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="users" fill="#3b82f6" />
-                      <Bar dataKey="sessions" fill="#10b981" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
+          </TabsContent>
 
-            {/* Top Browsers */}
+          {/* Geographic Tab */}
+          <TabsContent value="geographic" className="space-y-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Top Browsers</CardTitle>
-                <CardDescription>Browser usage distribution</CardDescription>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg">
+                  Geographic Distribution
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Users by location
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {data.devices?.browsers?.slice(0, 8).map((browser, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center">
+                {data.geographic?.countries && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-4 gap-2 p-2 sm:p-4 bg-gray-50 rounded-lg text-xs sm:text-sm">
+                      <div className="font-semibold">Country</div>
+                      <div className="font-semibold text-right">Users</div>
+                      <div className="font-semibold text-right">Sessions</div>
+                      <div className="font-semibold text-right">Pageviews</div>
+                    </div>
+                    {data.geographic.countries
+                      .slice(0, 15)
+                      .map((country, index) => (
                         <div
-                          className="w-3 h-3 rounded-full mr-2"
-                          style={{
-                            backgroundColor: COLORS[index % COLORS.length],
-                          }}
-                        ></div>
-                        <span>{browser.browser}</span>
-                      </div>
-                      <span className="font-medium">
-                        {browser.users?.toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                          key={index}
+                          className="grid grid-cols-4 gap-2 p-2 sm:p-4 border-b text-xs sm:text-sm"
+                        >
+                          <div className="flex items-center truncate">
+                            <Globe className="w-3 h-3 mr-1 sm:mr-2 text-gray-400 shrink-0" />
+                            <span className="truncate">{country.country}</span>
+                          </div>
+                          <div className="text-right font-medium">
+                            {country.users?.toLocaleString()}
+                          </div>
+                          <div className="text-right">
+                            {country.sessions?.toLocaleString()}
+                          </div>
+                          <div className="text-right">
+                            {country.pageviews?.toLocaleString()}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
-          </div>
-        </TabsContent>
+          </TabsContent>
 
-        {/* Events Tab */}
-        <TabsContent value="events" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Event Tracking</CardTitle>
-              <CardDescription>User interaction events</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {data.events?.events && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="font-semibold">Event Name</div>
-                    <div className="font-semibold">Page</div>
-                    <div className="font-semibold text-right">Count</div>
-                    <div className="font-semibold text-right">Users</div>
+          {/* Devices Tab */}
+          <TabsContent value="devices" className="space-y-4">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
+              <Card className="col-span-2">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    Device Categories
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Usage by device type
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-60 sm:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={data.devices?.devices || []}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="device" fontSize={10} />
+                        <YAxis fontSize={10} />
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: "12px" }} />
+                        <Bar
+                          dataKey="users"
+                          fill="#3b82f6"
+                          radius={[2, 2, 0, 0]}
+                        />
+                        <Bar
+                          dataKey="sessions"
+                          fill="#10b981"
+                          radius={[2, 2, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
                   </div>
-                  {data.events.events.slice(0, 15).map((event, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-4 gap-4 p-4 border-b"
-                    >
-                      <div className="font-medium">{event.name}</div>
-                      <div className="truncate" title={event.page}>
-                        {event.page}
-                      </div>
-                      <div className="text-right font-medium">
-                        {event.count?.toLocaleString()}
-                      </div>
-                      <div className="text-right">
-                        {event.users?.toLocaleString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                </CardContent>
+              </Card>
 
-        {/* System Tab */}
-        <TabsContent value="system" className="space-y-4">
-          {/* System Health Score */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>System Health</CardTitle>
-                  <CardDescription>Overall system performance</CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => fetchAnalyticsData(true)}
-                  disabled={refreshing}
-                  className="h-8 w-8"
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-                  />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div
-                    className="text-4xl font-bold"
-                    style={{
-                      color:
-                        system.health >= 90
-                          ? "#10b981"
-                          : system.health >= 70
-                            ? "#f59e0b"
-                            : "#ef4444",
-                    }}
-                  >
-                    {Math.round(system.health)}%
-                  </div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    Status:{" "}
-                    <span className="font-medium capitalize">
-                      {system.healthStatus}
-                    </span>
-                  </div>
-                </div>
-                <Shield className="h-16 w-16 text-gray-200" />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* System Stats */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <SystemStatCard
-              title="API Response"
-              value={system.apiResponseTime}
-              unit="ms"
-              icon={Activity}
-              color="bg-blue-500"
-              status={
-                system.apiResponseTime < 200
-                  ? "good"
-                  : system.apiResponseTime < 500
-                    ? "warning"
-                    : "critical"
-              }
-            />
-            <SystemStatCard
-              title="Error Rate"
-              value={system.errorRate}
-              unit="%"
-              icon={Target}
-              color="bg-red-500"
-              status={
-                system.errorRate < 1
-                  ? "good"
-                  : system.errorRate < 5
-                    ? "warning"
-                    : "critical"
-              }
-            />
-            <SystemStatCard
-              title="Uptime"
-              value={system.uptime}
-              unit="%"
-              icon={Zap}
-              color="bg-green-500"
-              status={
-                system.uptime >= 99.5
-                  ? "good"
-                  : system.uptime >= 99
-                    ? "warning"
-                    : "critical"
-              }
-            />
-            <SystemStatCard
-              title="Active Connections"
-              value={system.activeConnections}
-              icon={Wifi}
-              color="bg-purple-500"
-              status={
-                system.activeConnections < 50
-                  ? "good"
-                  : system.activeConnections < 100
-                    ? "warning"
-                    : "critical"
-              }
-            />
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Resource Usage */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Resource Usage</CardTitle>
-                <CardDescription>System resource utilization</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={formatSystemMetrics(system)}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis domain={[0, 100]} />
-                      <Tooltip formatter={(value) => [`${value}%`, "Usage"]} />
-                      <Bar dataKey="value" fill="#8884d8" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Performance Metrics */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Performance Metrics</CardTitle>
-                <CardDescription>System performance vs targets</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {formatHealthMetrics(system).map((item, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>{item.name}</span>
-                        <span className="font-medium">
-                          {item.name === "Uptime" || item.name === "Error Rate"
-                            ? `${item.value}%`
-                            : item.name === "API Response"
-                              ? `${item.value}ms`
-                              : item.value}
-                        </span>
-                      </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    Top Browsers
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    Browser usage distribution
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {data.devices?.browsers
+                      ?.slice(0, 8)
+                      .map((browser, index) => (
                         <div
-                          className={`h-full ${
-                            item.value <= item.target
-                              ? "bg-green-500"
-                              : item.name === "Uptime"
-                                ? item.value >= item.target
-                                  ? "bg-green-500"
-                                  : "bg-red-500"
-                                : "bg-red-500"
-                          }`}
-                          style={{
-                            width: `${Math.min((item.value / item.target) * 100, 100)}%`,
-                          }}
-                        ></div>
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        Target:{" "}
-                        {item.name === "Uptime" || item.name === "Error Rate"
-                          ? `${item.target}%`
-                          : item.name === "API Response"
-                            ? `${item.target}ms`
-                            : item.target}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* My Activity Tab */}
-        <TabsContent value="behavior" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>My Activity</CardTitle>
-              <CardDescription>Your behavior on the platform</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <StatCard
-                  title="My Sessions"
-                  value={user.total_sessions}
-                  icon={Users}
-                  color="bg-blue-100"
-                />
-                <StatCard
-                  title="Page Views"
-                  value={user.total_page_views}
-                  icon={Eye}
-                  color="bg-green-100"
-                />
-                <StatCard
-                  title="Events"
-                  value={user.total_events}
-                  icon={Activity}
-                  color="bg-purple-100"
-                />
-              </div>
-
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div>
-                  <h3 className="font-semibold mb-3">Popular Pages</h3>
-                  <div className="space-y-2">
-                    {user.popular_pages.map((page, index) => (
-                      <div
-                        key={index}
-                        className="flex justify-between items-center py-2 border-b"
-                      >
-                        <div className="flex items-center">
-                          <FileText className="w-4 h-4 mr-2 text-gray-400" />
-                          <span className="truncate max-w-[200px]">
-                            {page.page}
+                          key={index}
+                          className="flex items-center justify-between py-1"
+                        >
+                          <div className="flex items-center">
+                            <div
+                              className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mr-2 shrink-0"
+                              style={{
+                                backgroundColor: COLORS[index % COLORS.length],
+                              }}
+                            ></div>
+                            <span className="text-xs sm:text-sm truncate">
+                              {browser.browser}
+                            </span>
+                          </div>
+                          <span className="font-medium text-xs sm:text-sm bg-gray-100 px-1 sm:px-2 py-0.5 rounded">
+                            {browser.users?.toLocaleString()}
                           </span>
                         </div>
-                        <span className="font-medium bg-gray-100 px-2 py-1 rounded">
-                          {page.views}
-                        </span>
-                      </div>
-                    ))}
+                      ))}
                   </div>
-                </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
-                <div>
-                  <h3 className="font-semibold mb-3">Event Distribution</h3>
-                  <div className="space-y-2">
-                    {user.event_distribution.map((event, index) => (
+          {/* Events Tab */}
+          <TabsContent value="events" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg">
+                  Event Tracking
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  User interaction events
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {data.events?.events && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-4 gap-2 p-2 sm:p-4 bg-gray-50 rounded-lg text-xs sm:text-sm">
+                      <div className="font-semibold">Event Name</div>
+                      <div className="font-semibold">Page</div>
+                      <div className="font-semibold text-right">Count</div>
+                      <div className="font-semibold text-right">Users</div>
+                    </div>
+                    {data.events.events.slice(0, 15).map((event, index) => (
                       <div
                         key={index}
-                        className="flex justify-between items-center py-2 border-b"
+                        className="grid grid-cols-4 gap-2 p-2 sm:p-4 border-b text-xs sm:text-sm"
                       >
-                        <div className="flex items-center">
+                        <div className="font-medium truncate text-xs sm:text-sm">
+                          {event.name}
+                        </div>
+                        <div
+                          className="truncate text-xs sm:text-sm"
+                          title={event.page}
+                        >
+                          {event.page}
+                        </div>
+                        <div className="text-right font-medium">
+                          {event.count?.toLocaleString()}
+                        </div>
+                        <div className="text-right">
+                          {event.users?.toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* System Tab */}
+          <TabsContent value="system" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base sm:text-lg">
+                      System Health
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
+                      Overall system performance
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fetchAnalyticsData(true)}
+                    disabled={refreshing}
+                    className="h-8 w-8"
+                  >
+                    <RefreshCw
+                      className={`h-3 w-3 sm:h-4 sm:w-4 ${refreshing ? "animate-spin" : ""}`}
+                    />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div
+                      className="text-2xl sm:text-4xl font-bold"
+                      style={{
+                        color:
+                          system.health >= 90
+                            ? "#10b981"
+                            : system.health >= 70
+                              ? "#f59e0b"
+                              : "#ef4444",
+                      }}
+                    >
+                      {Math.round(system.health)}%
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-500 mt-1">
+                      Status:{" "}
+                      <span className="font-medium capitalize">
+                        {system.healthStatus}
+                      </span>
+                    </div>
+                  </div>
+                  <Shield className="h-10 w-10 sm:h-16 sm:w-16 text-gray-200" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
+              <SystemStatCard
+                title="API Response"
+                value={system.apiResponseTime}
+                unit="ms"
+                icon={Activity}
+                color="bg-blue-500"
+                status={
+                  system.apiResponseTime < 200
+                    ? "good"
+                    : system.apiResponseTime < 500
+                      ? "warning"
+                      : "critical"
+                }
+              />
+              <SystemStatCard
+                title="Error Rate"
+                value={system.errorRate}
+                unit="%"
+                icon={Target}
+                color="bg-red-500"
+                status={
+                  system.errorRate < 1
+                    ? "good"
+                    : system.errorRate < 5
+                      ? "warning"
+                      : "critical"
+                }
+              />
+              <SystemStatCard
+                title="Uptime"
+                value={system.uptime}
+                unit="%"
+                icon={Zap}
+                color="bg-green-500"
+                status={
+                  system.uptime >= 99.5
+                    ? "good"
+                    : system.uptime >= 99
+                      ? "warning"
+                      : "critical"
+                }
+              />
+              <SystemStatCard
+                title="Active Connections"
+                value={system.activeConnections}
+                icon={Wifi}
+                color="bg-purple-500"
+                status={
+                  system.activeConnections < 50
+                    ? "good"
+                    : system.activeConnections < 100
+                      ? "warning"
+                      : "critical"
+                }
+              />
+            </div>
+
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    Resource Usage
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    System resource utilization
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-60 sm:h-80">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={formatSystemMetrics(system)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" fontSize={10} />
+                        <YAxis domain={[0, 100]} fontSize={10} />
+                        <Tooltip
+                          formatter={(value) => [`${value}%`, "Usage"]}
+                        />
+                        <Bar
+                          dataKey="value"
+                          fill="#8884d8"
+                          radius={[2, 2, 0, 0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base sm:text-lg">
+                    Performance Metrics
+                  </CardTitle>
+                  <CardDescription className="text-xs sm:text-sm">
+                    System performance vs targets
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {formatHealthMetrics(system).map((item, index) => (
+                      <div key={index} className="space-y-1 sm:space-y-2">
+                        <div className="flex justify-between text-xs sm:text-sm">
+                          <span className="truncate">{item.name}</span>
+                          <span className="font-medium truncate">
+                            {item.name === "Uptime" ||
+                            item.name === "Error Rate"
+                              ? `${item.value}%`
+                              : item.name === "API Response"
+                                ? `${item.value}ms`
+                                : item.value}
+                          </span>
+                        </div>
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
-                            className="w-3 h-3 rounded-full mr-2"
+                            className={`h-full ${
+                              item.value <= item.target
+                                ? "bg-green-500"
+                                : item.name === "Uptime"
+                                  ? item.value >= item.target
+                                    ? "bg-green-500"
+                                    : "bg-red-500"
+                                  : "bg-red-500"
+                            }`}
                             style={{
-                              backgroundColor: COLORS[index % COLORS.length],
+                              width: `${Math.min((item.value / item.target) * 100, 100)}%`,
                             }}
                           ></div>
-                          <span>{event.event}</span>
                         </div>
-                        <span className="font-medium">{event.count}</span>
+                        <div className="text-xs text-gray-500">
+                          Target:{" "}
+                          {item.name === "Uptime" || item.name === "Error Rate"
+                            ? `${item.target}%`
+                            : item.name === "API Response"
+                              ? `${item.target}ms`
+                              : item.target}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* My Activity Tab */}
+          <TabsContent value="behavior" className="space-y-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base sm:text-lg">
+                  My Activity
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
+                  Your behavior on the platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-3 mb-4 sm:mb-6">
+                  <StatCard
+                    title="My Sessions"
+                    value={user.total_sessions}
+                    icon={Users}
+                    color="bg-blue-100"
+                  />
+                  <StatCard
+                    title="Page Views"
+                    value={user.total_page_views}
+                    icon={Eye}
+                    color="bg-green-100"
+                  />
+                  <StatCard
+                    title="Events"
+                    value={user.total_events}
+                    icon={Activity}
+                    color="bg-purple-100"
+                  />
+                </div>
+
+                <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
+                  <div>
+                    <h3 className="font-semibold text-sm sm:text-base mb-2 sm:mb-3">
+                      Popular Pages
+                    </h3>
+                    <div className="space-y-1 sm:space-y-2">
+                      {user.popular_pages.map((page, index) => (
+                        <div
+                          key={index}
+                          className="flex justify-between items-center py-1 sm:py-2 border-b"
+                        >
+                          <div className="flex items-center">
+                            <FileText className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 text-gray-400 shrink-0" />
+                            <span className="text-xs sm:text-sm truncate max-w-[120px] sm:max-w-[200px]">
+                              {page.page}
+                            </span>
+                          </div>
+                          <span className="font-medium text-xs sm:text-sm bg-gray-100 px-1 sm:px-2 py-0.5 rounded">
+                            {page.views}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-sm sm:text-base mb-2 sm:mb-3">
+                      Event Distribution
+                    </h3>
+                    <div className="space-y-1 sm:space-y-2">
+                      {user.event_distribution.map((event, index) => (
+                        <div
+                          key={index}
+                          className="flex justify-between items-center py-1 sm:py-2 border-b"
+                        >
+                          <div className="flex items-center">
+                            <div
+                              className="w-2 h-2 sm:w-3 sm:h-3 rounded-full mr-1 sm:mr-2 shrink-0"
+                              style={{
+                                backgroundColor: COLORS[index % COLORS.length],
+                              }}
+                            ></div>
+                            <span className="text-xs sm:text-sm">
+                              {event.event}
+                            </span>
+                          </div>
+                          <span className="font-medium text-xs sm:text-sm">
+                            {event.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 sm:mt-6">
+                  <h3 className="font-semibold text-sm sm:text-base mb-2 sm:mb-3">
+                    Recent Activity
+                  </h3>
+                  <div className="space-y-1 sm:space-y-2 max-h-40 sm:max-h-60 overflow-y-auto">
+                    {user.recent_events.slice(0, 10).map((event, index) => (
+                      <div key={index} className="py-1 sm:py-2 border-b">
+                        <div className="flex justify-between">
+                          <span className="font-medium text-xs sm:text-sm truncate">
+                            {event.event_name}
+                          </span>
+                          <span className="text-xs text-gray-500 shrink-0 ml-2">
+                            {new Date(event.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-500 truncate">
+                          Category: {event.event_category}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-6">
-                <h3 className="font-semibold mb-3">Recent Activity</h3>
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {user.recent_events.slice(0, 10).map((event, index) => (
-                    <div key={index} className="py-2 border-b">
-                      <div className="flex justify-between">
-                        <span className="font-medium">{event.event_name}</span>
-                        <span className="text-sm text-gray-500">
-                          {new Date(event.timestamp).toLocaleTimeString()}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        Category: {event.event_category}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };

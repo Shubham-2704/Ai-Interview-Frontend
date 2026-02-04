@@ -46,13 +46,9 @@ import {
   Trophy,
   BarChart,
   Target,
-  TrendingUp,
-  TrendingDown,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Award,
-  Brain,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -90,9 +86,10 @@ const Sessions = () => {
   const [quizStatsDialogOpen, setQuizStatsDialogOpen] = useState(false);
   const [quizStats, setQuizStats] = useState(null);
   const [quizStatsLoading, setQuizStatsLoading] = useState(false);
-  const [selectedSessionQuizzes, setSelectedSessionQuizzes] = useState([]);
-  const [quizLoading, setQuizLoading] = useState(false);
-  const [expandedSession, setExpandedSession] = useState(null);
+
+  // State for mobile view
+  const [mobileExpandedUser, setMobileExpandedUser] = useState(null);
+  const [showMobileSessions, setShowMobileSessions] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -179,7 +176,6 @@ const Sessions = () => {
         API_PATHS.ADMIN.USER_QUIZ_STATS(userId),
       );
 
-      // Format the data for the dialog
       const stats = response.data;
 
       // Get user info
@@ -199,21 +195,10 @@ const Sessions = () => {
         overview: {
           totalQuizzes: stats.totalQuizzes || 0,
           avgQuizScore: stats.avgQuizScore || 0,
-          accuracy: stats.avgQuizScore || 0, // Using avg score as accuracy for now
+          accuracy: stats.avgQuizScore || 0,
           quizCompletionRate: stats.quizCompletionRate || 0,
-          performanceTrend:
-            (stats.avgQuizScore || 0) >= 80 ? "improving" : "stable",
         },
-        statusBreakdown: {
-          completed: {
-            count: stats.totalQuizzes || 0,
-            avgScore: stats.avgQuizScore || 0,
-          },
-        },
-        recentQuizzes: [], // We'll handle this separately
-        sessionPerformance: [], // We'll handle this separately
-        quizTypePerformance: [], // We'll handle this separately
-        rawStats: stats, // Include raw stats for debugging
+        rawStats: stats,
       };
 
       setQuizStats(formattedStats);
@@ -226,60 +211,11 @@ const Sessions = () => {
     }
   };
 
-  const fetchSessionQuizzes = async (sessionId) => {
-    if (expandedSession === sessionId) {
-      setExpandedSession(null);
-      setSelectedSessionQuizzes([]);
-      return;
-    }
-
-    setQuizLoading(true);
-    try {
-      // Fetch session quizzes from API
-      const response = await axiosInstance.get(
-        `/admin/sessions/${sessionId}/quizzes`,
-      );
-      setSelectedSessionQuizzes(response.data.quizzes || []);
-      setExpandedSession(sessionId);
-    } catch (error) {
-      console.error("Error fetching session quizzes:", error);
-
-      // Mock data for demo
-      const mockQuizzes = [
-        {
-          id: "quiz-1",
-          title: "Technical Assessment",
-          totalQuestions: 10,
-          score: 8,
-          percentage: 80,
-          status: "completed",
-          timeSpent: 25,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "quiz-2",
-          title: "Concept Review",
-          totalQuestions: 5,
-          score: 4,
-          percentage: 80,
-          status: "completed",
-          timeSpent: 15,
-          createdAt: new Date(Date.now() - 86400000).toISOString(),
-        },
-      ];
-      setSelectedSessionQuizzes(mockQuizzes);
-      setExpandedSession(sessionId);
-      toast.warning("Using sample quiz data");
-    } finally {
-      setQuizLoading(false);
-    }
-  };
-
   const handleUserSelect = (userId) => {
     setSelectedUserId(userId);
     setExpandedUser(null);
-    setExpandedSession(null);
-    setSelectedSessionQuizzes([]);
+    setMobileExpandedUser(null);
+    setShowMobileSessions(false);
 
     if (userId && userId !== "all") {
       fetchUserDetails(userId);
@@ -299,14 +235,25 @@ const Sessions = () => {
   };
 
   const toggleUserExpand = async (user) => {
-    if (expandedUser === user.id) {
-      setExpandedUser(null);
-      setUserSessions([]);
-      setExpandedSession(null);
-      setSelectedSessionQuizzes([]);
+    if (window.innerWidth < 768) {
+      // Mobile behavior
+      if (mobileExpandedUser === user.id) {
+        setMobileExpandedUser(null);
+        setShowMobileSessions(false);
+      } else {
+        setMobileExpandedUser(user.id);
+        await fetchUserDetails(user.id);
+        setShowMobileSessions(true);
+      }
     } else {
-      setExpandedUser(user.id);
-      await fetchUserDetails(user.id);
+      // Desktop behavior
+      if (expandedUser === user.id) {
+        setExpandedUser(null);
+        setUserSessions([]);
+      } else {
+        setExpandedUser(user.id);
+        await fetchUserDetails(user.id);
+      }
     }
   };
 
@@ -343,40 +290,341 @@ const Sessions = () => {
       .filter((t) => t.length > 0);
   };
 
-  // Function to get performance trend icon
-  const getTrendIcon = (trend) => {
-    switch (trend) {
-      case "improving":
-        return <TrendingUp className="h-4 w-4 text-green-500" />;
-      case "declining":
-        return <TrendingDown className="h-4 w-4 text-red-500" />;
-      default:
-        return <TrendingUp className="h-4 w-4 text-gray-500" />;
-    }
-  };
+  // User Stats Card Component
+  const UserStatsCard = ({ user }) => (
+    <Card className="w-full mb-4">
+      <CardContent>
+        <div className="flex items-center space-x-3 mb-4">
+          <Avatar className="h-10 w-10">
+            <AvatarImage
+              src={
+                user.profileImageUrl ||
+                `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
+              }
+            />
+            <AvatarFallback>{user.name?.charAt(0) || "U"}</AvatarFallback>
+          </Avatar>
+          <div>
+            <h3 className="font-semibold w-60 runcate">{user.name}</h3>
+            <p className="text-sm text-gray-500 w-60 truncate">{user.email}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="text-center p-2 bg-blue-50 rounded">
+            <div className="font-bold text-blue-700">
+              {user.sessionCount || 0}
+            </div>
+            <div className="text-xs text-gray-600">Sessions</div>
+          </div>
+          <div className="text-center p-2 bg-green-50 rounded">
+            <div className="font-bold text-green-700">
+              {user.questionCount || 0}
+            </div>
+            <div className="text-xs text-gray-600">Questions</div>
+          </div>
+          <div className="text-center p-2 bg-purple-50 rounded">
+            <div className="font-bold text-purple-700">
+              {user.materialCount || 0}
+            </div>
+            <div className="text-xs text-gray-600">Resources</div>
+          </div>
+          <div className="text-center p-2 bg-amber-50 rounded">
+            <div className="font-bold text-amber-700">
+              {user.quizCount || 0}
+            </div>
+            <div className="text-xs text-gray-600">Quizzes</div>
+          </div>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full mt-3"
+          onClick={() => toggleUserExpand(user)}
+        >
+          {mobileExpandedUser === user.id ? "Hide Sessions" : "View Sessions"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
+  // Mobile Sessions View Component
+  const MobileSessionsView = () => (
+    <div className="md:hidden fixed inset-0 bg-white bottom-10 z-50 overflow-y-auto">
+      <div className="sticky top-0 bg-white border-b p-4">
+        <div className="flex items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              (setShowMobileSessions(false), setMobileExpandedUser(null));
+            }}
+            className="h-9"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <h2 className="text-lg font-semibold">
+            {selectedUser?.name}'s Sessions
+          </h2>
+          <div className="w-9"></div> {/* Spacer for alignment */}
+        </div>
+      </div>
+
+      <div className="p-4">
+        {userLoading ? (
+          <div className="text-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-500" />
+            <p className="mt-2 text-sm text-gray-500">Loading sessions...</p>
+          </div>
+        ) : userSessions.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No sessions found</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {userSessions.map((session) => {
+              const topics = parseTopics(session.topicsToFocus);
+              const hasQuizzes = session.quizCount > 0;
+              const sessionId = session.id;
+
+              return (
+                <Card key={sessionId} className="border">
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-500">
+                          Role
+                        </p>
+                        <p className="font-semibold">
+                          {session.role || "Not specified"}
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="bg-blue-50">
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          {session.questionCount || 0} Q
+                        </Badge>
+                        {session.materialCount > 0 && (
+                          <Badge variant="outline" className="bg-purple-50">
+                            <BookOpen className="h-3 w-3 mr-1" />
+                            {session.materialCount} R
+                          </Badge>
+                        )}
+                        {hasQuizzes && (
+                          <Badge variant="outline" className="bg-amber-50">
+                            <Trophy className="h-3 w-3 mr-1" />
+                            {session.quizCount} Qz
+                          </Badge>
+                        )}
+                        <Badge variant="outline">
+                          {session.experience || "N/A"} Year Exp
+                        </Badge>
+                      </div>
+
+                      {session.description && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-500">
+                            Description
+                          </p>
+                          <p className="text-sm text-gray-700 line-clamp-2">
+                            {session.description}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-xs text-gray-500">Created</p>
+                          <p className="text-sm">
+                            {session.createdAt
+                              ? format(
+                                  new Date(session.createdAt),
+                                  "MMM dd, yyyy",
+                                )
+                              : "N/A"}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            session.status === "completed"
+                              ? "default"
+                              : "outline"
+                          }
+                        >
+                          {session.status || "active"}
+                        </Badge>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            navigate(`/admin/sessions/${sessionId}/questions`)
+                          }
+                          className="flex-1"
+                          disabled={session.questionCount === 0}
+                        >
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          Question
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            navigate(`/admin/sessions/${sessionId}/resources`)
+                          }
+                          className="flex-1"
+                          disabled={session.materialCount === 0}
+                        >
+                          <BookOpen className="h-3 w-3 mr-1" />
+                          Resource
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            navigate(
+                              `/admin/sessions/${sessionId}/quiz-history`,
+                            )
+                          }
+                          className="flex-1"
+                          disabled={!hasQuizzes}
+                        >
+                          <Trophy className="h-3 w-3 mr-1" />
+                          Quiz
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 w-full overflow-x-hidden">
+      {/* Mobile Sessions Overlay */}
+      {showMobileSessions && <MobileSessionsView />}
+
+      {/* Quiz Statistics Dialog */}
+      <Dialog open={quizStatsDialogOpen} onOpenChange={setQuizStatsDialogOpen}>
+        <DialogContent className="w-[95%] sm:w-full max-w-2xl md:max-w-4xl max-h-[90vh] overflow-y-auto">
+          {quizStatsLoading ? (
+            <div className="py-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
+              <p className="mt-2 text-gray-500 text-sm sm:text-base">
+                Loading quiz statistics...
+              </p>
+            </div>
+          ) : quizStats ? (
+            <>
+              <DialogHeader>
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <Avatar className="h-10 w-10 sm:h-12 sm:w-12">
+                    <AvatarImage
+                      src={
+                        quizStats.userInfo?.profileImageUrl ||
+                        `https://api.dicebear.com/7.x/avataaars/svg?seed=${quizStats.userInfo?.id}`
+                      }
+                    />
+                    <AvatarFallback className="text-xs sm:text-sm">
+                      {quizStats.userInfo?.name?.charAt(0) || "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <DialogTitle className="text-lg sm:text-xl truncate">
+                      {quizStats.userInfo?.name}'s Quiz Performance
+                    </DialogTitle>
+                    <DialogDescription className="text-xs sm:text-sm truncate">
+                      {quizStats.userInfo?.email}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
+                <Card>
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600">
+                      {quizStats.overview?.totalQuizzes || 0}
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-600">
+                      Total Quizzes
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">
+                      {quizStats.overview?.avgQuizScore || 0}%
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-600">
+                      Average Score
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="text-lg sm:text-xl md:text-2xl font-bold text-amber-600">
+                      {quizStats.overview?.accuracy || 0}%
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-600">
+                      Accuracy
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-lg sm:text-xl md:text-2xl font-bold text-purple-600">
+                          {quizStats.overview?.quizCompletionRate || 0}%
+                        </div>
+                        <div className="text-xs sm:text-sm text-gray-600">
+                          Completion Rate
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Sessions Management</h1>
-          <p className="text-gray-500">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold truncate">
+            Sessions Management
+          </h1>
+          <p className="text-gray-500 text-sm sm:text-base truncate">
             View and manage user sessions, questions, quizzes, and resources
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Export
+        <div className="flex items-center mt-2 sm:mt-0">
+          <Button variant="outline" className="h-9 sm:h-10 text-xs sm:text-sm">
+            <Download className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="truncate">Export</span>
           </Button>
         </div>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="grid gap-4 md:grid-cols-4">
+      <Card className="w-full">
+        <CardContent>
+          {/* ================= MOBILE ONLY ================= */}
+          <div className="space-y-3 sm:hidden">
+            {/* Search */}
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
               <Input
@@ -388,545 +636,558 @@ const Sessions = () => {
                     handleApplyFilters();
                   }
                 }}
-                className="pl-8"
+                className="pl-8 h-10 text-sm"
+              />
+            </div>
+
+            {/* Filters row */}
+            <div className="flex items-center justify-between gap-2">
+              {/* All Roles - smaller width */}
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="h-9">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="All Roles" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Apply */}
+              <Button
+                onClick={handleApplyFilters}
+                variant="outline"
+                size="sm"
+                className="h-9 whitespace-nowrap"
+              >
+                Apply Filter
+              </Button>
+
+              {/* Users count */}
+              <Badge
+                variant="outline"
+                className="h-9 flex items-center whitespace-nowrap"
+              >
+                {users.length} users
+              </Badge>
+            </div>
+          </div>
+
+          {/* ================= DESKTOP (UNCHANGED) ================= */}
+          <div className="hidden sm:grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="relative col-span-1 sm:col-span-2 lg:col-span-1">
+              <Search className="absolute left-2.5 top-2.5 h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
+              <Input
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleApplyFilters();
+                  }
+                }}
+                className="pl-8 h-9 sm:h-10 text-sm"
               />
             </div>
 
             <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger>
-                <Filter className="mr-2 h-4 w-4" />
+              <SelectTrigger className="h-9 sm:h-10">
+                <Filter className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                 <SelectValue placeholder="Filter by role" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="user">User</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="moderator">Moderator</SelectItem>
               </SelectContent>
             </Select>
 
-            <div className="flex items-center justify-end gap-2 col-span-2">
-              <Button onClick={handleApplyFilters} variant="outline" size="sm">
+            <div className="flex items-center justify-end gap-2 col-span-1 sm:col-span-2">
+              <Button
+                onClick={handleApplyFilters}
+                variant="outline"
+                size="sm"
+                className="h-9 sm:h-10 text-xs sm:text-sm"
+              >
                 Apply Filters
               </Button>
-              <Badge variant="outline">{users.length} users</Badge>
+              <Badge variant="outline" className="text-xs sm:text-sm">
+                {users.length} users
+              </Badge>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* User Stats Summary (when expanded) */}
-      {expandedUser && selectedUser && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={
-                    selectedUser.profileImageUrl ||
-                    `https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUser.id}`
-                  }
-                />
-                <AvatarFallback>
-                  {selectedUser.name?.charAt(0) || "U"}
-                </AvatarFallback>
-              </Avatar>
-              {selectedUser.name} - Performance Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-700">
-                  {userStats.totalSessions}
-                </div>
-                <div className="text-sm text-gray-600">Sessions</div>
-              </div>
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-700">
-                  {userStats.totalQuestions}
-                </div>
-                <div className="text-sm text-gray-600">Questions</div>
-              </div>
-              <div className="text-center p-3 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-700">
-                  {userStats.totalResources}
-                </div>
-                <div className="text-sm text-gray-600">Resources</div>
-              </div>
-              <div className="text-center p-3 bg-orange-50 rounded-lg">
-                <div className="text-2xl font-bold text-orange-700">
-                  {userStats.totalQuizzes}
-                </div>
-                <div className="text-sm text-gray-600">Quizzes</div>
-              </div>
-              <div className="text-center p-3 bg-amber-50 rounded-lg">
-                <div className="text-2xl font-bold text-amber-700">
-                  {userStats.avgQuizScore}%
-                </div>
-                <div className="text-sm text-gray-600">Avg Quiz Score</div>
-              </div>
-              <div className="text-center p-3 bg-emerald-50 rounded-lg">
-                <div className="text-2xl font-bold text-emerald-700">
-                  {userStats.quizCompletionRate}%
-                </div>
-                <div className="text-sm text-gray-600">Quiz Completion</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Mobile Users List (Cards) */}
+      <div className="md:hidden space-y-4">
+        {loading ? (
+          <div className="text-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
+            <p className="mt-2 text-gray-500 text-sm">Loading users...</p>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500 text-sm">No users found</p>
+          </div>
+        ) : (
+          users.map((user) => <UserStatsCard key={user.id} user={user} />)
+        )}
+      </div>
 
-      {/* Main Users Table */}
-      <Card>
+      {/* Desktop Users Table */}
+      <Card className="hidden md:block w-full">
         <CardHeader>
-          <CardTitle>Users</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Users</CardTitle>
+          <CardDescription className="text-sm sm:text-base">
             Select a user to view their session history, questions, and quizzes
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Sessions</TableHead>
-                  <TableHead>Questions</TableHead>
-                  <TableHead>Resources</TableHead>
-                  <TableHead>Quizzes</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
+        <CardContent className="p-4 sm:p-6 pt-0">
+          <div className="overflow-x-auto rounded-lg border">
+            <div className="min-w-[800px] sm:min-w-0">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
-                      <p className="mt-2 text-gray-500">Loading users...</p>
-                    </TableCell>
+                    <TableHead className="text-xs sm:text-sm">User</TableHead>
+                    <TableHead className="text-xs sm:text-sm">Role</TableHead>
+                    <TableHead className="text-xs sm:text-sm">
+                      Sessions
+                    </TableHead>
+                    <TableHead className="text-xs sm:text-sm">
+                      Questions
+                    </TableHead>
+                    <TableHead className="text-xs sm:text-sm">
+                      Resources
+                    </TableHead>
+                    <TableHead className="text-xs sm:text-sm">
+                      Quizzes
+                    </TableHead>
+                    <TableHead className="text-xs sm:text-sm">Joined</TableHead>
+                    <TableHead className="text-right text-xs sm:text-sm">
+                      Actions
+                    </TableHead>
                   </TableRow>
-                ) : users.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
-                      <p className="text-gray-500">No users found</p>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  users.map((user) => (
-                    <React.Fragment key={user.id}>
-                      <TableRow className="hover:bg-gray-50">
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <Avatar>
-                              <AvatarImage
-                                src={
-                                  user.profileImageUrl ||
-                                  `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
-                                }
-                              />
-                              <AvatarFallback>
-                                {user.name?.charAt(0) || "U"}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">{user.name}</div>
-                              <div className="text-sm text-gray-500">
-                                {user.email}
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
+                        <p className="mt-2 text-gray-500 text-sm">
+                          Loading users...
+                        </p>
+                      </TableCell>
+                    </TableRow>
+                  ) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <p className="text-gray-500 text-sm">No users found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.map((user) => (
+                      <React.Fragment key={user.id}>
+                        <TableRow className="hover:bg-gray-50">
+                          <TableCell>
+                            <div className="flex items-center space-x-2 sm:space-x-3">
+                              <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
+                                <AvatarImage
+                                  src={
+                                    user.profileImageUrl ||
+                                    `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`
+                                  }
+                                />
+                                <AvatarFallback className="text-xs">
+                                  {user.name?.charAt(0) || "U"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <div className="font-medium text-xs sm:text-sm truncate">
+                                  {user.name}
+                                </div>
+                                <div className="text-xs text-gray-500 truncate hidden sm:block">
+                                  {user.email}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{user.role || "user"}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {user.sessionCount || 0}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {user.questionCount || 0}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {user.materialCount || 0}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className="bg-amber-50 text-amber-700 border-amber-200"
-                          >
-                            <Trophy className="h-3 w-3 mr-1" />
-                            {user.quizCount || 0}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <Calendar className="mr-1 h-3 w-3 text-gray-500" />
-                            {user.createdAt
-                              ? format(new Date(user.createdAt), "MMM dd, yyyy")
-                              : "N/A"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleUserExpand(user)}
-                              title={
-                                expandedUser === user.id
-                                  ? "Hide Details"
-                                  : "View Details"
-                              }
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className="text-xs sm:text-sm"
                             >
-                              {expandedUser === user.id ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                              <span className="truncate">
+                                {user.role || "user"}
+                              </span>
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className="text-xs sm:text-sm"
+                            >
+                              {user.sessionCount || 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className="text-xs sm:text-sm"
+                            >
+                              {user.questionCount || 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className="text-xs sm:text-sm"
+                            >
+                              {user.materialCount || 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className="bg-amber-50 text-amber-700 border-amber-200 text-xs sm:text-sm"
+                            >
+                              <Trophy className="h-2 w-2 sm:h-3 sm:w-3 mr-1" />
+                              {user.quizCount || 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center">
+                              <Calendar className="mr-1 h-3 w-3 text-gray-500 shrink-0" />
+                              <span className="text-xs sm:text-sm truncate">
+                                {user.createdAt
+                                  ? format(
+                                      new Date(user.createdAt),
+                                      "MMM dd, yyyy",
+                                    )
+                                  : "N/A"}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleUserExpand(user)}
+                                title={
+                                  expandedUser === user.id
+                                    ? "Hide Details"
+                                    : "View Details"
+                                }
+                                className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+                              >
+                                {expandedUser === user.id ? (
+                                  <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                                ) : (
+                                  <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
 
-                      {/* Expanded Session List for this User */}
-                      {expandedUser === user.id && (
-                        <TableRow className="bg-gray-50">
-                          <TableCell colSpan={8} className="p-0">
-                            <div className="p-4 border-t">
-                              {userLoading ? (
-                                <div className="text-center py-4">
-                                  <Loader2 className="h-6 w-6 animate-spin mx-auto text-blue-500" />
-                                  <p className="mt-2 text-sm text-gray-500">
-                                    Loading sessions...
-                                  </p>
-                                </div>
-                              ) : userSessions.length === 0 ? (
-                                <div className="text-center py-4">
-                                  <p className="text-gray-500">
-                                    No sessions found for this user
-                                  </p>
-                                </div>
-                              ) : (
-                                <div className="space-y-4">
-                                  <div className="flex items-center justify-between">
-                                    <h3 className="text-lg font-semibold">
-                                      {selectedUser?.name}'s Session History
-                                    </h3>
-                                    <div className="flex items-center gap-2">
-                                      <Badge
-                                        variant="outline"
-                                        className="bg-blue-50"
-                                      >
-                                        {userSessions.length} sessions
-                                      </Badge>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => fetchQuizStats(user.id)}
-                                        className="h-8"
-                                        disabled={quizStatsLoading}
-                                      >
-                                        {quizStatsLoading ? (
-                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        ) : (
-                                          <BarChart className="h-4 w-4 mr-2" />
-                                        )}
-                                        Quiz Analytics
-                                      </Button>
-                                    </div>
+                        {/* Expanded Session List for this User (Desktop only) */}
+                        {expandedUser === user.id && (
+                          <TableRow className="bg-gray-50">
+                            <TableCell colSpan={8} className="p-0">
+                              <div className="p-3 sm:p-4 border-t">
+                                {userLoading ? (
+                                  <div className="text-center py-3 sm:py-4">
+                                    <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 animate-spin mx-auto text-blue-500" />
+                                    <p className="mt-2 text-xs sm:text-sm text-gray-500">
+                                      Loading sessions...
+                                    </p>
                                   </div>
-
-                                  <div className="grid gap-4">
-                                    {userSessions.map((session) => {
-                                      const topics = parseTopics(
-                                        session.topicsToFocus,
-                                      );
-                                      const hasQuizzes = session.quizCount > 0;
-                                      const sessionId = session.id;
-
-                                      return (
-                                        <Card
-                                          key={sessionId}
-                                          id={`session-${sessionId}`}
-                                          className="border"
+                                ) : userSessions.length === 0 ? (
+                                  <div className="text-center py-3 sm:py-4">
+                                    <p className="text-gray-500 text-sm">
+                                      No sessions found for this user
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3 sm:space-y-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0">
+                                      <h3 className="text-base sm:text-lg font-semibold truncate">
+                                        {selectedUser?.name}'s Session History
+                                      </h3>
+                                      <div className="flex items-center gap-2">
+                                        <Badge
+                                          variant="outline"
+                                          className="bg-blue-50 text-xs sm:text-sm"
                                         >
-                                          <CardContent className="p-4">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                                              <div>
-                                                <p className="text-sm font-medium text-gray-500">
-                                                  Role
-                                                </p>
-                                                <p className="font-semibold">
-                                                  {session.role ||
-                                                    "Not specified"}
-                                                </p>
-                                              </div>
-                                              <div>
-                                                <p className="text-sm font-medium text-gray-500">
-                                                  Experience
-                                                </p>
-                                                <Badge variant="outline">
-                                                  {session.experience || "N/A"}
-                                                </Badge>
-                                              </div>
-                                              <div>
-                                                <p className="text-sm font-medium text-gray-500">
-                                                  Performance Metrics
-                                                </p>
-                                                <div className="flex items-center space-x-2 mt-1">
+                                          {userSessions.length} sessions
+                                        </Badge>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() =>
+                                            fetchQuizStats(user.id)
+                                          }
+                                          className="h-7 sm:h-8 text-xs sm:text-sm"
+                                          disabled={quizStatsLoading}
+                                        >
+                                          {quizStatsLoading ? (
+                                            <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 animate-spin" />
+                                          ) : (
+                                            <BarChart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                          )}
+                                          <span className="truncate">
+                                            Quiz Analytics
+                                          </span>
+                                        </Button>
+                                      </div>
+                                    </div>
+
+                                    <div className="grid gap-3 sm:gap-4">
+                                      {userSessions.map((session) => {
+                                        const topics = parseTopics(
+                                          session.topicsToFocus,
+                                        );
+                                        const hasQuizzes =
+                                          session.quizCount > 0;
+                                        const sessionId = session.id;
+
+                                        return (
+                                          <Card
+                                            key={sessionId}
+                                            id={`session-${sessionId}`}
+                                            className="border w-full"
+                                          >
+                                            <CardContent>
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
+                                                <div>
+                                                  <p className="text-xs sm:text-sm font-medium text-gray-500">
+                                                    Role
+                                                  </p>
+                                                  <p className="font-semibold text-xs sm:text-sm truncate">
+                                                    {session.role ||
+                                                      "Not specified"}
+                                                  </p>
+                                                </div>
+                                                <div>
+                                                  <p className="text-xs sm:text-sm font-medium text-gray-500">
+                                                    Experience
+                                                  </p>
                                                   <Badge
                                                     variant="outline"
-                                                    className="bg-blue-50"
+                                                    className="text-xs sm:text-sm"
                                                   >
-                                                    <MessageSquare className="h-3 w-3 mr-1" />
-                                                    {session.questionCount || 0}
+                                                    <span className="truncate">
+                                                      {session.experience ||
+                                                        "N/A"}
+                                                    </span>
                                                   </Badge>
-                                                  {session.materialCount >
-                                                    0 && (
+                                                </div>
+                                                <div className="sm:col-span-1 lg:col-span-1">
+                                                  <p className="text-xs sm:text-sm font-medium text-gray-500">
+                                                    Performance Metrics
+                                                  </p>
+                                                  <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
                                                     <Badge
                                                       variant="outline"
-                                                      className="bg-purple-50"
+                                                      className="bg-blue-50 text-xs sm:text-sm"
                                                     >
-                                                      <BookOpen className="h-3 w-3 mr-1" />
-                                                      {session.materialCount}
+                                                      <MessageSquare className="h-2 w-2 sm:h-3 sm:w-3 mr-1" />
+                                                      {session.questionCount ||
+                                                        0}
                                                     </Badge>
-                                                  )}
-                                                  {hasQuizzes && (
-                                                    <Badge
-                                                      variant="outline"
-                                                      className="bg-amber-50"
-                                                    >
-                                                      <Trophy className="h-3 w-3 mr-1" />
-                                                      {session.quizCount}
-                                                    </Badge>
-                                                  )}
-                                                </div>
-                                              </div>
-                                              <div>
-                                                <p className="text-sm font-medium text-gray-500">
-                                                  Quiz Score
-                                                </p>
-                                                <div className="flex items-center">
-                                                  <Target className="h-4 w-4 mr-1 text-amber-600" />
-                                                  <span
-                                                    className={`font-semibold ${session.avgQuizScore >= 70 ? "text-green-600" : session.avgQuizScore >= 50 ? "text-amber-600" : "text-red-600"}`}
-                                                  >
-                                                    {session.avgQuizScore || 0}%
-                                                  </span>
-                                                </div>
-                                              </div>
-                                              <div>
-                                                <p className="text-sm font-medium text-gray-500">
-                                                  Created
-                                                </p>
-                                                <p className="text-sm">
-                                                  {session.createdAt
-                                                    ? format(
-                                                        new Date(
-                                                          session.createdAt,
-                                                        ),
-                                                        "MMM dd, yyyy",
-                                                      )
-                                                    : "N/A"}
-                                                </p>
-                                              </div>
-                                            </div>
-
-                                            {session.description && (
-                                              <div className="mt-3">
-                                                <p className="text-sm font-medium text-gray-500">
-                                                  Description
-                                                </p>
-                                                <p className="text-sm text-gray-700 mt-1">
-                                                  {session.description}
-                                                </p>
-                                              </div>
-                                            )}
-
-                                            {topics.length > 0 && (
-                                              <div className="mt-3">
-                                                <p className="text-sm font-medium text-gray-500">
-                                                  Topics Focus
-                                                </p>
-                                                <div className="flex flex-wrap gap-2 mt-1">
-                                                  {topics.map(
-                                                    (topic, index) => (
+                                                    {session.materialCount >
+                                                      0 && (
                                                       <Badge
-                                                        key={index}
                                                         variant="outline"
-                                                        className="bg-blue-50 text-blue-700 border-blue-200"
+                                                        className="bg-purple-50 text-xs sm:text-sm"
                                                       >
-                                                        {topic}
+                                                        <BookOpen className="h-2 w-2 sm:h-3 sm:w-3 mr-1" />
+                                                        {session.materialCount}
                                                       </Badge>
-                                                    ),
-                                                  )}
+                                                    )}
+                                                    {hasQuizzes && (
+                                                      <Badge
+                                                        variant="outline"
+                                                        className="bg-amber-50 text-xs sm:text-sm"
+                                                      >
+                                                        <Trophy className="h-2 w-2 sm:h-3 sm:w-3 mr-1" />
+                                                        {session.quizCount}
+                                                      </Badge>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                                <div>
+                                                  <p className="text-xs sm:text-sm font-medium text-gray-500">
+                                                    Quiz Score
+                                                  </p>
+                                                  <div className="flex items-center">
+                                                    <Target className="h-3 w-3 mr-1 text-amber-600" />
+                                                    <span
+                                                      className={`font-semibold text-xs sm:text-sm ${session.avgQuizScore >= 70 ? "text-green-600" : session.avgQuizScore >= 50 ? "text-amber-600" : "text-red-600"}`}
+                                                    >
+                                                      {session.avgQuizScore ||
+                                                        0}
+                                                      %
+                                                    </span>
+                                                  </div>
+                                                </div>
+                                                <div>
+                                                  <p className="text-xs sm:text-sm font-medium text-gray-500">
+                                                    Created
+                                                  </p>
+                                                  <p className="text-xs sm:text-sm truncate">
+                                                    {session.createdAt
+                                                      ? format(
+                                                          new Date(
+                                                            session.createdAt,
+                                                          ),
+                                                          "MMM dd, yyyy",
+                                                        )
+                                                      : "N/A"}
+                                                  </p>
                                                 </div>
                                               </div>
-                                            )}
 
-                                            <div className="flex justify-between items-center mt-4">
-                                              <div className="flex items-center space-x-2">
-                                                <Button
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() =>
-                                                    navigate(
-                                                      `/admin/sessions/${sessionId}/questions`,
-                                                    )
-                                                  }
-                                                  className="h-8 px-3"
-                                                  disabled={
-                                                    session.questionCount === 0
-                                                  }
-                                                >
-                                                  <MessageSquare className="mr-2 h-3 w-3" />
-                                                  Questions (
-                                                  {session.questionCount || 0})
-                                                </Button>
-                                                <Button
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() =>
-                                                    navigate(
-                                                      `/admin/sessions/${sessionId}/resources`,
-                                                    )
-                                                  }
-                                                  className="h-8 px-3"
-                                                  disabled={
-                                                    session.materialCount === 0
-                                                  }
-                                                >
-                                                  <BookOpen className="mr-2 h-3 w-3" />
-                                                  Resources (
-                                                  {session.materialCount || 0})
-                                                </Button>
+                                              {session.description && (
+                                                <div className="mt-2 sm:mt-3">
+                                                  <p className="text-xs sm:text-sm font-medium text-gray-500">
+                                                    Description
+                                                  </p>
+                                                  <p className="text-xs sm:text-sm text-gray-700 mt-1 line-clamp-2">
+                                                    {session.description}
+                                                  </p>
+                                                </div>
+                                              )}
 
-                                                {hasQuizzes && (
+                                              {topics.length > 0 && (
+                                                <div className="mt-2 sm:mt-3">
+                                                  <p className="text-xs sm:text-sm font-medium text-gray-500">
+                                                    Topics Focus
+                                                  </p>
+                                                  <div className="flex flex-wrap gap-1 sm:gap-2 mt-1">
+                                                    {topics.map(
+                                                      (topic, index) => (
+                                                        <Badge
+                                                          key={index}
+                                                          variant="outline"
+                                                          className="bg-blue-50 text-blue-700 border-blue-200 text-xs sm:text-sm"
+                                                        >
+                                                          <span className="truncate max-w-[100px]">
+                                                            {topic}
+                                                          </span>
+                                                        </Badge>
+                                                      ),
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              )}
+
+                                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mt-3 sm:mt-4">
+                                                <div className="flex flex-wrap gap-1 sm:gap-2">
                                                   <Button
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() =>
                                                       navigate(
-                                                        `/admin/sessions/${sessionId}/quiz-history`,
+                                                        `/admin/sessions/${sessionId}/questions`,
                                                       )
                                                     }
-                                                    className="h-8 px-3 bg-amber-50 border-amber-200 hover:bg-amber-100"
+                                                    className="h-7 sm:h-8 px-2 text-xs sm:text-sm"
+                                                    disabled={
+                                                      session.questionCount ===
+                                                      0
+                                                    }
                                                   >
-                                                    <Trophy className="mr-2 h-3 w-3" />
-                                                    Quizzes ({session.quizCount}
-                                                    )
+                                                    <MessageSquare className="mr-1 h-3 w-3" />
+                                                    <span>
+                                                      Q (
+                                                      {session.questionCount ||
+                                                        0}
+                                                      )
+                                                    </span>
                                                   </Button>
-                                                )}
-                                              </div>
+                                                  <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                      navigate(
+                                                        `/admin/sessions/${sessionId}/resources`,
+                                                      )
+                                                    }
+                                                    className="h-7 sm:h-8 px-2 text-xs sm:text-sm"
+                                                    disabled={
+                                                      session.materialCount ===
+                                                      0
+                                                    }
+                                                  >
+                                                    <BookOpen className="mr-1 h-3 w-3" />
+                                                    <span>
+                                                      R (
+                                                      {session.materialCount ||
+                                                        0}
+                                                      )
+                                                    </span>
+                                                  </Button>
 
-                                              <Badge
-                                                variant={
-                                                  session.status === "completed"
-                                                    ? "default"
-                                                    : "outline"
-                                                }
-                                              >
-                                                {session.status || "active"}
-                                              </Badge>
-                                            </div>
+                                                  {hasQuizzes && (
+                                                    <Button
+                                                      variant="outline"
+                                                      size="sm"
+                                                      onClick={() =>
+                                                        navigate(
+                                                          `/admin/sessions/${sessionId}/quiz-history`,
+                                                        )
+                                                      }
+                                                      className="h-7 sm:h-8 px-2 text-xs sm:text-sm bg-amber-50 border-amber-200 hover:bg-amber-100"
+                                                    >
+                                                      <Trophy className="mr-1 h-3 w-3" />
+                                                      <span>
+                                                        Qz ({session.quizCount})
+                                                      </span>
+                                                    </Button>
+                                                  )}
+                                                </div>
 
-                                            {/* Session Quizzes Details */}
-                                            {expandedSession === sessionId && (
-                                              <div className="mt-4 pt-4 border-t">
-                                                <h4 className="text-sm font-semibold mb-3 flex items-center">
-                                                  <Trophy className="h-4 w-4 mr-2 text-amber-600" />
-                                                  Quiz Attempts (
-                                                  {
-                                                    selectedSessionQuizzes.length
+                                                <Badge
+                                                  variant={
+                                                    session.status ===
+                                                    "completed"
+                                                      ? "default"
+                                                      : "outline"
                                                   }
-                                                  )
-                                                </h4>
-
-                                                {quizLoading ? (
-                                                  <div className="text-center py-3">
-                                                    <Loader2 className="h-5 w-5 animate-spin mx-auto text-amber-500" />
-                                                    <p className="mt-1 text-sm text-gray-500">
-                                                      Loading quizzes...
-                                                    </p>
-                                                  </div>
-                                                ) : selectedSessionQuizzes.length ===
-                                                  0 ? (
-                                                  <p className="text-sm text-gray-500 text-center py-3">
-                                                    No quiz attempts found for
-                                                    this session
-                                                  </p>
-                                                ) : (
-                                                  <div className="space-y-3">
-                                                    {selectedSessionQuizzes.map(
-                                                      (quiz) => (
-                                                        <div
-                                                          key={quiz.id}
-                                                          className="flex items-center justify-between p-3 bg-amber-50 rounded-lg"
-                                                        >
-                                                          <div>
-                                                            <div className="font-medium text-sm">
-                                                              {quiz.title}
-                                                            </div>
-                                                            <div className="text-xs text-gray-600">
-                                                              {
-                                                                quiz.totalQuestions
-                                                              }{" "}
-                                                              questions •{" "}
-                                                              {quiz.timeSpent}{" "}
-                                                              mins
-                                                            </div>
-                                                          </div>
-                                                          <div className="text-right">
-                                                            <div
-                                                              className={`font-bold ${quiz.percentage >= 70 ? "text-green-600" : quiz.percentage >= 50 ? "text-amber-600" : "text-red-600"}`}
-                                                            >
-                                                              {quiz.percentage}%
-                                                            </div>
-                                                            <div className="text-xs text-gray-600">
-                                                              Score:{" "}
-                                                              {quiz.score}/
-                                                              {
-                                                                quiz.totalQuestions
-                                                              }
-                                                            </div>
-                                                          </div>
-                                                        </div>
-                                                      ),
-                                                    )}
-                                                  </div>
-                                                )}
+                                                  className="text-xs sm:text-sm mt-2 sm:mt-0"
+                                                >
+                                                  <span className="truncate">
+                                                    {session.status || "active"}
+                                                  </span>
+                                                </Badge>
                                               </div>
-                                            )}
-                                          </CardContent>
-                                        </Card>
-                                      );
-                                    })}
+                                            </CardContent>
+                                          </Card>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           {/* Pagination */}
           {pagination.pages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-gray-500">
+            <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3 sm:gap-0">
+              <div className="text-xs sm:text-sm text-gray-500">
                 Page {pagination.page} of {pagination.pages}
               </div>
               <div className="flex gap-2">
@@ -942,8 +1203,11 @@ const Sessions = () => {
                     }
                   }}
                   disabled={pagination.page === 1}
+                  className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
                 >
-                  Previous
+                  <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                  <span className="hidden sm:inline">Previous</span>
+                  <span className="sm:hidden">Prev</span>
                 </Button>
                 <Button
                   variant="outline"
@@ -957,131 +1221,22 @@ const Sessions = () => {
                     }
                   }}
                   disabled={pagination.page === pagination.pages}
+                  className="h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm"
                 >
-                  Next
+                  <span className="hidden sm:inline">Next</span>
+                  <span className="sm:hidden">Next</span>
+                  <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4 ml-1" />
                 </Button>
               </div>
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <div className="text-sm text-gray-500">
+        <CardFooter className="flex justify-between pt-0">
+          <div className="text-xs sm:text-sm text-gray-500">
             Showing {users.length} users
           </div>
         </CardFooter>
       </Card>
-
-      {/* Quiz Statistics Dialog */}
-      <Dialog open={quizStatsDialogOpen} onOpenChange={setQuizStatsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          {quizStatsLoading ? (
-            <div className="py-8 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-500" />
-              <p className="mt-2 text-gray-500">Loading quiz statistics...</p>
-            </div>
-          ) : quizStats ? (
-            <>
-              <DialogHeader>
-                <div className="flex items-center space-x-3">
-                  <Avatar>
-                    <AvatarImage
-                      src={
-                        quizStats.userInfo?.profileImageUrl ||
-                        `https://api.dicebear.com/7.x/avataaars/svg?seed=${quizStats.userInfo?.id}`
-                      }
-                    />
-                    <AvatarFallback>
-                      {quizStats.userInfo?.name?.charAt(0) || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <DialogTitle className="text-xl">
-                      {quizStats.userInfo?.name}'s Quiz Performance
-                    </DialogTitle>
-                    <DialogDescription>
-                      {quizStats.userInfo?.email}
-                    </DialogDescription>
-                  </div>
-                </div>
-              </DialogHeader>
-
-              {/* Overview Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="text-2xl font-bold text-blue-600">
-                      {quizStats.overview?.totalQuizzes || 0}
-                    </div>
-                    <div className="text-sm text-gray-600">Total Quizzes</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="text-2xl font-bold text-green-600">
-                      {quizStats.overview?.avgQuizScore || 0}%
-                    </div>
-                    <div className="text-sm text-gray-600">Average Score</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="text-2xl font-bold text-amber-600">
-                      {quizStats.overview?.accuracy || 0}%
-                    </div>
-                    <div className="text-sm text-gray-600">Accuracy</div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-2xl font-bold text-purple-600">
-                          {quizStats.overview?.quizCompletionRate || 0}%
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          Completion Rate
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Summary Card */}
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="text-lg">Summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-3 bg-blue-50 rounded-lg">
-                        <div className="text-lg font-semibold text-blue-700">
-                          Total Questions Attempted
-                        </div>
-                        <div className="text-2xl font-bold mt-1">
-                          {quizStats.rawStats?.totalQuestionsAttempted || 0}
-                        </div>
-                      </div>
-                      <div className="p-3 bg-green-50 rounded-lg">
-                        <div className="text-lg font-semibold text-green-700">
-                          Quiz Completion Rate
-                        </div>
-                        <div className="text-2xl font-bold mt-1">
-                          {quizStats.overview?.quizCompletionRate || 0}%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
