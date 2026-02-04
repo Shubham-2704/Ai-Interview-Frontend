@@ -111,15 +111,18 @@ const Dashboard = () => {
           {/* Floating Action Button */}
           <Dialog open={openCreateModel} onOpenChange={setOpenCreateModel}>
             <DialogTrigger asChild>
-              <Button
-                size="lg"
-                className="font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 fixed z-40 
+              {sessions.length !== 0 && (
+                <Button
+                  size="lg"
+                  className="font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 fixed z-40 
                   bottom-6 right-6 
                   sm:bottom-8 sm:right-8"
-              >
-                <Plus className="h-5 w-5 mr-2" />
-                Add New
-              </Button>
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Add New
+                </Button>
+              )}
+
             </DialogTrigger>
             <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
