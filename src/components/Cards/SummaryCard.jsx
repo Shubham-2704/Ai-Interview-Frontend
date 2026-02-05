@@ -70,7 +70,7 @@ const SummaryCard = ({
                       e.stopPropagation();
                       setOpenDeleteAlert(true);
                     }}
-                    className="hidden group-hover:flex items-center gap-2 text-destructive bg-rose-50 hover:bg-rose-100 border border-rose-100 hover:border-rose-200  px-3 py-1 absolute top-0 right-0"
+                    className="md:hidden md:group-hover:flex items-center gap-2 text-destructive bg-rose-50 hover:bg-rose-100 border border-rose-100 hover:border-rose-200  px-3 py-1 absolute top-0 right-0"
                   >
                     <Trash2 />
                   </Button>

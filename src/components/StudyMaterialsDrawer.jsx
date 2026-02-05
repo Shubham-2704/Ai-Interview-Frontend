@@ -46,6 +46,7 @@ const StudyMaterialsDrawer = memo(
     onRefresh,
     onDelete,
     onClearCache,
+    errorMsg,
   }) => {
     const [activeTab, setActiveTab] = useState("all");
     const [expandedVideoId, setExpandedVideoId] = useState(null);
@@ -96,7 +97,7 @@ const StudyMaterialsDrawer = memo(
           badgeColor: "bg-indigo-100 text-indigo-800",
         },
       ],
-      []
+      [],
     );
 
     // Function to extract YouTube video ID from URL
@@ -190,7 +191,7 @@ const StudyMaterialsDrawer = memo(
           setExpandedVideoId(videoId);
         }
       },
-      [expandedVideoId]
+      [expandedVideoId],
     );
 
     const handleVideoPlay = useCallback((videoId) => {
@@ -203,7 +204,7 @@ const StudyMaterialsDrawer = memo(
           setIsPlayingVideo(null);
         }
       },
-      [isPlayingVideo]
+      [isPlayingVideo],
     );
 
     // Clean up video state when drawer closes
@@ -297,6 +298,26 @@ const StudyMaterialsDrawer = memo(
             <div className="mb-6">
               <StudyMaterialsSkeleton />
             </div>
+          ) : errorMsg ? (
+            <>
+              {/* SHOW ERROR STATE */}
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="rounded-full bg-red-50 p-4 mb-4 border border-red-200">
+                  <AlertCircle className="h-8 w-8 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">
+                  Failed to Load Resources
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-md mb-4">
+                  {errorMsg}
+                </p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={onClose}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </>
           ) : materials ? (
             <>
               {/* Keywords Section */}
@@ -485,7 +506,7 @@ const StudyMaterialsDrawer = memo(
                                               className="h-7 w-7 shrink-0 hover:text-primary"
                                               onClick={() =>
                                                 toggleVideoExpanded(
-                                                  `${category.id}-${idx}`
+                                                  `${category.id}-${idx}`,
                                                 )
                                               }
                                             >
@@ -509,12 +530,12 @@ const StudyMaterialsDrawer = memo(
                                         className="h-7 w-7 shrink-0 hover:text-primary"
                                         onClick={() => {
                                           toast.info(
-                                            "Opening resource in new tab..."
+                                            "Opening resource in new tab...",
                                           );
                                           window.open(
                                             material.url,
                                             "_blank",
-                                            "noopener,noreferrer"
+                                            "noopener,noreferrer",
                                           );
                                         }}
                                       >
@@ -538,12 +559,12 @@ const StudyMaterialsDrawer = memo(
                                           allowFullScreen
                                           onPlay={() =>
                                             handleVideoPlay(
-                                              `${category.id}-${idx}`
+                                              `${category.id}-${idx}`,
                                             )
                                           }
                                           onPause={() =>
                                             handleVideoPause(
-                                              `${category.id}-${idx}`
+                                              `${category.id}-${idx}`,
                                             )
                                           }
                                         />
@@ -575,7 +596,7 @@ const StudyMaterialsDrawer = memo(
                                           window.open(
                                             material.url,
                                             "_blank",
-                                            "noopener,noreferrer"
+                                            "noopener,noreferrer",
                                           )
                                         }
                                       >
@@ -590,7 +611,7 @@ const StudyMaterialsDrawer = memo(
                                           window.open(
                                             material.url,
                                             "_blank",
-                                            "noopener,noreferrer"
+                                            "noopener,noreferrer",
                                           );
                                         }}
                                       >
@@ -694,12 +715,12 @@ const StudyMaterialsDrawer = memo(
                                   className="h-7 w-7 shrink-0 hover:text-primary"
                                   onClick={() => {
                                     toast.info(
-                                      "Redirecting to Youtube video..."
+                                      "Redirecting to Youtube video...",
                                     );
                                     window.open(
                                       material.url,
                                       "_blank",
-                                      "noopener,noreferrer"
+                                      "noopener,noreferrer",
                                     );
                                   }}
                                 >
@@ -779,12 +800,12 @@ const StudyMaterialsDrawer = memo(
                                 className="h-7 w-7 shrink-0 hover:text-primary"
                                 onClick={() => {
                                   toast.info(
-                                    "Opening Articles & Blogs in new tab..."
+                                    "Opening Articles & Blogs in new tab...",
                                   );
                                   window.open(
                                     material.url,
                                     "_blank",
-                                    "noopener,noreferrer"
+                                    "noopener,noreferrer",
                                   );
                                 }}
                               >
@@ -807,7 +828,7 @@ const StudyMaterialsDrawer = memo(
                                   window.open(
                                     material.url,
                                     "_blank",
-                                    "noopener,noreferrer"
+                                    "noopener,noreferrer",
                                   )
                                 }
                               >
@@ -822,7 +843,7 @@ const StudyMaterialsDrawer = memo(
                                   window.open(
                                     material.url,
                                     "_blank",
-                                    "noopener,noreferrer"
+                                    "noopener,noreferrer",
                                   );
                                 }}
                               >
@@ -880,7 +901,7 @@ const StudyMaterialsDrawer = memo(
                                       window.open(
                                         material.url,
                                         "_blank",
-                                        "noopener,noreferrer"
+                                        "noopener,noreferrer",
                                       )
                                     }
                                   >
@@ -920,7 +941,7 @@ const StudyMaterialsDrawer = memo(
                                       window.open(
                                         material.url,
                                         "_blank",
-                                        "noopener,noreferrer"
+                                        "noopener,noreferrer",
                                       )
                                     }
                                   >
@@ -935,7 +956,7 @@ const StudyMaterialsDrawer = memo(
                                       window.open(
                                         material.url,
                                         "_blank",
-                                        "noopener,noreferrer"
+                                        "noopener,noreferrer",
                                       );
                                     }}
                                   >
@@ -984,12 +1005,12 @@ const StudyMaterialsDrawer = memo(
                                   className="h-7 w-7 shrink-0 hover:text-primary"
                                   onClick={() => {
                                     toast.info(
-                                      "Opening Documentation in new tab..."
+                                      "Opening Documentation in new tab...",
                                     );
                                     window.open(
                                       material.url,
                                       "_blank",
-                                      "noopener,noreferrer"
+                                      "noopener,noreferrer",
                                     );
                                   }}
                                 >
@@ -1012,7 +1033,7 @@ const StudyMaterialsDrawer = memo(
                                     window.open(
                                       material.url,
                                       "_blank",
-                                      "noopener,noreferrer"
+                                      "noopener,noreferrer",
                                     )
                                   }
                                 >
@@ -1027,7 +1048,7 @@ const StudyMaterialsDrawer = memo(
                                     window.open(
                                       material.url,
                                       "_blank",
-                                      "noopener,noreferrer"
+                                      "noopener,noreferrer",
                                     );
                                   }}
                                 >
@@ -1057,7 +1078,7 @@ const StudyMaterialsDrawer = memo(
                             month: "short",
                             day: "numeric",
                             year: "numeric",
-                          }
+                          },
                         )}
                       </>
                     ) : (
@@ -1089,7 +1110,7 @@ const StudyMaterialsDrawer = memo(
         </div>
       </div>
     );
-  }
+  },
 );
 
 export default StudyMaterialsDrawer;

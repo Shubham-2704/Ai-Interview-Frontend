@@ -1,10 +1,9 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
-
 
 import {
   Field,
@@ -19,17 +18,15 @@ import { Spinner } from "@/components/ui/spinner";
 import { sessionSchema } from "@/lib/schema";
 import { toast } from "sonner";
 import { UserContext } from "@/context/UserContext";
-
+import { FileText } from "lucide-react"; // Import FileText icon
 
 const CreateSessionForm = () => {
   const [loading, setLoading] = useState(false);
-
+  const [questionsCount, setQuestionsCount] = useState(10); // State for questions count
+  const [loadingQuestionsCount, setLoadingQuestionsCount] = useState(false); // Loading state for fetching count
 
   const { user, openApiKeyModal } = useContext(UserContext);
-
-
   const navigate = useNavigate();
-
 
   const form = useForm({
     resolver: zodResolver(sessionSchema),
@@ -41,38 +38,61 @@ const CreateSessionForm = () => {
     },
   });
 
+  // Fetch questions count from settings when component mounts
+  useEffect(() => {
+    const fetchQuestionsCount = async () => {
+      setLoadingQuestionsCount(true);
+      try {
+        const response = await axiosInstance.get(
+          API_PATHS.SETTINGS.PUBLIC_QUESTIONS_COUNT,
+        );
+        if (response.data.success) {
+          setQuestionsCount(response.data.number_of_questions);
+          console.log(
+            "Questions count loaded:",
+            response.data.number_of_questions,
+          );
+        }
+      } catch (error) {
+        console.error("Failed to fetch questions count:", error);
+        // Keep default 10 if fetch fails
+        toast.error(
+          "Failed to load session settings. Using default 10 questions.",
+        );
+      } finally {
+        setLoadingQuestionsCount(false);
+      }
+    };
+
+    fetchQuestionsCount();
+  }, []);
 
   async function onSubmit(data) {
     if (!user?.hasGeminiKey) {
-      // toast.error("Please add your Gemini API key first");
       openApiKeyModal();
       return;
     }
 
-
     setLoading(true);
     try {
-      // Call AI API to generate questions
+      // Call AI API to generate questions using the count from settings
       const aiResponse = await axiosInstance.post(
         API_PATHS.AI.GENERATE_QUESTIONS,
         {
           role: data.role,
           experience: data.experience,
           topicsToFocus: data.topicsToFocus,
-          numberOfQuestions: 10,
-        }
+          numberOfQuestions: questionsCount, // Use dynamic count from settings
+        },
       );
-
 
       // Should be an array like [{question, answer}, ...]
       const generatedQuestions = aiResponse.data;
-
 
       const response = await axiosInstance.post(API_PATHS.SESSION.CREATE, {
         ...data,
         questions: generatedQuestions,
       });
-
 
       if (response.data?.session?._id) {
         navigate(`/interview-prep/${response.data.session._id}`);
@@ -87,7 +107,6 @@ const CreateSessionForm = () => {
       setLoading(false);
     }
   }
-
 
   return (
     <div>
@@ -171,37 +190,29 @@ const CreateSessionForm = () => {
             )}
           />
 
-
           <Button
             type="submit"
             className="bg-black hover:bg-primary hover:text-primary-foreground transition-colors"
-            disabled={loading}
+            disabled={loading || loadingQuestionsCount} // Disable if loading questions count
           >
             {loading ? (
               <>
                 <Spinner />
                 Creating Session...
               </>
+            ) : loadingQuestionsCount ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Loading Settings...
+              </>
             ) : (
               "Create Session"
             )}
           </Button>
-
-
-          {/* <FieldDescription>
-            Don&apos;t have an account?{" "}
-            <span
-              className="text-primary font-medium underline cursor-pointer"
-              onClick={() => onChangePage("signup")}
-            >
-              Sign Up
-            </span>
-          </FieldDescription> */}
         </FieldGroup>
       </form>
     </div>
   );
 };
-
 
 export default CreateSessionForm;

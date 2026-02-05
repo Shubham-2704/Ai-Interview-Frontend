@@ -7,7 +7,7 @@ import RoleInfoHeader from "./components/RoleInfoHeader";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 
-import {
+import {  
   Card,
   CardAction,
   CardContent,
@@ -283,6 +283,12 @@ const InterviewPrep = memo(() => {
   const processingRef = useRef(false);
   const sessionDataRef = useRef(null);
 
+  // Load more settings
+  const [loadMoreSettings, setLoadMoreSettings] = useState({
+    questionsPerClick: 5,
+    maxClicks: 3,
+  });
+
   // Initialize session on component mount
   useEffect(() => {
     initializeAppSession();
@@ -312,6 +318,7 @@ const InterviewPrep = memo(() => {
 
   const handleCloseStudyMaterialsDrawer = useCallback(() => {
     setOpenStudyMaterialsDrawer(false);
+    setErrorMsg("");
   }, []);
 
   // ============================================
@@ -509,21 +516,26 @@ const InterviewPrep = memo(() => {
 
         console.log("✅ API Response:", response.data);
 
-        if (response.data) {
+        if (response.data && response.data.success) {
+          const materialsData = response.data.data || response.data;
+
           // Save to session storage for current tab (NOT localStorage)
           saveToSessionStorage(
             SESSION_STORAGE_KEYS.STUDY_MATERIALS(questionId),
-            response.data,
+            materialsData,
           );
 
-          setStudyMaterials(response.data);
-          setStudyMaterialId(response.data.id || response.data._id);
+          setStudyMaterials(materialsData);
+          setStudyMaterialId(materialsData.id || materialsData._id);
 
           toast.success(
-            forceRefresh
-              ? "Study materials refreshed!"
-              : "Study materials generated!",
+            response.data.message ||
+              (forceRefresh
+                ? "Study materials refreshed!"
+                : "Study materials generated!"),
           );
+        } else {
+          toast.error(response.data?.message || "Failed to generate materials");
         }
       } catch (error) {
         console.error("❌ Error fetching study materials:", error);
@@ -535,24 +547,23 @@ const InterviewPrep = memo(() => {
 
         setStudyMaterials(null);
 
-        // Better error messages
-        if (error.response?.status === 404) {
-          setErrorMsg(
-            "Endpoint not found. Please check backend configuration.",
-          );
-        } else if (error.response?.status === 401) {
-          setErrorMsg("Authentication required. Please login again.");
-        } else if (error.response?.status === 400) {
-          setErrorMsg("Invalid request. Please check the question format.");
+        // SHOW ERROR IN DRAWER
+        if (error.response?.data?.detail) {
+          setErrorMsg(error.response.data.detail);
+          toast.error(error.response.data.detail);
+        } else if (error.response?.data?.message) {
+          setErrorMsg(error.response.data.message);
+          toast.error(error.response.data.message);
         } else {
           setErrorMsg(
-            error.response?.data?.message ||
-              error.message ||
+            error.message ||
               "Failed to fetch study materials. Please try again.",
           );
+          toast.error("Failed to fetch study materials");
         }
 
-        toast.error("Failed to fetch study materials");
+        // Keep drawer open to show error
+        setOpenStudyMaterialsDrawer(true);
       } finally {
         setIsMaterialsLoading(false);
         setTimeout(() => {
@@ -565,40 +576,36 @@ const InterviewPrep = memo(() => {
 
   // Refresh Study Materials
   const refreshStudyMaterials = useCallback(async () => {
-    if (!studyMaterialId) {
-      toast.error("No study material ID found");
+    if (
+      !studyMaterialId ||
+      !selectedQuestionForMaterials ||
+      !selectedQuestionId
+    ) {
+      toast.error("No study material found to refresh");
       return;
     }
 
     setIsMaterialsRefreshing(true);
-    try {
-      console.log("🔄 Refreshing study materials with ID:", studyMaterialId);
+    setErrorMsg(""); // Clear previous errors
 
-      const response = await axiosInstance.post(
-        API_PATHS.STUDY_MATERIALS.REFRESH(studyMaterialId),
+    try {
+      console.log("🔄 Refreshing study materials...");
+
+      // Call fetchStudyMaterials with forceRefresh flag
+      await fetchStudyMaterials(
+        selectedQuestionForMaterials,
+        selectedQuestionId,
+        true, // Force refresh
       );
 
-      console.log("✅ Refresh response:", response.data);
-
-      if (response.data) {
-        // Update session storage with refreshed data (NOT localStorage)
-        if (selectedQuestionId) {
-          saveToSessionStorage(
-            SESSION_STORAGE_KEYS.STUDY_MATERIALS(selectedQuestionId),
-            response.data,
-          );
-        }
-
-        setStudyMaterials(response.data);
-        toast.success("Study materials refreshed!");
-      }
+      // The fetchStudyMaterials function will handle the toast
     } catch (error) {
       console.error("❌ Error refreshing study materials:", error);
       toast.error("Failed to refresh study materials");
     } finally {
       setIsMaterialsRefreshing(false);
     }
-  }, [studyMaterialId, selectedQuestionId]);
+  }, [studyMaterialId, selectedQuestionForMaterials, selectedQuestionId]);
 
   // Delete Study Materials
   const deleteStudyMaterials = useCallback(async () => {
@@ -770,17 +777,37 @@ const InterviewPrep = memo(() => {
   const uploadMoreQuestions = useCallback(async () => {
     if (processingRef.current || !sessionDataRef.current) return;
 
+    // Wait for settings to load if they haven't
+    if (!loadMoreSettings.questionsPerClick) {
+      toast.error("Loading settings, please wait...");
+      return;
+    }
+
+    // Check if user has reached max clicks
+    const currentClicks = sessionDataRef.current.load_more_clicked || 0;
+    const maxAllowed = loadMoreSettings.maxClicks;
+
+    if (maxAllowed > 0 && currentClicks >= maxAllowed) {
+      toast.error(
+        `You have reached the maximum limit of ${maxAllowed} Load More clicks for this session, create a new session to get more questions!`,
+      );
+      return;
+    }
+
     processingRef.current = true;
     setIsUpdateLoader(true);
 
     try {
+      // Use admin setting for number of questions
+      const questionsToGenerate = loadMoreSettings.questionsPerClick;
+
       const aiResponse = await axiosInstance.post(
         API_PATHS.AI.GENERATE_QUESTIONS,
         {
           role: sessionDataRef.current.role,
           experience: sessionDataRef.current.experience,
           topicsToFocus: sessionDataRef.current.topicsToFocus,
-          numberOfQuestions: 10,
+          numberOfQuestions: questionsToGenerate,
         },
       );
 
@@ -795,7 +822,12 @@ const InterviewPrep = memo(() => {
       );
 
       if (response.data) {
-        toast.success("Added more Q&A!!");
+        // Update session to increment load more count
+        await axiosInstance.post(
+          API_PATHS.SESSION.INCREMENT_LOAD_MORE(sessionId),
+        );
+
+        toast.success(`Added ${questionsToGenerate} more questions!`);
         fetchSessionDetailsById();
       }
     } catch (error) {
@@ -810,7 +842,7 @@ const InterviewPrep = memo(() => {
         processingRef.current = false;
       }, 500);
     }
-  }, [sessionId, fetchSessionDetailsById]);
+  }, [sessionId, fetchSessionDetailsById, loadMoreSettings]);
 
   const askFollowupQuestion = useCallback(
     async ({ question, history }) => {
@@ -883,6 +915,80 @@ const InterviewPrep = memo(() => {
     return () => {
       processingRef.current = false;
     };
+  }, []);
+
+  // With this improved version:
+  useEffect(() => {
+    const fetchLoadMoreSettings = async () => {
+      try {
+        console.log("🔄 Fetching load more settings...");
+
+        // FIRST: Clear the wrong cache
+        sessionStorage.removeItem("load_more_settings");
+
+        // Use the CORRECT endpoint - /api/settings/public/questions-count
+        const response = await axiosInstance.get(
+          API_PATHS.SETTINGS.PUBLIC_QUESTIONS_COUNT,
+        );
+        console.log("✅ Settings API Response:", response.data);
+
+        if (response.data && response.data.success) {
+          // Check what data is actually available
+          console.log("📊 Full settings data:", response.data);
+
+          // DEFAULT values if data is missing
+          const defaultSettings = {
+            questionsPerClick: 5,
+            maxClicks: 3,
+          };
+
+          let settings = { ...defaultSettings };
+
+          // Check if load_more_questions exists
+          if (response.data.load_more_questions !== undefined) {
+            settings.questionsPerClick = response.data.load_more_questions;
+          }
+          // If not, check if number_of_questions exists (use for both)
+          else if (response.data.number_of_questions !== undefined) {
+            settings.questionsPerClick = response.data.number_of_questions;
+          }
+
+          // Check if max_load_more_clicks exists
+          if (response.data.max_load_more_clicks !== undefined) {
+            settings.maxClicks = response.data.max_load_more_clicks;
+          }
+
+          console.log("🎯 Final load more settings:", settings);
+          setLoadMoreSettings(settings);
+
+          // Save CORRECT settings to sessionStorage
+          saveToSessionStorage("load_more_settings", settings);
+        } else {
+          console.warn("⚠️ No settings data in response");
+          setLoadMoreSettings({
+            questionsPerClick: 5,
+            maxClicks: 3,
+          });
+        }
+      } catch (error) {
+        console.error("❌ Error fetching settings:", error);
+
+        // Try to load from localStorage as backup
+        const cached = loadFromSessionStorage("load_more_settings");
+        if (cached) {
+          console.log("💾 Using cached settings:", cached);
+          setLoadMoreSettings(cached);
+        } else {
+          // Default fallback
+          setLoadMoreSettings({
+            questionsPerClick: 5,
+            maxClicks: 3,
+          });
+        }
+      }
+    };
+
+    fetchLoadMoreSettings();
   }, []);
 
   if (!sessionData) {
@@ -1041,6 +1147,7 @@ const InterviewPrep = memo(() => {
               onRefresh={refreshStudyMaterials}
               onDelete={deleteStudyMaterials}
               onClearCache={clearStudyMaterialsCache}
+              errorMsg={errorMsg} // ADD THIS
             />
           </div>
         </Card>
