@@ -34,6 +34,7 @@ export const API_PATHS = {
     GET_ALL: "/sessions/my-sessions", // Get all user sessions
     GET_ONE: (id) => `/sessions/${id}`, // Get session details with questions
     DELETE: (id) => `/sessions/${id}`, // Delete a session
+    INCREMENT_LOAD_MORE: (id) => `/sessions/${id}/increment-load-more`,
   },
 
   QUESTION: {
@@ -100,5 +101,11 @@ export const API_PATHS = {
     DELETE: (quizId) => `/quiz/${quizId}`,
     ANALYTICS: (sessionId) => `/quiz/session/${sessionId}/analytics`,
     TRACK_TIME: (quizId) => `/quiz/${quizId}/track-time`,
+  },
+
+  SETTINGS: {
+    GET: "/settings/sessions", // Get system settings (admin only)
+    UPDATE: "/settings/sessions", // Update system settings (admin only)
+    PUBLIC_QUESTIONS_COUNT: "/settings/public/questions-count", // Get questions count (public)
   },
 };
