@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { toast as hotToast } from "react-hot-toast";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
   Zap,
   Brain,
   ChevronDown,
+  FileText,
 } from "lucide-react";
 import {
   LineChart,
@@ -52,39 +53,10 @@ const QuizAnalytics = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sessionInfo, setSessionInfo] = useState(null);
-  const [timeRange, setTimeRange] = useState("all"); // 'week', 'month', 'all'
+  const [timeRange, setTimeRange] = useState("all");
+  const [hasRealData, setHasRealData] = useState(false);
 
   const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#f97316", "#ef4444"];
-
-  // Custom label renderer for pie chart
-  const renderCustomizedLabel = ({
-    cx,
-    cy,
-    midAngle,
-    innerRadius,
-    outerRadius,
-    percent,
-    name,
-  }) => {
-    const RADIAN = Math.PI / 180;
-    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-
-    return (
-      <text
-        x={x}
-        y={y}
-        fill="white"
-        textAnchor={x > cx ? "start" : "end"}
-        dominantBaseline="central"
-        fontSize={12}
-        fontWeight="bold"
-      >
-        {`${(percent * 100).toFixed(0)}%`}
-      </text>
-    );
-  };
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
@@ -94,7 +66,19 @@ const QuizAnalytics = () => {
       );
 
       if (response.data) {
+        // Check if we have real data (not empty arrays or zeros)
+        const hasData = 
+          (response.data.totalQuizzes && response.data.totalQuizzes > 0) ||
+          (response.data.dailyPerformance && response.data.dailyPerformance.length > 0) ||
+          (response.data.topicPerformance && response.data.topicPerformance.length > 0);
+        
+        setHasRealData(hasData);
         setAnalytics(response.data);
+
+        if (!hasData) {
+          // Show info toast if no data
+          hotToast.success("No analytics data available yet. Take quizzes to see your performance.", { position: "bottom-right", icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",},});
+        }
 
         // Fetch topic performance separately
         try {
@@ -102,45 +86,21 @@ const QuizAnalytics = () => {
             `/quiz/session/${sessionId}/topics`,
           );
 
-          if (topicResponse.data?.topicPerformance) {
+          if (topicResponse.data?.topicPerformance && topicResponse.data.topicPerformance.length > 0) {
             setAnalytics((prev) => ({
               ...prev,
               topicPerformance: topicResponse.data.topicPerformance,
             }));
+            setHasRealData(true);
           }
         } catch (topicError) {
-          console.warn("Failed to fetch topic performance:", topicError);
         }
       }
     } catch (error) {
-      console.error("Failed to fetch analytics:", error);
-
-      // Fallback mock data
-      setAnalytics({
-        averageScore: 75.5,
-        bestScore: 92.3,
-        totalQuizzes: 8,
-        totalTimeSpent: 4567,
-        completionRate: 87.5,
-        improvementRate: 15.2,
-        scoreDistribution: [20, 30, 25, 15, 10],
-        dailyPerformance: [
-          { date: "01/01", score: 70 },
-          { date: "01/08", score: 75 },
-          { date: "01/15", score: 80 },
-          { date: "01/22", score: 85 },
-          { date: "01/29", score: 90 },
-        ],
-        topicPerformance: [
-          { topic: "Algorithms", score: 85 },
-          { topic: "Data Structures", score: 78 },
-          { topic: "System Design", score: 92 },
-          { topic: "JavaScript", score: 88 },
-          { topic: "React", score: 95 },
-        ],
-      });
-
-      toast.error("Using demo data. Backend analytics not configured.");
+      
+      // Don't set dummy data - just show empty state
+      setHasRealData(false);
+      setAnalytics(null);
     } finally {
       setLoading(false);
     }
@@ -170,7 +130,10 @@ const QuizAnalytics = () => {
   };
 
   const handleExportAnalytics = () => {
-    if (!analytics) return;
+    if (!analytics || !hasRealData) {
+      hotToast.success("No analytics data to export", { position: "bottom-right", icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",},});
+      return;
+    }
 
     try {
       const exportData = {
@@ -189,15 +152,15 @@ const QuizAnalytics = () => {
       link.click();
       URL.revokeObjectURL(url);
 
-      toast.success("Analytics exported successfully!");
+      hotToast.success("Analytics exported successfully!", { position: "top-center" });
     } catch (error) {
-      toast.error("Failed to export analytics");
+      hotToast.error("Failed to export analytics", { position: "bottom-right" });
     }
   };
 
   // Prepare pie chart data
   const getPieChartData = () => {
-    if (!analytics?.scoreDistribution) return [];
+    if (!analytics?.scoreDistribution || !hasRealData) return [];
 
     return [
       { name: "90-100%", value: analytics.scoreDistribution[0] || 0 },
@@ -210,6 +173,13 @@ const QuizAnalytics = () => {
 
   const pieChartData = getPieChartData();
   const hasPieChartData = pieChartData.some((item) => item.value > 0);
+
+  // Check if there's any data to show in charts
+  const hasChartData = hasRealData && (
+    (analytics.dailyPerformance && analytics.dailyPerformance.length > 0) ||
+    (analytics.topicPerformance && analytics.topicPerformance.length > 0) ||
+    hasPieChartData
+  );
 
   return (
     <DashboardLayout>
@@ -232,72 +202,78 @@ const QuizAnalytics = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Desktop: Tabs (hidden on mobile) */}
-            <div className="hidden md:block">
-              <Tabs
-                value={timeRange}
-                onValueChange={setTimeRange}
-                className="w-auto"
+            {/* Desktop: Tabs (hidden on mobile) - only show if we have data */}
+            {hasRealData && (
+              <div className="hidden md:block">
+                <Tabs
+                  value={timeRange}
+                  onValueChange={setTimeRange}
+                  className="w-auto"
+                >
+                  <TabsList>
+                    <TabsTrigger value="week" className="cursor-pointer">
+                      This Week
+                    </TabsTrigger>
+                    <TabsTrigger value="month" className="cursor-pointer">
+                      This Month
+                    </TabsTrigger>
+                    <TabsTrigger value="all" className="cursor-pointer">
+                      All Time
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+            )}
+
+            {/* Mobile: Dropdown (visible on mobile) - only show if we have data */}
+            {hasRealData && (
+              <div className="md:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-[120px] justify-between"
+                    >
+                      {timeRange === "week" && "This Week"}
+                      {timeRange === "month" && "This Month"}
+                      {timeRange === "all" && "All Time"}
+                      <ChevronDown className="ml-2 h-4 w-4 cursor-pointer" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-[120px]">
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => setTimeRange("week")}
+                    >
+                      This Week
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => setTimeRange("month")}
+                    >
+                      This Month
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => setTimeRange("all")}
+                    >
+                      All Time
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+
+            {hasRealData && (
+              <Button
+                variant="outline"
+                onClick={handleExportAnalytics}
+                className="gap-2"
               >
-                <TabsList>
-                  <TabsTrigger value="week" className="cursor-pointer">
-                    This Week
-                  </TabsTrigger>
-                  <TabsTrigger value="month" className="cursor-pointer">
-                    This Month
-                  </TabsTrigger>
-                  <TabsTrigger value="all" className="cursor-pointer">
-                    All Time
-                  </TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-
-            {/* Mobile: Dropdown (visible on mobile) */}
-            <div className="md:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-[120px] justify-between"
-                  >
-                    {timeRange === "week" && "This Week"}
-                    {timeRange === "month" && "This Month"}
-                    {timeRange === "all" && "All Time"}
-                    <ChevronDown className="ml-2 h-4 w-4 cursor-pointer" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-[120px]">
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onClick={() => setTimeRange("week")}
-                  >
-                    This Week
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onClick={() => setTimeRange("month")}
-                  >
-                    This Month
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onClick={() => setTimeRange("all")}
-                  >
-                    All Time
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={handleExportAnalytics}
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -306,7 +282,7 @@ const QuizAnalytics = () => {
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
             <p className="mt-4 text-muted-foreground">Loading analytics...</p>
           </div>
-        ) : analytics ? (
+        ) : hasRealData ? (
           <>
             {/* Key Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -412,122 +388,128 @@ const QuizAnalytics = () => {
             </div>
 
             {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              {/* Score Trend Chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Score Trend Over Time
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80 w-full min-w-0">
-                    {analytics.dailyPerformance &&
-                    analytics.dailyPerformance.length > 0 ? (
-                      <ResponsiveContainer
-                        width="100%"
-                        height="100%"
-                        minHeight={200}
-                      >
-                        <LineChart data={analytics.dailyPerformance}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis
-                            dataKey="date"
-                            tick={{ fontSize: 12 }}
-                            angle={-45}
-                            textAnchor="end"
-                            height={60}
-                          />
-                          <YAxis
-                            domain={[0, 100]}
-                            tickFormatter={(value) => `${value}%`}
-                          />
-                          <Tooltip
-                            formatter={(value) => [`${value}%`, "Score"]}
-                            labelFormatter={(label) => `Date: ${label}`}
-                          />
-                          <Legend />
-                          <Line
-                            type="monotone"
-                            dataKey="score"
-                            stroke="#8884d8"
-                            strokeWidth={2}
-                            dot={{ r: 4 }}
-                            activeDot={{ r: 6 }}
-                            name="Score %"
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-muted-foreground">
-                        No trend data available
+            {hasChartData ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                {/* Score Trend Chart */}
+                {analytics.dailyPerformance && analytics.dailyPerformance.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5" />
+                        Score Trend Over Time
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80 w-full min-w-0">
+                        <ResponsiveContainer
+                          width="100%"
+                          height="100%"
+                          minHeight={200}
+                        >
+                          <LineChart data={analytics.dailyPerformance}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fontSize: 12 }}
+                              angle={-45}
+                              textAnchor="end"
+                              height={60}
+                            />
+                            <YAxis
+                              domain={[0, 100]}
+                              tickFormatter={(value) => `${value}%`}
+                            />
+                            <Tooltip
+                              formatter={(value) => [`${value}%`, "Score"]}
+                              labelFormatter={(label) => `Date: ${label}`}
+                            />
+                            <Legend />
+                            <Line
+                              type="monotone"
+                              dataKey="score"
+                              stroke="#8884d8"
+                              strokeWidth={2}
+                              dot={{ r: 4 }}
+                              activeDot={{ r: 6 }}
+                              name="Score %"
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* Topic Performance */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Brain className="h-5 w-5" />
-                    Topic Performance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80 w-full min-w-0">
-                    {analytics.topicPerformance &&
-                    analytics.topicPerformance.length > 0 ? (
-                      <ResponsiveContainer
-                        width="100%"
-                        height="100%"
-                        minHeight={200}
-                      >
-                        <BarChart data={analytics.topicPerformance}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis
-                            dataKey="topic"
-                            tick={{ fontSize: 12 }}
-                            angle={-45}
-                            textAnchor="end"
-                            height={60}
-                          />
-                          <YAxis
-                            domain={[0, 100]}
-                            tickFormatter={(value) => `${value}%`}
-                          />
-                          <Tooltip
-                            formatter={(value) => [`${value}%`, "Score"]}
-                          />
-                          <Legend />
-                          <Bar
-                            dataKey="score"
-                            fill="#82ca9d"
-                            name="Score %"
-                            radius={[4, 4, 0, 0]}
-                          />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="h-full flex items-center justify-center text-muted-foreground">
-                        No topic data available
+                {/* Topic Performance */}
+                {analytics.topicPerformance && analytics.topicPerformance.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Brain className="h-5 w-5" />
+                        Topic Performance
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80 w-full min-w-0">
+                        <ResponsiveContainer
+                          width="100%"
+                          height="100%"
+                          minHeight={200}
+                        >
+                          <BarChart data={analytics.topicPerformance}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis
+                              dataKey="topic"
+                              tick={{ fontSize: 12 }}
+                              angle={-45}
+                              textAnchor="end"
+                              height={60}
+                            />
+                            <YAxis
+                              domain={[0, 100]}
+                              tickFormatter={(value) => `${value}%`}
+                            />
+                            <Tooltip
+                              formatter={(value) => [`${value}%`, "Score"]}
+                            />
+                            <Legend />
+                            <Bar
+                              dataKey="score"
+                              fill="#82ca9d"
+                              name="Score %"
+                              radius={[4, 4, 0, 0]}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
-                    )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            ) : (
+              <Card className="mb-8">
+                <CardContent className="p-8">
+                  <div className="text-center">
+                    <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">
+                      No Chart Data Yet
+                    </h3>
+                    <p className="text-muted-foreground mb-6">
+                      Complete more quizzes to generate performance charts and trends.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            )}
 
             {/* Score Distribution */}
-            <Card className="mb-8">
-              <CardHeader>
-                <CardTitle>Score Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 w-full min-w-0">
-                  {hasPieChartData ? (
+            {hasPieChartData ? (
+              <Card className="mb-8">
+                <CardHeader>
+                  <CardTitle>Score Distribution</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 w-full min-w-0">
                     <ResponsiveContainer
                       width="100%"
                       height="100%"
@@ -539,7 +521,26 @@ const QuizAnalytics = () => {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={renderCustomizedLabel}
+                          label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+                            const RADIAN = Math.PI / 180;
+                            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+                            const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                            const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                            
+                            return (
+                              <text
+                                x={x}
+                                y={y}
+                                fill="white"
+                                textAnchor={x > cx ? "start" : "end"}
+                                dominantBaseline="central"
+                                fontSize={12}
+                                fontWeight="bold"
+                              >
+                                {`${(percent * 100).toFixed(0)}%`}
+                              </text>
+                            );
+                          }}
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"
@@ -571,18 +572,10 @@ const QuizAnalytics = () => {
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
-                  ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-                      <div className="text-4xl mb-2">📊</div>
-                      <p>No score distribution data available</p>
-                      <p className="text-sm mt-1">
-                        Take more quizzes to see your score distribution
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null}
 
             {/* Performance Insights */}
             <Card>
@@ -684,9 +677,22 @@ const QuizAnalytics = () => {
                 Take some quizzes to see detailed performance analytics and
                 track your progress over time.
               </p>
-              <Button onClick={() => navigate(`/quiz/${sessionId}`)}>
-                Start Your First Quiz
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  onClick={() => navigate(`/quiz/${sessionId}`)}
+                  size="lg"
+                >
+                  Start Your First Quiz
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/quiz/${sessionId}/history`)}
+                  size="lg"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Quiz History
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
