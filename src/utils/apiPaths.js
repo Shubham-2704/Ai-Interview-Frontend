@@ -35,6 +35,7 @@ export const API_PATHS = {
     GET_ONE: (id) => `/sessions/${id}`, // Get session details with questions
     DELETE: (id) => `/sessions/${id}`, // Delete a session
     INCREMENT_LOAD_MORE: (id) => `/sessions/${id}/increment-load-more`,
+    CHECK_SESSION_LIMIT: "/sessions/check-limit", // Check if user can create more sessions
   },
 
   QUESTION: {

@@ -27,6 +27,7 @@ import { Eye, EyeOff, Shield, Lock, ArrowRight } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 import { toast } from "sonner";
+import { toast as hotToast } from "react-hot-toast";
 
 const Login = ({ onChangePage }) => {
   const [loading, setLoading] = useState(false);
@@ -74,14 +75,14 @@ const Login = ({ onChangePage }) => {
         } else {
           // Regular user - navigate to dashboard
           navigate("/dashboard");
-          toast.success("Logged in successfully!");
+          hotToast.success("Logged in successfully!", { position: "top-center" });
         }
       }
     } catch (error) {
       if (error.response && error.response.data.message) {
-        toast.error(error.response.data.message);
+        hotToast.error(error.response.data.message, { position: "bottom-center" });
       } else {
-        toast.error("Something went wrong. Please try again.");
+        hotToast.error("Something went wrong. Please try again.", { position: "bottom-right" });
       }
     } finally {
       setLoading(false);
@@ -112,14 +113,14 @@ const Login = ({ onChangePage }) => {
         } else {
           // Regular user - navigate to dashboard
           navigate("/dashboard");
-          toast.success("Logged in successfully!");
+          hotToast.success("Logged in successfully!", { position: "top-center" });
         }
       }
     } catch (error) {
       if (error.response && error.response.data.message) {
-        toast.error(error.response.data.message);
+        hotToast.error(error.response.data.message,  { position: "bottom-center" });
       } else {
-        toast.error("Failed to login with Google. Please try again.");
+        hotToast.error("Failed to login with Google. Please try again.", { position: "bottom-right" });
       }
     } finally {
       setGoogleLoading(false);
@@ -127,7 +128,7 @@ const Login = ({ onChangePage }) => {
   };
 
   const handleGoogleError = () => {
-    toast.error("Google login failed. Please try again.");
+    hotToast.error("Google login failed. Please try again.", { position: "bottom-right" });
   };
 
   // Handle admin token verification

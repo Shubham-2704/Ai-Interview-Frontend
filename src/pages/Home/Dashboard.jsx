@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import CreateSessionForm from "./CreateSessionForm";
-import { toast } from "sonner";
+import { toast as hotToast } from "react-hot-toast";
 import DashboardSkeleton from "./components/DashboardSkeleton";
 
 const Dashboard = () => {
@@ -36,8 +36,7 @@ const Dashboard = () => {
       const response = await axiosInstance.get(API_PATHS.SESSION.GET_ALL);
       setSessions(response.data);
     } catch (error) {
-      console.error("Error fetching session data:", error);
-      toast.error("Failed to fetch sessions.");
+      hotToast.error("Failed to fetch sessions.", { position: "bottom-right" });
     } finally {
       setLoading(false);
     }
@@ -49,25 +48,24 @@ const Dashboard = () => {
         API_PATHS.SESSION.DELETE(sessionId),
       );
 
-      toast.success(response.data.message);
+      hotToast.success(response.data.message, { position: "top-center" });
 
       setOpenDeleteAlert(false);
       fetchAllSessions();
     } catch (error) {
-      console.error("Error deleting session:", error);
+      hotToast.error("Failed to delete session.", { position: "bottom-right" });
     }
   };
 
   const checkSessionLimit = async () => {
     try {
       // Make sure this URL is correct
-      const response = await axiosInstance.get("/sessions/check-limit");
-      console.log("Limit check response:", response.data);
+      const response = await axiosInstance.get(API_PATHS.SESSION.CHECK_SESSION_LIMIT);
 
       if (response.data.success) {
         setSessionLimit(response.data.data);
         !response.data.data.can_create &&
-          toast.success(response.data.data.message);
+          hotToast.success(response.data.data.message, { position: "bottom-center", icon: "⚠️", style: {border: "1px solid #f59e0b", background: "#fffbeb", color: "#92400e",},});
       } else {
         setSessionLimit({
           can_create: true,
@@ -78,8 +76,6 @@ const Dashboard = () => {
         });
       }
     } catch (error) {
-      console.error("Error checking session limit:", error);
-      console.error("Error details:", error.response?.data || error.message);
       setSessionLimit({
         can_create: true,
         limit: 0,
@@ -154,7 +150,7 @@ const Dashboard = () => {
   sm:bottom-8 sm:right-8 ${!sessionLimit.can_create ? "opacity-50 cursor-not-allowed" : ""}`}
                   onClick={() => {
                     if (!sessionLimit.can_create) {
-                      toast.error(sessionLimit.message);
+                      hotToast.error(sessionLimit.message, { position: "bottom-center" });
                       return;
                     }
                     setOpenCreateModel(true);

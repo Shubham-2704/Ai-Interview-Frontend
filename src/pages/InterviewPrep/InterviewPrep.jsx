@@ -15,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import QuestionCard from "@/components/Cards/QuestionCard";
-import { toast } from "sonner";
+import { toast as hotToast } from "react-hot-toast";
 import InterviewPrepSkeleton from "./components/InterviewPrepSkeleton";
 import Drawer from "@/components/Drawer";
 import StudyMaterialsDrawer from "@/components/StudyMaterialsDrawer";
@@ -29,10 +29,8 @@ import {
   Tooltip,
 } from "@/components/ui/tooltip";
 
-// ============================================
-// STORAGE UTILITY FUNCTIONS
-// ============================================
 
+// STORAGE UTILITY FUNCTIONS
 // LocalStorage Keys (Persistent across sessions)
 const LOCAL_STORAGE_KEYS = {
   EXPLANATION_DATA: (explanationId) => `persistent_exp_${explanationId}`,
@@ -55,7 +53,6 @@ const initializeAppSession = () => {
       .toString(36)
       .substr(2, 9)}`;
     sessionStorage.setItem(SESSION_STORAGE_KEYS.SESSION_ID, sessionId);
-    console.log("🆕 New session created:", sessionId);
   }
 
   // Clear any expired session data (optional)
@@ -63,10 +60,7 @@ const initializeAppSession = () => {
   sessionStorage.setItem("session_start_time", sessionStart.toString());
 };
 
-// ============================================
 // LOCAL STORAGE FUNCTIONS (PERSISTENT)
-// ============================================
-
 // Save to Local Storage (Persistent across sessions)
 const saveToLocalStorage = (key, data) => {
   if (typeof window === "undefined") return false;
@@ -80,14 +74,11 @@ const saveToLocalStorage = (key, data) => {
     };
 
     localStorage.setItem(key, JSON.stringify(storageData));
-    console.log("💾 Saved to localStorage:", key);
     return true;
   } catch (error) {
-    console.error("Error saving to localStorage:", error);
 
     // Handle quota exceeded error
     if (error.name === "QuotaExceededError") {
-      console.warn("LocalStorage quota exceeded, clearing old items...");
       clearOldLocalStorageItems();
       // Retry once
       try {
@@ -97,7 +88,6 @@ const saveToLocalStorage = (key, data) => {
         );
         return true;
       } catch (retryError) {
-        console.error("Failed after retry:", retryError);
       }
     }
 
@@ -121,15 +111,11 @@ const loadFromLocalStorage = (key) => {
     const now = Date.now();
 
     if (now - timestamp > expirationTime) {
-      console.log("🗑️ LocalStorage item expired, removing:", key);
       localStorage.removeItem(key);
       return null;
     }
-
-    console.log("📦 Loaded from localStorage:", key);
     return data;
   } catch (error) {
-    console.error("Error loading from localStorage:", error);
     return null;
   }
 };
@@ -140,9 +126,7 @@ const clearLocalStorageItem = (key) => {
 
   try {
     localStorage.removeItem(key);
-    console.log("🗑️ Removed from localStorage:", key);
   } catch (error) {
-    console.error("Error clearing localStorage:", error);
   }
 };
 
@@ -171,17 +155,12 @@ const clearOldLocalStorageItems = () => {
 
     itemsToRemove.forEach((key) => {
       localStorage.removeItem(key);
-      console.log("🗑️ Cleared old item:", key);
     });
   } catch (error) {
-    console.error("Error clearing old localStorage items:", error);
   }
 };
 
-// ============================================
 // SESSION STORAGE FUNCTIONS (CURRENT TAB ONLY)
-// ============================================
-
 // Save to Session Storage
 const saveToSessionStorage = (key, data) => {
   if (typeof window === "undefined") return false;
@@ -194,10 +173,7 @@ const saveToSessionStorage = (key, data) => {
     };
 
     sessionStorage.setItem(key, JSON.stringify(sessionData));
-    console.log("💾 Saved to sessionStorage:", key);
-    return true;
   } catch (error) {
-    console.error("Error saving to sessionStorage:", error);
     return false;
   }
 };
@@ -221,11 +197,8 @@ const loadFromSessionStorage = (key) => {
       sessionStorage.removeItem(key);
       return null;
     }
-
-    console.log("📦 Loaded from sessionStorage:", key);
     return data;
   } catch (error) {
-    console.error("Error loading from sessionStorage:", error);
     return null;
   }
 };
@@ -236,16 +209,11 @@ const clearSessionStorageItem = (key) => {
 
   try {
     sessionStorage.removeItem(key);
-    console.log("🗑️ Removed from sessionStorage:", key);
   } catch (error) {
-    console.error("Error clearing session storage:", error);
   }
 };
 
-// ============================================
 // MAIN COMPONENT
-// ============================================
-
 // Create explanation ID from question
 const createExplanationId = (question) => {
   // Use a more robust hash function for better keys
@@ -307,7 +275,6 @@ const InterviewPrep = memo(() => {
         sessionDataRef.current = newSessionData;
       }
     } catch (error) {
-      console.error("Error fetching session data:", error);
     }
   }, [sessionId]);
 
@@ -321,9 +288,7 @@ const InterviewPrep = memo(() => {
     setErrorMsg("");
   }, []);
 
-  // ============================================
   // LEARN MORE - WITH LOCALSTORAGE (PERSISTENT)
-  // ============================================
   const generateConceptExplanation = useCallback(async (question) => {
     if (processingRef.current) return;
 
@@ -349,16 +314,13 @@ const InterviewPrep = memo(() => {
       );
 
       if (cachedExplanation) {
-        console.log("💾 Loaded explanation from localStorage (persistent)");
         // Small delay for UX consistency
         await new Promise((resolve) => setTimeout(resolve, 100));
         setExplanation(cachedExplanation);
         setIsLoading(false);
-        toast.success("Loaded from saved explanations!");
+        hotToast.success("Explanation loaded from cache!", { position: "top-center" });
         return;
       }
-
-      console.log("🔄 No cached explanation found, calling API...");
 
       // If not in localStorage, call API
       const response = await axiosInstance.post(
@@ -376,11 +338,9 @@ const InterviewPrep = memo(() => {
         );
 
         if (saved) {
-          console.log("✅ Explanation saved to localStorage");
-          toast.success("Explanation generated and saved!");
+          hotToast.success("Explanation generated and saved!", { position: "top-center" });
         } else {
-          console.warn("⚠️ Could not save to localStorage");
-          toast.success("Explanation generated!");
+          hotToast.success("Explanation generated!" ,{ position: "top-center" });
         }
       }
     } catch (error) {
@@ -389,7 +349,6 @@ const InterviewPrep = memo(() => {
         error.response?.data?.message ||
           "Server are too busy, Please try again later.",
       );
-      console.error("Error generating concept explanation:", error);
     } finally {
       setIsLoading(false);
       setTimeout(() => {
@@ -398,27 +357,18 @@ const InterviewPrep = memo(() => {
     }
   }, []);
 
-  // ============================================
   // STUDY MATERIALS - WITH SESSIONSTORAGE (CURRENT TAB)
-  // ============================================
   const fetchStudyMaterials = useCallback(
     async (question, questionId, forceRefresh = false) => {
-      console.log("🔍 fetchStudyMaterials called with:", {
-        question: question?.substring(0, 50),
-        questionId,
-        forceRefresh,
-      });
 
       // 1. Check if questionId is valid
       if (!questionId) {
-        console.error("❌ ERROR: questionId is required");
-        toast.error("Cannot fetch resources: Question ID missing");
+        hotToast.error("Cannot fetch resources", { position: "bottom-right" });
         return;
       }
 
       // 2. Check if already processing
       if (processingRef.current) {
-        console.log("⚠️ Already processing, skipping");
         return;
       }
 
@@ -437,16 +387,11 @@ const InterviewPrep = memo(() => {
         await new Promise((resolve) => setTimeout(resolve, 300));
 
         // 5. NOW open drawer (after spinner shows on button)
-        console.log("🚪 Opening drawer...");
         setOpenStudyMaterialsDrawer(true);
 
-        // ============================================
         // CACHING STRATEGY - SESSION STORAGE ONLY
-        // ============================================
-
         // OPTION 1: Force Refresh - Skip all caches
         if (forceRefresh) {
-          console.log("🔄 Force refresh requested, skipping caches");
         }
         // OPTION 2: Check Session Storage (Current Tab Only)
         else {
@@ -455,25 +400,18 @@ const InterviewPrep = memo(() => {
           );
 
           if (sessionCached) {
-            console.log(
-              "📦 Found in session storage (current tab only):",
-              sessionCached,
-            );
 
             // Small delay for better UX (shows skeleton briefly)
             await new Promise((resolve) => setTimeout(resolve, 200));
 
             setStudyMaterials(sessionCached);
             setStudyMaterialId(sessionCached.id || sessionCached._id);
-            toast.success("Loaded from current session!");
+            hotToast.success("Study materials loaded from cache!", { position: "top-center" });
             return;
           }
-
-          console.log("❌ Not found in session storage");
         }
 
         // OPTION 3: Check Database via GET endpoint
-        console.log("🔄 Checking database for existing materials...");
         try {
           // Try to GET existing materials from database
           const getResponse = await axiosInstance.get(
@@ -481,7 +419,6 @@ const InterviewPrep = memo(() => {
           );
 
           if (getResponse.data && !forceRefresh) {
-            console.log("✅ Found in database:", getResponse.data);
 
             // Save to session storage for current tab (NOT localStorage)
             saveToSessionStorage(
@@ -491,30 +428,22 @@ const InterviewPrep = memo(() => {
 
             setStudyMaterials(getResponse.data);
             setStudyMaterialId(getResponse.data.id || getResponse.data._id);
-            toast.success("Loaded study materials from database!");
+            hotToast.success("Study materials loaded from history!", { position: "top-center" });
             return;
           }
         } catch (dbError) {
           // 404 means no materials in DB yet, which is OK
           if (dbError.response?.status !== 404) {
-            console.error("⚠️ Database check error:", dbError.message);
           }
-          console.log(
-            "📝 No existing materials in database, will generate new",
-          );
         }
 
         // OPTION 4: Generate NEW materials via POST API
-        console.log("🚀 Generating new study materials...");
         const apiUrl = API_PATHS.STUDY_MATERIALS.GENERATE(questionId);
-        console.log("📡 API URL:", apiUrl);
 
         const response = await axiosInstance.post(apiUrl, {
           question: question,
           force_refresh: forceRefresh,
         });
-
-        console.log("✅ API Response:", response.data);
 
         if (response.data && response.data.success) {
           const materialsData = response.data.data || response.data;
@@ -528,38 +457,32 @@ const InterviewPrep = memo(() => {
           setStudyMaterials(materialsData);
           setStudyMaterialId(materialsData.id || materialsData._id);
 
-          toast.success(
+          hotToast.success(
             response.data.message ||
               (forceRefresh
                 ? "Study materials refreshed!"
                 : "Study materials generated!"),
+                { position: "top-center" }
           );
         } else {
-          toast.error(response.data?.message || "Failed to generate materials");
+          hotToast.error(response.data?.message || "Failed to generate materials", { position: "bottom-right" });
         }
       } catch (error) {
-        console.error("❌ Error fetching study materials:", error);
-        console.error("🔍 Error details:", {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status,
-        });
-
         setStudyMaterials(null);
 
         // SHOW ERROR IN DRAWER
         if (error.response?.data?.detail) {
           setErrorMsg(error.response.data.detail);
-          toast.error(error.response.data.detail);
+          // hotToast.error(error.response.data.detail, { position: "bottom-right" });
         } else if (error.response?.data?.message) {
           setErrorMsg(error.response.data.message);
-          toast.error(error.response.data.message);
+          // hotToast.error(error.response.data.message, { position: "bottom-right" });
         } else {
           setErrorMsg(
             error.message ||
               "Failed to fetch study materials. Please try again.",
           );
-          toast.error("Failed to fetch study materials");
+          hotToast.error("Failed to fetch study materials", { position: "bottom-right" });
         }
 
         // Keep drawer open to show error
@@ -581,7 +504,7 @@ const InterviewPrep = memo(() => {
       !selectedQuestionForMaterials ||
       !selectedQuestionId
     ) {
-      toast.error("No study material found to refresh");
+      hotToast.error("No study material found to refresh", { position: "bottom-right" });
       return;
     }
 
@@ -589,7 +512,6 @@ const InterviewPrep = memo(() => {
     setErrorMsg(""); // Clear previous errors
 
     try {
-      console.log("🔄 Refreshing study materials...");
 
       // Call fetchStudyMaterials with forceRefresh flag
       await fetchStudyMaterials(
@@ -600,8 +522,7 @@ const InterviewPrep = memo(() => {
 
       // The fetchStudyMaterials function will handle the toast
     } catch (error) {
-      console.error("❌ Error refreshing study materials:", error);
-      toast.error("Failed to refresh study materials");
+      hotToast.error("Failed to refresh study materials", { position: "bottom-right" });
     } finally {
       setIsMaterialsRefreshing(false);
     }
@@ -610,12 +531,11 @@ const InterviewPrep = memo(() => {
   // Delete Study Materials
   const deleteStudyMaterials = useCallback(async () => {
     if (!studyMaterialId) {
-      toast.error("No study material ID found");
+      hotToast.error("No study material found", { position: "bottom-right" });
       return;
     }
 
     try {
-      console.log("🗑️ Deleting study materials with ID:", studyMaterialId);
 
       await axiosInstance.delete(
         API_PATHS.STUDY_MATERIALS.DELETE(studyMaterialId),
@@ -630,31 +550,27 @@ const InterviewPrep = memo(() => {
 
       setStudyMaterials(null);
       setOpenStudyMaterialsDrawer(false);
-      toast.success("Study materials deleted!");
+      hotToast.success("Study materials deleted!", { position: "bottom-right" });
     } catch (error) {
-      console.error("❌ Error deleting study materials:", error);
-      toast.error("Failed to delete study materials");
+      hotToast.error("Failed to delete study materials", { position: "bottom-right" });
     }
   }, [studyMaterialId, selectedQuestionId]);
 
   // Clear Study Materials Cache (Session Storage only)
   const clearStudyMaterialsCache = useCallback(() => {
     if (!selectedQuestionId) {
-      toast.error("No question selected");
+      hotToast.error("No question selected", { position: "bottom-right" });
       return;
     }
 
     clearSessionStorageItem(
       SESSION_STORAGE_KEYS.STUDY_MATERIALS(selectedQuestionId),
     );
-    toast.success("Session cache cleared!");
+    hotToast.success("Session cache cleared!", { position: "top-right" });
     setOpenStudyMaterialsDrawer(false);
   }, [selectedQuestionId]);
 
-  // ============================================
   // LEARN MORE FUNCTIONS - WITH LOCALSTORAGE
-  // ============================================
-
   // Refresh cached explanation
   const refreshExplanation = useCallback(async () => {
     if (!lastQuestion || !explanationId) return;
@@ -675,15 +591,14 @@ const InterviewPrep = memo(() => {
           LOCAL_STORAGE_KEYS.EXPLANATION_DATA(explanationId),
           response.data,
         );
-        toast.success("Explanation refreshed and saved!");
+        hotToast.success("Explanation refreshed and saved!", { position: "top-right" });
       }
     } catch (error) {
-      toast.error(
+      hotToast.error(
         error.response?.data?.message ||
-          "Server are too busy, Please try again later.",
+          "Server are too busy, Please try again later.",{ position: "bottom-right" }
       );
       setErrorMsg("Failed to refresh. Please try again.");
-      console.error("Error refreshing explanation:", error);
     } finally {
       setIsRefreshing(false);
     }
@@ -699,11 +614,10 @@ const InterviewPrep = memo(() => {
 
       // Clear state
       setExplanation(null);
-      toast.success("Explanation & chat history cleared");
+      hotToast.success("Explanation & chat history cleared", { position: "bottom-right" });
       handleCloseDrawer();
     } catch (error) {
-      console.error("Error clearing explanation:", error);
-      toast.error("Failed to clear explanation");
+      hotToast.error("Failed to clear explanation", { position: "bottom-right" });
     }
   }, [explanationId, handleCloseDrawer]); // FIXED: Now handleCloseDrawer is defined
 
@@ -715,10 +629,9 @@ const InterviewPrep = memo(() => {
       // If you have chat storage in localStorage, clear it
       const chatKey = `chat_${explanationId}`;
       clearLocalStorageItem(chatKey);
-      toast.success("Chat history cleared");
+      hotToast.success("Chat history cleared", { position: "top-right" });
     } catch (error) {
-      console.error("Error clearing chat history:", error);
-      toast.error("Failed to clear chat history");
+      hotToast.error("Failed to clear chat history", { position: "bottom-right" });
     }
   }, [explanationId]);
 
@@ -735,10 +648,9 @@ const InterviewPrep = memo(() => {
         }
       }
 
-      toast.success(`Cleared ${clearedCount} saved explanations`);
+      hotToast.success(`Cleared ${clearedCount} saved explanations`, { position: "top-right" });
     } catch (error) {
-      console.error("Error clearing all explanations:", error);
-      toast.error("Failed to clear explanations");
+      hotToast.error("Failed to clear explanations", { position: "bottom-right" });
     }
   }, []);
 
@@ -756,14 +668,14 @@ const InterviewPrep = memo(() => {
 
         if (response.data && response.data?.question) {
           fetchSessionDetailsById();
-          toast.success(
+          hotToast.success(
             `Question ${
               response.data.question.isPinned ? "Pinned" : "Unpinned"
             } successfully!`,
+            { position: "top-center" }
           );
         }
       } catch (error) {
-        console.error("Error fetching session data:", error);
       } finally {
         setTimeout(() => {
           processingRef.current = false;
@@ -779,7 +691,7 @@ const InterviewPrep = memo(() => {
 
     // Wait for settings to load if they haven't
     if (!loadMoreSettings.questionsPerClick) {
-      toast.error("Loading settings, please wait...");
+      hotToast.error("Loading settings, please wait...", { position: "bottom-right" });
       return;
     }
 
@@ -788,9 +700,9 @@ const InterviewPrep = memo(() => {
     const maxAllowed = loadMoreSettings.maxClicks;
 
     if (maxAllowed > 0 && currentClicks >= maxAllowed) {
-      toast.error(
-        `You have reached the maximum limit of ${maxAllowed} Load More clicks for this session, create a new session to get more questions!`,
-      );
+      hotToast.error(
+        `Questions limit reached, start a new session to get more questions.`,
+        { position: "bottom-right", icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",},}, );
       return;
     }
 
@@ -827,14 +739,14 @@ const InterviewPrep = memo(() => {
           API_PATHS.SESSION.INCREMENT_LOAD_MORE(sessionId),
         );
 
-        toast.success(`Added ${questionsToGenerate} more questions!`);
+        hotToast.success(`Added ${questionsToGenerate} more questions!`, { position: "top-center" });
         fetchSessionDetailsById();
       }
     } catch (error) {
       if (error.response && error.response.data.message) {
-        toast.error(error.response.data.message);
+        hotToast.error(error.response.data.message, { position: "bottom-center" });
       } else {
-        toast.error("Something went wrong. Please try again.");
+        hotToast.error("Something went wrong. Please try again.", { position: "bottom-center" });
       }
     } finally {
       setIsUpdateLoader(false);
@@ -854,7 +766,6 @@ const InterviewPrep = memo(() => {
 
         return response.data?.answer;
       } catch (error) {
-        console.error("Error asking followup:", error);
         throw error;
       }
     },
@@ -864,8 +775,7 @@ const InterviewPrep = memo(() => {
   // Download PDF of session Q&A
   const downloadSessionPdf = useCallback(async () => {
     try {
-      toast.info("Downloading PDF of Q&A Session...");
-
+      hotToast.success("Downloading PDF of Q&A Session...", { position: "bottom-right", icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",}, });
       const response = await axiosInstance.get(
         API_PATHS.PDF.EXPORT_SESSION_QNA(sessionId),
         {
@@ -897,12 +807,11 @@ const InterviewPrep = memo(() => {
 
       window.URL.revokeObjectURL(url);
 
-      toast.success("PDF downloaded successfully!");
+      hotToast.success("PDF downloaded successfully!", { position: "bottom-right" });
     } catch (error) {
-      console.error("PDF download failed:", error);
-      toast.error(
+      hotToast.error(
         error.response?.data?.detail ||
-          "Failed to export PDF. Please try after some time.",
+          "Failed to export PDF. Please try after some time.", { position: "bottom-right" }
       );
     }
   }, [sessionId, sessionData?.role]);
@@ -921,7 +830,6 @@ const InterviewPrep = memo(() => {
   useEffect(() => {
     const fetchLoadMoreSettings = async () => {
       try {
-        console.log("🔄 Fetching load more settings...");
 
         // FIRST: Clear the wrong cache
         sessionStorage.removeItem("load_more_settings");
@@ -930,11 +838,8 @@ const InterviewPrep = memo(() => {
         const response = await axiosInstance.get(
           API_PATHS.SETTINGS.PUBLIC_QUESTIONS_COUNT,
         );
-        console.log("✅ Settings API Response:", response.data);
 
         if (response.data && response.data.success) {
-          // Check what data is actually available
-          console.log("📊 Full settings data:", response.data);
 
           // DEFAULT values if data is missing
           const defaultSettings = {
@@ -957,26 +862,21 @@ const InterviewPrep = memo(() => {
           if (response.data.max_load_more_clicks !== undefined) {
             settings.maxClicks = response.data.max_load_more_clicks;
           }
-
-          console.log("🎯 Final load more settings:", settings);
           setLoadMoreSettings(settings);
 
           // Save CORRECT settings to sessionStorage
           saveToSessionStorage("load_more_settings", settings);
         } else {
-          console.warn("⚠️ No settings data in response");
           setLoadMoreSettings({
             questionsPerClick: 5,
             maxClicks: 3,
           });
         }
       } catch (error) {
-        console.error("❌ Error fetching settings:", error);
 
         // Try to load from localStorage as backup
         const cached = loadFromSessionStorage("load_more_settings");
         if (cached) {
-          console.log("💾 Using cached settings:", cached);
           setLoadMoreSettings(cached);
         } else {
           // Default fallback
@@ -1073,12 +973,8 @@ const InterviewPrep = memo(() => {
                             generateConceptExplanation(question?.question)
                           }
                           onStudyMaterials={() => {
-                            console.log(
-                              "📞 Calling fetchStudyMaterials from QuestionCard",
-                            );
                             if (!question?._id) {
-                              console.error("❌ Question ID is undefined");
-                              toast.error("Question ID not found");
+                              hotToast.error("Question not found", { position: "bottom-right" });
                               return;
                             }
                             fetchStudyMaterials(

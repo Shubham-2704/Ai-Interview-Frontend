@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
+import { Toaster as HotToaster } from "react-hot-toast";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Home/Dashboard";
@@ -89,8 +90,17 @@ function App() {
               </Route>
             </Route>
           </Routes>
-
+          {/* Global Toaster for Sonner */}
           <Toaster richColors />
+
+          {/* Global Toaster for React Hot Toast */}
+          <HotToaster position="top-right" toastOptions={{ duration: 4000 }}/>
+          <HotToaster position="bottom-right" toastOptions={{ duration: 4000 }}/>
+          <HotToaster position="top-center" toastOptions={{ duration: 4000 }} />
+          <HotToaster position="bottom-center" toastOptions={{ duration: 4000 }}/>
+          <HotToaster position="top-left" toastOptions={{ duration: 4000 }} />
+          <HotToaster position="bottom-left" toastOptions={{ duration: 4000 }} />
+
         </Router>
       </UserProvider>
     </GoogleOAuthProvider>

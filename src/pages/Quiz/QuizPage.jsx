@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
+import { toast as hotToast } from "react-hot-toast";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import QuizStartDialog from "@/components/Quiz/QuizStartDialog";
 import QuizQuestionCard from "@/components/Quiz/QuizQuestionCard";
@@ -120,9 +120,8 @@ const QuizPage = () => {
       !timeWarningShown
     ) {
       setTimeWarningShown(true);
-      toast.warning(
-        "⚠️ Less than 1 minute remaining! Quiz will auto-submit soon.",
-      );
+      hotToast.success(
+        " Less than 1 minute remaining! Quiz will auto-submit soon.",{ position: "bottom-right", icon: "⚠️", style: {border: "1px solid #f59e0b", background: "#fffbeb", color: "#92400e",},});
     }
   }, [timeSpent, totalQuizTimeLimit, quizState, autoSubmitTriggered]);
 
@@ -181,7 +180,7 @@ const QuizPage = () => {
         setShowStartDialog(false);
       }
     } catch (error) {
-      toast.error("Failed to load quiz for review");
+      hotToast.error("Failed to load quiz for review", { position: "bottom-right" });
     } finally {
       setIsLoading(false);
     }
@@ -195,7 +194,6 @@ const QuizPage = () => {
         questionIndex,
       });
     } catch (error) {
-      console.error("Failed to track question time:", error);
     }
   };
 
@@ -223,11 +221,11 @@ const QuizPage = () => {
         setShowSubmitDialog(false);
         setShowConfirmDialog(false);
 
-        toast.success(
-          `Quiz started! You have ${questionCount * 3} minutes total.`,
+        hotToast.success(
+          `Quiz started! You have ${questionCount * 3} minutes total.`, { position: "top-center" }
         );
       } catch (error) {
-        toast.error(error.response?.data?.detail || "Failed to generate quiz");
+        hotToast.error(error.response?.data?.detail || "Failed to generate quiz", { position: "bottom-right" });
       } finally {
         setIsLoading(false);
       }
@@ -284,15 +282,15 @@ const QuizPage = () => {
       setTimeout(() => {
         setShowSubmitDialog(false);
         if (autoSubmitTriggered) {
-          toast.info("⏰ Time's up! Quiz auto-submitted.");
+          hotToast.success("⏰ Time's up! Quiz auto-submitted.", { position: "top-center", icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",},});
         } else {
-          toast.success("Quiz submitted! View your results.");
+          hotToast.success("Quiz submitted! View your results.", { position: "top-center" });
         }
       }, 1500);
     } catch (error) {
       setShowSubmitDialog(false);
       setIsTimerActive(true); // Restart timer if submit fails
-      toast.error(error.response?.data?.detail || "Failed to submit quiz");
+      hotToast.error(error.response?.data?.detail || "Failed to submit quiz", { position: "bottom-right" });
     }
   }, [quizData, userAnswers, timeSpent, autoSubmitTriggered]);
 
@@ -325,11 +323,11 @@ const QuizPage = () => {
       // Close dialog after 1.5 seconds
       setTimeout(() => {
         setShowSubmitDialog(false);
-        toast.info("⏰ Time's up! Quiz auto-submitted.");
+          hotToast.success("⏰ Time's up! Quiz auto-submitted.", { position: "top-center", icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",},});
       }, 1500);
     } catch (error) {
       setShowSubmitDialog(false);
-      toast.error("Failed to auto-submit quiz. Please submit manually.");
+      hotToast.error("Failed to auto-submit quiz. Please submit manually.", { position: "bottom-right" });
     }
   }, [
     quizData,
@@ -338,32 +336,6 @@ const QuizPage = () => {
     totalQuizTimeLimit,
     autoSubmitTriggered,
   ]);
-
-  const handleQuestionTimeUp = useCallback(() => {
-    toast.warning(
-      `Time's up for question ${currentQuestion + 1}! Moving to next question.`,
-    );
-
-    // Auto-select first option if not answered
-    if (
-      userAnswers[currentQuestion] === null ||
-      userAnswers[currentQuestion] === undefined
-    ) {
-      setUserAnswers((prev) => {
-        const newAnswers = [...prev];
-        newAnswers[currentQuestion] = 0;
-        return newAnswers;
-      });
-    }
-
-    // Move to next question only (don't submit)
-    if (currentQuestion < quizData.totalQuestions - 1) {
-      setTimeout(() => {
-        setCurrentQuestion((prev) => prev + 1);
-      }, 500);
-    }
-    // Don't auto-submit when last question time's up - let total timer handle it
-  }, [currentQuestion, userAnswers, quizData]);
 
   const handleTimeUpdate = useCallback((newTime) => {
     setTimeSpent(newTime);
@@ -398,7 +370,7 @@ const QuizPage = () => {
           [currentQuestion]: true,
         }));
 
-        toast.success(`Added ${extraSeconds} seconds to quiz time`);
+        hotToast.success(`Added ${extraSeconds} seconds to quiz time`, { position: "top-center" });
 
         // Force update to trigger re-evaluation of critical state
         setTimeSpent((prev) => prev);
@@ -428,7 +400,7 @@ const QuizPage = () => {
     if (!results || !quizData?.quizId) return;
 
     try {
-      toast.info("Preparing results for download...");
+      hotToast.success("Preparing results for download...", { icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",}, position: "bottom-right" });
 
       // Create a nicely formatted JSON
       const downloadData = {
@@ -463,9 +435,9 @@ const QuizPage = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success("Results downloaded as JSON!");
+      hotToast.success("Results downloaded as JSON!", { position: "bottom-right" });
     } catch (error) {
-      toast.error("Failed to download results");
+      hotToast.error("Failed to download results", { position: "bottom-right" });
     }
   }, [results, quizData, sessionInfo, timeSpent, totalQuizTimeLimit]);
 

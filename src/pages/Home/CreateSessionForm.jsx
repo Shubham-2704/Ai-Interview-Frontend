@@ -16,9 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { sessionSchema } from "@/lib/schema";
-import { toast } from "sonner";
+import { toast as hotToast } from "react-hot-toast";
 import { UserContext } from "@/context/UserContext";
-import { FileText } from "lucide-react"; // Import FileText icon
 
 const CreateSessionForm = () => {
   const [loading, setLoading] = useState(false);
@@ -48,17 +47,10 @@ const CreateSessionForm = () => {
         );
         if (response.data.success) {
           setQuestionsCount(response.data.number_of_questions);
-          console.log(
-            "Questions count loaded:",
-            response.data.number_of_questions,
-          );
         }
       } catch (error) {
-        console.error("Failed to fetch questions count:", error);
         // Keep default 10 if fetch fails
-        toast.error(
-          "Failed to load session settings. Using default 10 questions.",
-        );
+        hotToast.error("Failed to load session", { position: "bottom-right" });
       } finally {
         setLoadingQuestionsCount(false);
       }
@@ -99,9 +91,9 @@ const CreateSessionForm = () => {
       }
     } catch (error) {
       if (error.response && error.response.data.message) {
-        toast.error(error.response.data.message);
+        hotToast.error(error.response.data.message, { position: "bottom-right" });
       } else {
-        toast.error("Something went wrong. Please try again.");
+        hotToast.error("Something went wrong. Please try again.", { position: "bottom-right" });
       }
     } finally {
       setLoading(false);

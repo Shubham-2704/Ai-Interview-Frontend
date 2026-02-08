@@ -18,7 +18,7 @@ import {
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 import { UserContext } from "@/context/UserContext";
-import { toast } from "sonner";
+import { toast as hotToast } from "react-hot-toast";
 import { Spinner } from "./ui/spinner";
 
 const ApiKeyModal = () => {
@@ -46,15 +46,15 @@ const ApiKeyModal = () => {
     if (!inputKey) return;
 
     try {
-      setSaving(true);
+      setSaving(true);{ position: "bottom-right" }
       const response = await axiosInstance.post(API_PATHS.AI.ADD_API_KEY, {
         apiKey: inputKey,
       });
-      toast.success(response.data.message);
+      hotToast.success(response.data.message, { position: "top-center" });
       updateApiKey(response.data?.geminiKeyMasked);
       closeApiKeyModal();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to save API key");
+      hotToast.error(error.response?.data?.message || "Failed to save API key", { position: "bottom-center" });
     } finally {
       setSaving(false);
     }
@@ -65,10 +65,10 @@ const ApiKeyModal = () => {
       setDeleting(true);
       const response = await axiosInstance.delete(API_PATHS.AI.DELETE_API_KEY);
       updateApiKey(null);
-      toast.success(response.data?.message);
+      hotToast.success(response.data?.message, { position: "top-center" });
       closeApiKeyModal();
     } catch {
-      toast.error("Failed to delete API key");
+      hotToast.error("Failed to delete API key", { position: "bottom-center" });
     } finally {
       setDeleting(false);
     }
