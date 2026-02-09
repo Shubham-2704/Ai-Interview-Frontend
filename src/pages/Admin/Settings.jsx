@@ -121,6 +121,8 @@ const Settings = () => {
   const [tabsScrollPosition, setTabsScrollPosition] = useState(0);
 
   const [loadingSettings, setLoadingSettings] = useState(true);
+  const [tavilyUsage, setTavilyUsage] = useState(null);
+  const [loadingUsage, setLoadingUsage] = useState(false);
 
   const handleSave = async (section) => {
     setSaving(true);
@@ -128,7 +130,6 @@ const Settings = () => {
       if (section === "session") {
         console.log("Saving session settings:", settings);
 
-        // Send all session settings to backend
         const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
           settings: {
             max_sessions_per_user: settings.maxSessionsPerUser,
@@ -144,16 +145,12 @@ const Settings = () => {
         setTimeout(() => setSaveStatus(null), 3000);
 
         toast.success(`Session settings updated!`);
-      }
-
-      // ADD THIS NEW SECTION FOR RESOURCES
-      else if (section === "resources") {
+      } else if (section === "resources") {
         console.log("Saving resources settings:", {
           maxStudyMaterials: settings.maxStudyMaterialsPerSession,
           refreshHours: settings.studyMaterialsRefreshHours,
         });
 
-        // Send resources settings to backend
         const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
           settings: {
             max_study_materials_per_session:
@@ -168,8 +165,28 @@ const Settings = () => {
         setTimeout(() => setSaveStatus(null), 3000);
 
         toast.success("Resources settings updated successfully!");
+      } else if (section === "api") {
+        console.log("Saving API settings:", {
+          geminiApiKey: settings.geminiApiKey,
+          youtubeApiKey: settings.youtubeApiKey,
+          tavilyApiKey: settings.tavilyApiKey,
+        });
+
+        const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
+          settings: {
+            gemini_api_key: settings.geminiApiKey,
+            youtube_api_key: settings.youtubeApiKey,
+            tavily_api_key: settings.tavilyApiKey,
+          },
+        });
+
+        console.log("Save response:", response.data);
+
+        setSaveStatus({ section, success: true });
+        setTimeout(() => setSaveStatus(null), 3000);
+
+        toast.success("API settings updated successfully!");
       } else {
-        // For other sections
         await new Promise((resolve) => setTimeout(resolve, 1000));
         setSaveStatus({ section, success: true });
         setTimeout(() => setSaveStatus(null), 3000);
@@ -230,11 +247,15 @@ const Settings = () => {
           numberOfQuestions: settingsData.number_of_questions || 10,
           loadMoreQuestions: settingsData.load_more_questions || 5,
           maxLoadMoreClicks: settingsData.max_load_more_clicks || 3,
-          // Resources settings (ONLY THESE TWO)
+          // Resources settings
           maxStudyMaterialsPerSession:
             settingsData.max_study_materials_per_session || 10,
           studyMaterialsRefreshHours:
             settingsData.study_materials_refresh_hours || 24,
+          // API settings - ADD TAVILY
+          geminiApiKey: settingsData.gemini_api_key || "",
+          youtubeApiKey: settingsData.youtube_api_key || "",
+          tavilyApiKey: settingsData.tavily_api_key || "",
         }));
       } else {
         console.warn("No settings found in response, using default");
@@ -253,6 +274,44 @@ const Settings = () => {
     newIPs.splice(index, 1);
     handleChange("allowedIPs", newIPs);
   };
+
+  // Function to fetch Tavily usage
+  const fetchTavilyUsage = async () => {
+    if (!settings.tavilyApiKey) {
+      toast.error("Please enter a Tavily API key first");
+      return;
+    }
+
+    try {
+      setLoadingUsage(true);
+      const response = await axiosInstance.get(API_PATHS.SETTINGS.TAVILY_KEY_USAGE);
+
+      if (response.data.success) {
+        setTavilyUsage(response.data.data);
+        toast.success("Tavily usage data fetched successfully");
+      } else {
+        toast.error("Failed to fetch Tavily usage data");
+      }
+    } catch (error) {
+      console.error("Error fetching Tavily usage:", error);
+      toast.error(
+        error.response?.data?.detail || "Failed to fetch Tavily usage",
+      );
+      setTavilyUsage({
+        available: false,
+        error: error.response?.data?.detail || "Failed to fetch usage data",
+      });
+    } finally {
+      setLoadingUsage(false);
+    }
+  };
+
+  // Clear Tavily usage when key changes
+  useEffect(() => {
+    if (!settings.tavilyApiKey) {
+      setTavilyUsage(null);
+    }
+  }, [settings.tavilyApiKey]);
 
   const SaveStatus = ({ section }) => {
     if (!saveStatus || saveStatus.section !== section) return null;
@@ -278,7 +337,6 @@ const Settings = () => {
     );
   };
 
-  // Add this useEffect hook at the end of your component function (before the return statement)
   useEffect(() => {
     console.log("Settings component mounted, loading settings...");
     loadSettingsFromDatabase();
@@ -344,7 +402,6 @@ const Settings = () => {
     },
   ];
 
-  // Scroll tabs left/right
   const scrollTabs = (direction) => {
     const tabsContainer = document.querySelector(".tabs-scroll-container");
     if (tabsContainer) {
@@ -376,16 +433,6 @@ const Settings = () => {
       {/* Tabs Navigation with Scroll Controls */}
       <div className="relative">
         <div className="flex items-center">
-          {/* Scroll Left Button (mobile only) */}
-          {/* <button
-            onClick={() => scrollTabs("left")}
-            className="lg:hidden mr-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 shrink-0"
-            aria-label="Scroll tabs left"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button> */}
-
-          {/* Tabs Container */}
           <div className="flex-1 overflow-hidden">
             <Tabs
               value={activeTab}
@@ -412,6 +459,7 @@ const Settings = () => {
                   </TabsList>
                 </div>
               </div>
+
               {/* General Settings Tab */}
               <TabsContent value="general" className="space-y-4 mt-4">
                 <Card className="overflow-hidden">
@@ -604,6 +652,7 @@ const Settings = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+
               {/* Session Settings Tab */}
               <TabsContent value="session" className="space-y-4 mt-4">
                 <Card className="overflow-hidden">
@@ -779,7 +828,8 @@ const Settings = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-              {/* Notifications Settings Tab */}
+
+              {/* Resources Settings Tab */}
               <TabsContent value="resources" className="space-y-4 mt-4">
                 <Card className="overflow-hidden">
                   <CardHeader className="pb-3">
@@ -896,7 +946,8 @@ const Settings = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
-              {/* API Keys Settings Tab */}
+
+              {/* API Keys Settings Tab - UPDATED WITH TAVILY */}
               <TabsContent value="api" className="space-y-4 mt-4">
                 <Card className="overflow-hidden">
                   <CardHeader className="pb-3">
@@ -952,43 +1003,6 @@ const Settings = () => {
 
                       <Separator />
 
-                      {/* OpenAI API Key */}
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="openaiApiKey"
-                          className="text-xs sm:text-sm"
-                        >
-                          OpenAI API Key (Optional)
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id="openaiApiKey"
-                            type={showApiKeys.openai ? "text" : "password"}
-                            value={settings.openaiApiKey}
-                            onChange={(e) =>
-                              handleChange("openaiApiKey", e.target.value)
-                            }
-                            placeholder="Enter your OpenAI API key"
-                            className="text-sm pr-10"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                            onClick={() => toggleApiKeyVisibility("openai")}
-                          >
-                            {showApiKeys.openai ? (
-                              <EyeOff className="h-3 w-3" />
-                            ) : (
-                              <Eye className="h-3 w-3" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
-                      <Separator />
-
                       {/* YouTube API Key */}
                       <div className="space-y-2">
                         <Label
@@ -1029,14 +1043,40 @@ const Settings = () => {
 
                       <Separator />
 
-                      {/* Tavily API Key */}
+                      {/* Tavily API Key - ADDED SECTION */}
                       <div className="space-y-2">
-                        <Label
-                          htmlFor="tavilyApiKey"
-                          className="text-xs sm:text-sm"
-                        >
-                          Tavily API Key
-                        </Label>
+                        <div className="flex items-center justify-between">
+                          <Label
+                            htmlFor="tavilyApiKey"
+                            className="text-xs sm:text-sm"
+                          >
+                            <div className="flex items-center">
+                              <Key className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                              Tavily API Key
+                            </div>
+                          </Label>
+                          {settings.tavilyApiKey && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={fetchTavilyUsage}
+                              disabled={loadingUsage}
+                              className="h-6 text-xs"
+                            >
+                              {loadingUsage ? (
+                                <>
+                                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-gray-600 mr-1"></div>
+                                  Checking...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCw className="h-3 w-3 mr-1" />
+                                  Check Usage
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
                         <div className="relative">
                           <Input
                             id="tavilyApiKey"
@@ -1067,45 +1107,75 @@ const Settings = () => {
                         </p>
                       </div>
 
-                      <Separator />
-
-                      {/* Serper API Key */}
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="serperApiKey"
-                          className="text-xs sm:text-sm"
-                        >
-                          Serper API Key (Optional)
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id="serperApiKey"
-                            type={showApiKeys.serper ? "text" : "password"}
-                            value={settings.serperApiKey}
-                            onChange={(e) =>
-                              handleChange("serperApiKey", e.target.value)
-                            }
-                            placeholder="Enter your Serper API key"
-                            className="text-sm pr-10"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                            onClick={() => toggleApiKeyVisibility("serper")}
-                          >
-                            {showApiKeys.serper ? (
-                              <EyeOff className="h-3 w-3" />
-                            ) : (
-                              <Eye className="h-3 w-3" />
-                            )}
-                          </Button>
+                      {/* Tavily Usage Display */}
+                      {tavilyUsage && (
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                          <h4 className="font-medium text-blue-800 text-sm mb-3">
+                            Tavily API Credits
+                          </h4>
+                          
+                          {tavilyUsage.available ? (
+                            <div className="space-y-3">
+                              {/* Only 3 boxes: Total, Used, Remaining */}
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                {/* Total Credits */}
+                                <div className="bg-white p-3 rounded border">
+                                  <div className="text-xs text-gray-500">Total Credits</div>
+                                  <div className="text-lg font-bold">
+                                    {tavilyUsage.total_credits?.toLocaleString() || 1000}
+                                  </div>
+                                </div>
+                                
+                                {/* Used Credits */}
+                                <div className="bg-white p-3 rounded border">
+                                  <div className="text-xs text-gray-500">Used Credits</div>
+                                  <div className="text-lg font-bold">
+                                    {tavilyUsage.used_credits?.toLocaleString() || 0}
+                                  </div>
+                                </div>
+                                
+                                {/* Remaining Credits */}
+                                <div className="bg-white p-3 rounded border">
+                                  <div className="text-xs text-gray-500">Remaining Credits</div>
+                                  <div className="text-lg font-bold text-green-600">
+                                    {tavilyUsage.remaining_credits?.toLocaleString() || 0}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {/* Progress Bar */}
+                              {tavilyUsage.total_credits > 0 && (
+                                <div className="mt-3">
+                                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                    <span>Usage</span>
+                                    <span>
+                                      {Math.round((tavilyUsage.used_credits / tavilyUsage.total_credits) * 100)}% used
+                                    </span>
+                                  </div>
+                                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div
+                                      className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                                      style={{
+                                        width: `${Math.min(100, (tavilyUsage.used_credits / tavilyUsage.total_credits) * 100)}%`,
+                                      }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <div className="text-xs text-blue-600 mt-2">
+                                Last checked: {new Date(tavilyUsage.last_checked).toLocaleTimeString()}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-red-50 border border-red-200 p-2 rounded">
+                              <p className="text-xs text-red-700">
+                                {tavilyUsage.error || "Unable to fetch Tavily credits"}
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-500">
-                          Alternative search API for web content
-                        </p>
-                      </div>
+                      )}
                     </div>
 
                     <div className="p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -1120,60 +1190,41 @@ const Settings = () => {
                               • API keys are encrypted and stored securely
                             </li>
                             <li>• Never share your API keys publicly</li>
-                            <li>• Rotate keys regularly for security</li>
-                            <li>• Use environment variables in production</li>
                             <li>• Monitor API usage for anomalies</li>
+                            <li>
+                              • Tavily API key is used for web search
+                              functionality
+                            </li>
                           </ul>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3">
+                      <SaveStatus section="api" />
                       <Button
-                        variant="outline"
+                        onClick={() => handleSave("api")}
+                        disabled={saving}
                         size="sm"
                         className="w-full sm:w-auto"
-                        onClick={() => {
-                          // Reset all API keys
-                          handleChange("geminiApiKey", "");
-                          handleChange("openaiApiKey", "");
-                          handleChange("youtubeApiKey", "");
-                          handleChange("tavilyApiKey", "");
-                          handleChange("serperApiKey", "");
-                        }}
                       >
-                        <Trash2 className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                        Clear All Keys
+                        {saving ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
+                            <span className="text-xs sm:text-sm">Saving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="text-xs sm:text-sm">Save Changes</span>
+                          </>
+                        )}
                       </Button>
-                      <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3">
-                        <SaveStatus section="api" />
-                        <Button
-                          onClick={() => handleSave("api")}
-                          disabled={saving}
-                          size="sm"
-                          className="w-full sm:w-auto"
-                        >
-                          {saving ? (
-                            <>
-                              <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
-                              <span className="text-xs sm:text-sm">
-                                Saving...
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                              <span className="text-xs sm:text-sm">
-                                Save Changes
-                              </span>
-                            </>
-                          )}
-                        </Button>
-                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </TabsContent>
+
               {/* Storage Settings Tab */}
               <TabsContent value="storage" className="space-y-4 mt-4">
                 <Card className="overflow-hidden">
@@ -1334,23 +1385,6 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    <div className="p-3 sm:p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <div className="flex items-start">
-                        <Database className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 mr-2 mt-0.5 shrink-0" />
-                        <div>
-                          <h4 className="font-medium text-green-800 text-sm sm:text-base">
-                            Storage Tips
-                          </h4>
-                          <ul className="text-xs sm:text-sm text-green-700 mt-1 space-y-1">
-                            <li>• Regular backups prevent data loss</li>
-                            <li>• Cloud storage offers better scalability</li>
-                            <li>• Monitor storage usage regularly</li>
-                            <li>• Implement file retention policies</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
                     <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
                       <SaveStatus section="storage" />
                       <Button
@@ -1379,6 +1413,7 @@ const Settings = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+
               {/* Maintenance Settings Tab */}
               <TabsContent value="maintenance" className="space-y-4 mt-4">
                 <Card className="overflow-hidden">
@@ -1507,26 +1542,6 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    <div className="p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-start">
-                        <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 mr-2 mt-0.5 shrink-0" />
-                        <div>
-                          <h4 className="font-medium text-blue-800 text-sm sm:text-base">
-                            Maintenance Best Practices
-                          </h4>
-                          <ul className="text-xs sm:text-sm text-blue-700 mt-1 space-y-1">
-                            <li>
-                              • Schedule maintenance during low-traffic hours
-                            </li>
-                            <li>• Notify users in advance</li>
-                            <li>• Test changes in staging environment first</li>
-                            <li>• Keep backup of current version</li>
-                            <li>• Monitor system after maintenance</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
                     <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
                       <SaveStatus section="maintenance" />
                       <Button
@@ -1555,6 +1570,7 @@ const Settings = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+
               {/* User Settings Tab */}
               <TabsContent value="users" className="space-y-4 mt-4">
                 <Card className="overflow-hidden">
@@ -1690,6 +1706,7 @@ const Settings = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+
               {/* Performance Settings Tab */}
               <TabsContent value="performance" className="space-y-4 mt-4">
                 <Card className="overflow-hidden">
@@ -1812,26 +1829,6 @@ const Settings = () => {
                       </div>
                     </div>
 
-                    <div className="p-3 sm:p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                      <div className="flex items-start">
-                        <RefreshCw className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 mr-2 mt-0.5 shrink-0" />
-                        <div>
-                          <h4 className="font-medium text-purple-800 text-sm sm:text-base">
-                            Performance Tips
-                          </h4>
-                          <ul className="text-xs sm:text-sm text-purple-700 mt-1 space-y-1">
-                            <li>
-                              • Enable caching for frequently accessed data
-                            </li>
-                            <li>• Use CDN for global content delivery</li>
-                            <li>• Enable compression to reduce bandwidth</li>
-                            <li>• Monitor performance metrics regularly</li>
-                            <li>• Optimize database queries</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
                     <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
                       <SaveStatus section="performance" />
                       <Button
@@ -1863,15 +1860,6 @@ const Settings = () => {
             </Tabs>
           </div>
         </div>
-
-        {/* Scroll Right Button (mobile only) */}
-        {/* <button
-          onClick={() => scrollTabs("right")}
-          className="lg:hidden ml-2 p-1 rounded-full bg-gray-100 hover:bg-gray-200 shrink-0"
-          aria-label="Scroll tabs right"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button> */}
       </div>
     </div>
   );

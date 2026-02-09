@@ -108,5 +108,6 @@ export const API_PATHS = {
     GET: "/settings/sessions", // Get system settings (admin only)
     UPDATE: "/settings/sessions", // Update system settings (admin only)
     PUBLIC_QUESTIONS_COUNT: "/settings/public/questions-count", // Get questions count (public)
+    TAVILY_KEY_USAGE: "/settings/tavily-usage", // Get Tavily API key usage (admin only)
   },
 };
