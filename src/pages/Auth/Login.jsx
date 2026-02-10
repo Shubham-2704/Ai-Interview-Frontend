@@ -1,4 +1,5 @@
 import React, { useContext, useState, useEffect } from "react";
+import { useSettings } from "@/context/SettingsContext";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema } from "@/lib/schema";
@@ -12,6 +13,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Field,
@@ -23,7 +26,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { Eye, EyeOff, Shield, Lock, ArrowRight } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Shield,
+  Lock,
+  ArrowRight,
+  AlertCircle,
+  X,
+  Info,
+} from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 import { toast } from "sonner";
@@ -38,9 +51,11 @@ const Login = ({ onChangePage }) => {
   const [adminToken, setAdminToken] = useState("");
   const [adminTokenLoading, setAdminTokenLoading] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [showRegistrationPopup, setShowRegistrationPopup] = useState(false);
   const navigate = useNavigate();
 
   const { updateUser } = useContext(UserContext);
+  const { settings, loading: settingsLoading } = useSettings();
 
   const form = useForm({
     resolver: zodResolver(loginSchema),
@@ -49,6 +64,80 @@ const Login = ({ onChangePage }) => {
       password: "",
     },
   });
+
+  // Function to handle signup button click
+  const handleSignupClick = () => {
+    if (settingsLoading) {
+      toast.info("Loading settings...");
+      return;
+    }
+
+    if (!settings.allowRegistration) {
+      // Show popup dialog instead of inline alert
+      setShowRegistrationPopup(true);
+    } else {
+      onChangePage("signup");
+    }
+  };
+
+  // Google Login Handler - WITH REGISTRATION CHECK
+  const handleGoogleLogin = async (credentialResponse) => {
+    setGoogleLoading(true);
+    try {
+      const response = await axiosInstance.post(API_PATHS.AUTH.GOOGLE_SIGNUP, {
+        token: credentialResponse.credential,
+      });
+
+      const { token, role } = response.data;
+
+      if (token) {
+        localStorage.setItem("token", token);
+        updateUser(response.data);
+
+        // Store user data for admin check
+        setUserData(response.data);
+
+        // Check if user is admin
+        if (role === "admin") {
+          // Show admin token modal instead of navigating directly
+          setShowAdminTokenModal(true);
+        } else {
+          // Regular user - navigate to dashboard
+          navigate("/dashboard");
+          hotToast.success("Logged in successfully!", {
+            position: "top-center",
+          });
+        }
+      }
+    } catch (error) {
+      if (error.response && error.response.data.message) {
+        // Check if error is about registration closed
+        if (
+          error.response.data.message.includes("registrations") ||
+          error.response.data.message.includes("closed")
+        ) {
+          // Show the popup dialog
+          setShowRegistrationPopup(true);
+        } else {
+          hotToast.error(error.response.data.message, {
+            position: "bottom-center",
+          });
+        }
+      } else {
+        hotToast.error("Failed to login with Google. Please try again.", {
+          position: "bottom-right",
+        });
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    hotToast.error("Google login failed. Please try again.", {
+      position: "bottom-right",
+    });
+  };
 
   async function onSubmit(data) {
     setLoading(true);
@@ -75,61 +164,25 @@ const Login = ({ onChangePage }) => {
         } else {
           // Regular user - navigate to dashboard
           navigate("/dashboard");
-          hotToast.success("Logged in successfully!", { position: "top-center" });
+          hotToast.success("Logged in successfully!", {
+            position: "top-center",
+          });
         }
       }
     } catch (error) {
       if (error.response && error.response.data.message) {
-        hotToast.error(error.response.data.message, { position: "bottom-center" });
+        hotToast.error(error.response.data.message, {
+          position: "bottom-center",
+        });
       } else {
-        hotToast.error("Something went wrong. Please try again.", { position: "bottom-right" });
+        hotToast.error("Something went wrong. Please try again.", {
+          position: "bottom-right",
+        });
       }
     } finally {
       setLoading(false);
     }
   }
-
-  // Google Login Handler
-  const handleGoogleLogin = async (credentialResponse) => {
-    setGoogleLoading(true);
-    try {
-      const response = await axiosInstance.post(API_PATHS.AUTH.GOOGLE_SIGNUP, {
-        token: credentialResponse.credential,
-      });
-
-      const { token, role } = response.data;
-
-      if (token) {
-        localStorage.setItem("token", token);
-        updateUser(response.data);
-
-        // Store user data for admin check
-        setUserData(response.data);
-
-        // Check if user is admin
-        if (role === "admin") {
-          // Show admin token modal instead of navigating directly
-          setShowAdminTokenModal(true);
-        } else {
-          // Regular user - navigate to dashboard
-          navigate("/dashboard");
-          hotToast.success("Logged in successfully!", { position: "top-center" });
-        }
-      }
-    } catch (error) {
-      if (error.response && error.response.data.message) {
-        hotToast.error(error.response.data.message,  { position: "bottom-center" });
-      } else {
-        hotToast.error("Failed to login with Google. Please try again.", { position: "bottom-right" });
-      }
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  const handleGoogleError = () => {
-    hotToast.error("Google login failed. Please try again.", { position: "bottom-right" });
-  };
 
   // Handle admin token verification
   const handleVerifyAdminToken = async () => {
@@ -182,6 +235,16 @@ const Login = ({ onChangePage }) => {
       setAdminToken("");
     }
   }, [showAdminTokenModal]);
+
+  // Show loading while fetching settings
+  if (settingsLoading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Spinner size="lg" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -303,7 +366,7 @@ const Login = ({ onChangePage }) => {
             Don&apos;t have an account?{" "}
             <span
               className="text-primary font-medium underline cursor-pointer"
-              onClick={() => onChangePage("signup")}
+              onClick={handleSignupClick}
             >
               Sign Up
             </span>
@@ -313,7 +376,74 @@ const Login = ({ onChangePage }) => {
 
       <ForgotPasswordDialog open={showForgot} onOpenChange={setShowForgot} />
 
-      {/* Admin Token Modal - Integrated in same file */}
+      {/* Registration Closed Popup Dialog */}
+      <Dialog
+        open={showRegistrationPopup}
+        onOpenChange={setShowRegistrationPopup}
+      >
+        <DialogContent className=" sm:max-w-sm px-4 py-2 rounded-lg">
+          <DialogHeader>
+            <div className="flex items-center justify-center mb-4">
+              <div className="bg-amber-100 p-3 rounded-full">
+                <Info className="h-8 w-8 text-amber-600" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-xl">
+              Registrations Temporarily Closed
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              New user registrations are currently unavailable.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <AlertCircle className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
+                <div>
+                  <p className="text-sm text-amber-800 font-medium">
+                    We're not accepting new registrations at this time.
+                  </p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    This is a temporary measure. Please check back later to
+                    create your account.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <div className="bg-gray-50 p-3 rounded-lg">
+                <p className="text-sm text-gray-600 text-center">
+                  <strong>Already have an account?</strong> You can still login
+                  using your existing credentials.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowRegistrationPopup(false)}
+              >
+                Close
+              </Button>
+              <Button
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                onClick={() => {
+                  setShowRegistrationPopup(false);
+                  // Optionally, you could automatically focus on login fields here
+                }}
+              >
+                Continue to Login
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Admin Token Modal */}
       <Dialog open={showAdminTokenModal} onOpenChange={setShowAdminTokenModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -395,5 +525,3 @@ const Login = ({ onChangePage }) => {
 };
 
 export default Login;
-
-
