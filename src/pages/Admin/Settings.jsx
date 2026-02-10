@@ -9,45 +9,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Save,
   Globe,
-  Mail,
-  Shield,
-  Bell,
-  Database,
   Key,
-  Users,
   FileText,
-  Cloud,
   AlertTriangle,
   CheckCircle,
   Settings as SettingsIcon,
-  Server,
-  Lock,
-  Upload,
   RefreshCw,
   Eye,
   EyeOff,
-  Trash2,
-  Plus,
-  User,
-  Clock,
-  ShieldCheck,
-  ChevronLeft,
-  ChevronRight,
   BookOpen,
 } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
@@ -57,13 +32,8 @@ import { API_PATHS } from "@/utils/apiPaths";
 const Settings = () => {
   const [settings, setSettings] = useState({
     // General Settings
-    siteName: "InterviewPrep Pro",
-    siteDescription: "AI-powered interview preparation platform",
-    siteUrl: "https://interviewprep.com",
-    contactEmail: "support@interviewprep.com",
-    timezone: "UTC",
-    language: "en",
-    theme: "light",
+    maintenanceMode: false,
+    allowRegistration: true,
 
     // Session Settings
     maxSessionsPerUser: 1, // Default to 1 if not set
@@ -75,37 +45,7 @@ const Settings = () => {
 
     // API Settings
     geminiApiKey: "",
-    openaiApiKey: "",
-    youtubeApiKey: "",
     tavilyApiKey: "",
-    serperApiKey: "",
-
-    // Storage Settings
-    maxFileSize: 10,
-    allowedFileTypes: ["jpg", "png", "pdf", "docx", "mp4", "mp3"],
-    backupFrequency: "daily",
-    storageProvider: "local",
-    s3Bucket: "",
-    s3Region: "",
-
-    // Maintenance Settings
-    maintenanceMode: false,
-    allowedIPs: ["192.168.1.1", "10.0.0.1"],
-    maintenanceMessage: "Site is under maintenance. Please check back later.",
-    estimatedDowntime: "2 hours",
-
-    // User Settings
-    allowRegistration: true,
-    requireInvitation: false,
-    defaultUserRole: "user",
-    maxUsers: 1000,
-
-    // Performance Settings
-    cacheEnabled: true,
-    cacheDuration: 3600,
-    cdnEnabled: false,
-    cdnUrl: "",
-    compressionEnabled: true,
   });
 
   const [saving, setSaving] = useState(false);
@@ -113,12 +53,8 @@ const Settings = () => {
   const [activeTab, setActiveTab] = useState("general");
   const [showApiKeys, setShowApiKeys] = useState({
     gemini: false,
-    openai: false,
-    youtube: false,
     tavily: false,
-    serper: false,
   });
-  const [tabsScrollPosition, setTabsScrollPosition] = useState(0);
 
   const [loadingSettings, setLoadingSettings] = useState(true);
   const [tavilyUsage, setTavilyUsage] = useState(null);
@@ -127,7 +63,26 @@ const Settings = () => {
   const handleSave = async (section) => {
     setSaving(true);
     try {
-      if (section === "session") {
+      if (section === "general") {
+        console.log("Saving general settings:", {
+          maintenanceMode: settings.maintenanceMode,
+          allowRegistration: settings.allowRegistration,
+        });
+
+        const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
+          settings: {
+            maintenance_mode: settings.maintenanceMode,
+            allow_registration: settings.allowRegistration,
+          },
+        });
+
+        console.log("Save response:", response.data);
+
+        setSaveStatus({ section, success: true });
+        setTimeout(() => setSaveStatus(null), 3000);
+
+        toast.success("General settings updated!");
+      } else if (section === "session") {
         console.log("Saving session settings:", settings);
 
         const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
@@ -175,7 +130,6 @@ const Settings = () => {
         const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
           settings: {
             gemini_api_key: settings.geminiApiKey,
-            youtube_api_key: settings.youtubeApiKey,
             tavily_api_key: settings.tavilyApiKey,
           },
         });
@@ -215,15 +169,6 @@ const Settings = () => {
     });
   };
 
-  const addAllowedIP = () => {
-    const newIP = prompt("Enter new IP address:");
-    if (newIP && /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(newIP)) {
-      handleChange("allowedIPs", [...settings.allowedIPs, newIP]);
-    } else {
-      alert("Please enter a valid IP address");
-    }
-  };
-
   const loadSettingsFromDatabase = async () => {
     try {
       setLoadingSettings(true);
@@ -242,16 +187,26 @@ const Settings = () => {
 
         setSettings((prev) => ({
           ...prev,
+
+          // General settings
+          maintenanceMode: settingsData.maintenance_mode || false,
+          allowRegistration:
+            settingsData.allow_registration !== undefined
+              ? settingsData.allow_registration
+              : true, // Default to true if not set
+
           // Session settings
           maxSessionsPerUser: settingsData.max_sessions_per_user || 1,
           numberOfQuestions: settingsData.number_of_questions || 10,
           loadMoreQuestions: settingsData.load_more_questions || 5,
           maxLoadMoreClicks: settingsData.max_load_more_clicks || 3,
+
           // Resources settings
           maxStudyMaterialsPerSession:
             settingsData.max_study_materials_per_session || 10,
           studyMaterialsRefreshHours:
             settingsData.study_materials_refresh_hours || 24,
+
           // API settings - ADD TAVILY
           geminiApiKey: settingsData.gemini_api_key || "",
           youtubeApiKey: settingsData.youtube_api_key || "",
@@ -269,12 +224,6 @@ const Settings = () => {
     }
   };
 
-  const removeAllowedIP = (index) => {
-    const newIPs = [...settings.allowedIPs];
-    newIPs.splice(index, 1);
-    handleChange("allowedIPs", newIPs);
-  };
-
   // Function to fetch Tavily usage
   const fetchTavilyUsage = async () => {
     if (!settings.tavilyApiKey) {
@@ -284,7 +233,9 @@ const Settings = () => {
 
     try {
       setLoadingUsage(true);
-      const response = await axiosInstance.get(API_PATHS.SETTINGS.TAVILY_KEY_USAGE);
+      const response = await axiosInstance.get(
+        API_PATHS.SETTINGS.TAVILY_KEY_USAGE,
+      );
 
       if (response.data.success) {
         setTavilyUsage(response.data.data);
@@ -358,20 +309,6 @@ const Settings = () => {
         );
       case "api":
         return <Key className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />;
-      case "storage":
-        return (
-          <Database className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
-        );
-      case "maintenance":
-        return (
-          <Server className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
-        );
-      case "users":
-        return <User className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />;
-      case "performance":
-        return (
-          <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
-        );
       default:
         return (
           <SettingsIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 shrink-0" />
@@ -388,33 +325,7 @@ const Settings = () => {
       icon: getTabIcon("resources"),
     },
     { id: "api", label: "API Keys", icon: getTabIcon("api") },
-    { id: "storage", label: "Storage", icon: getTabIcon("storage") },
-    {
-      id: "maintenance",
-      label: "Maintenance",
-      icon: getTabIcon("maintenance"),
-    },
-    { id: "users", label: "Users", icon: getTabIcon("users") },
-    {
-      id: "performance",
-      label: "Performance",
-      icon: getTabIcon("performance"),
-    },
   ];
-
-  const scrollTabs = (direction) => {
-    const tabsContainer = document.querySelector(".tabs-scroll-container");
-    if (tabsContainer) {
-      const scrollAmount = 200;
-      const newPosition =
-        direction === "left"
-          ? tabsScrollPosition - scrollAmount
-          : tabsScrollPosition + scrollAmount;
-
-      tabsContainer.scrollTo({ left: newPosition, behavior: "smooth" });
-      setTabsScrollPosition(newPosition);
-    }
-  };
 
   return (
     <div className="space-y-4 sm:space-y-6 p-3 xs:p-4 sm:p-6 max-w-[100vw] overflow-x-hidden">
@@ -472,183 +383,73 @@ const Settings = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 sm:space-y-6">
-                    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="siteName"
-                          className="text-xs sm:text-sm"
-                        >
-                          Site Name
-                        </Label>
-                        <Input
-                          id="siteName"
-                          value={settings.siteName}
-                          onChange={(e) =>
-                            handleChange("siteName", e.target.value)
-                          }
-                          className="text-sm"
-                        />
+                    {loadingSettings ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="siteUrl" className="text-xs sm:text-sm">
-                          Site URL
-                        </Label>
-                        <Input
-                          id="siteUrl"
-                          value={settings.siteUrl}
-                          onChange={(e) =>
-                            handleChange("siteUrl", e.target.value)
-                          }
-                          className="text-sm"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="siteDescription"
-                        className="text-xs sm:text-sm"
-                      >
-                        Site Description
-                      </Label>
-                      <Textarea
-                        id="siteDescription"
-                        value={settings.siteDescription}
-                        onChange={(e) =>
-                          handleChange("siteDescription", e.target.value)
-                        }
-                        rows={3}
-                        className="text-sm"
-                      />
-                    </div>
-
-                    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="contactEmail"
-                          className="text-xs sm:text-sm"
-                        >
-                          Contact Email
-                        </Label>
-                        <Input
-                          id="contactEmail"
-                          type="email"
-                          value={settings.contactEmail}
-                          onChange={(e) =>
-                            handleChange("contactEmail", e.target.value)
-                          }
-                          className="text-sm"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="timezone"
-                          className="text-xs sm:text-sm"
-                        >
-                          Timezone
-                        </Label>
-                        <Select
-                          value={settings.timezone}
-                          onValueChange={(value) =>
-                            handleChange("timezone", value)
-                          }
-                        >
-                          <SelectTrigger className="text-sm">
-                            <SelectValue placeholder="Select timezone" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="UTC">UTC</SelectItem>
-                            <SelectItem value="EST">
-                              Eastern Time (EST)
-                            </SelectItem>
-                            <SelectItem value="PST">
-                              Pacific Time (PST)
-                            </SelectItem>
-                            <SelectItem value="CET">
-                              Central European Time (CET)
-                            </SelectItem>
-                            <SelectItem value="IST">
-                              Indian Standard Time (IST)
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="language"
-                          className="text-xs sm:text-sm"
-                        >
-                          Language
-                        </Label>
-                        <Select
-                          value={settings.language}
-                          onValueChange={(value) =>
-                            handleChange("language", value)
-                          }
-                        >
-                          <SelectTrigger className="text-sm">
-                            <SelectValue placeholder="Select language" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="en">English</SelectItem>
-                            <SelectItem value="es">Spanish</SelectItem>
-                            <SelectItem value="fr">French</SelectItem>
-                            <SelectItem value="de">German</SelectItem>
-                            <SelectItem value="ja">Japanese</SelectItem>
-                            <SelectItem value="zh">Chinese</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="theme" className="text-xs sm:text-sm">
-                          Theme
-                        </Label>
-                        <Select
-                          value={settings.theme}
-                          onValueChange={(value) =>
-                            handleChange("theme", value)
-                          }
-                        >
-                          <SelectTrigger className="text-sm">
-                            <SelectValue placeholder="Select theme" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="light">Light</SelectItem>
-                            <SelectItem value="dark">Dark</SelectItem>
-                            <SelectItem value="system">System</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
-                      <SaveStatus section="general" />
-                      <Button
-                        onClick={() => handleSave("general")}
-                        disabled={saving}
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        {saving ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
-                            <span className="text-xs sm:text-sm">
-                              Saving...
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                            <span className="text-xs sm:text-sm">
-                              Save Changes
-                            </span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="space-y-0.5 flex-1">
+                            <Label className="text-xs sm:text-sm">
+                              Maintenance Mode
+                            </Label>
+                            <p className="text-xs text-gray-500">
+                              Put the site in maintenance mode
+                            </p>
+                          </div>
+                          <Switch
+                            className="cursor-pointer"
+                            checked={settings.maintenanceMode}
+                            onCheckedChange={(checked) =>
+                              handleChange("maintenanceMode", checked)
+                            }
+                          />
+                        </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="space-y-0.5 flex-1">
+                            <Label className="text-xs sm:text-sm">
+                              Allow Registration
+                            </Label>
+                            <p className="text-xs text-gray-500">
+                              Allow new users to register accounts
+                            </p>
+                          </div>
+                          <Switch
+                            className="cursor-pointer"
+                            checked={settings.allowRegistration}
+                            onCheckedChange={(checked) =>
+                              handleChange("allowRegistration", checked)
+                            }
+                          />
+                        </div>
+                        <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
+                          <SaveStatus section="general" />
+                          <Button
+                            onClick={() => handleSave("general")}
+                            disabled={saving}
+                            size="sm"
+                            className="w-full sm:w-auto"
+                          >
+                            {saving ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
+                                <span className="text-xs sm:text-sm">
+                                  Saving...
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                <span className="text-xs sm:text-sm">
+                                  Save Changes
+                                </span>
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -1003,46 +804,6 @@ const Settings = () => {
 
                       <Separator />
 
-                      {/* YouTube API Key */}
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="youtubeApiKey"
-                          className="text-xs sm:text-sm"
-                        >
-                          YouTube API Key
-                        </Label>
-                        <div className="relative">
-                          <Input
-                            id="youtubeApiKey"
-                            type={showApiKeys.youtube ? "text" : "password"}
-                            value={settings.youtubeApiKey}
-                            onChange={(e) =>
-                              handleChange("youtubeApiKey", e.target.value)
-                            }
-                            placeholder="Enter your YouTube API key"
-                            className="text-sm pr-10"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                            onClick={() => toggleApiKeyVisibility("youtube")}
-                          >
-                            {showApiKeys.youtube ? (
-                              <EyeOff className="h-3 w-3" />
-                            ) : (
-                              <Eye className="h-3 w-3" />
-                            )}
-                          </Button>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Used for fetching video metadata and content
-                        </p>
-                      </div>
-
-                      <Separator />
-
                       {/* Tavily API Key - ADDED SECTION */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
@@ -1113,43 +874,57 @@ const Settings = () => {
                           <h4 className="font-medium text-blue-800 text-sm mb-3">
                             Tavily API Credits
                           </h4>
-                          
+
                           {tavilyUsage.available ? (
                             <div className="space-y-3">
                               {/* Only 3 boxes: Total, Used, Remaining */}
                               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 {/* Total Credits */}
                                 <div className="bg-white p-3 rounded border">
-                                  <div className="text-xs text-gray-500">Total Credits</div>
+                                  <div className="text-xs text-gray-500">
+                                    Total Credits
+                                  </div>
                                   <div className="text-lg font-bold">
-                                    {tavilyUsage.total_credits?.toLocaleString() || 1000}
+                                    {tavilyUsage.total_credits?.toLocaleString() ||
+                                      1000}
                                   </div>
                                 </div>
-                                
+
                                 {/* Used Credits */}
                                 <div className="bg-white p-3 rounded border">
-                                  <div className="text-xs text-gray-500">Used Credits</div>
+                                  <div className="text-xs text-gray-500">
+                                    Used Credits
+                                  </div>
                                   <div className="text-lg font-bold">
-                                    {tavilyUsage.used_credits?.toLocaleString() || 0}
+                                    {tavilyUsage.used_credits?.toLocaleString() ||
+                                      0}
                                   </div>
                                 </div>
-                                
+
                                 {/* Remaining Credits */}
                                 <div className="bg-white p-3 rounded border">
-                                  <div className="text-xs text-gray-500">Remaining Credits</div>
+                                  <div className="text-xs text-gray-500">
+                                    Remaining Credits
+                                  </div>
                                   <div className="text-lg font-bold text-green-600">
-                                    {tavilyUsage.remaining_credits?.toLocaleString() || 0}
+                                    {tavilyUsage.remaining_credits?.toLocaleString() ||
+                                      0}
                                   </div>
                                 </div>
                               </div>
-                              
+
                               {/* Progress Bar */}
                               {tavilyUsage.total_credits > 0 && (
                                 <div className="mt-3">
                                   <div className="flex justify-between text-xs text-gray-500 mb-1">
                                     <span>Usage</span>
                                     <span>
-                                      {Math.round((tavilyUsage.used_credits / tavilyUsage.total_credits) * 100)}% used
+                                      {Math.round(
+                                        (tavilyUsage.used_credits /
+                                          tavilyUsage.total_credits) *
+                                          100,
+                                      )}
+                                      % used
                                     </span>
                                   </div>
                                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -1162,45 +937,26 @@ const Settings = () => {
                                   </div>
                                 </div>
                               )}
-                              
+
                               <div className="text-xs text-blue-600 mt-2">
-                                Last checked: {new Date(tavilyUsage.last_checked).toLocaleTimeString()}
+                                Last checked:{" "}
+                                {new Date(
+                                  tavilyUsage.last_checked,
+                                ).toLocaleTimeString()}
                               </div>
                             </div>
                           ) : (
                             <div className="bg-red-50 border border-red-200 p-2 rounded">
                               <p className="text-xs text-red-700">
-                                {tavilyUsage.error || "Unable to fetch Tavily credits"}
+                                {tavilyUsage.error ||
+                                  "Unable to fetch Tavily credits"}
                               </p>
                             </div>
                           )}
                         </div>
                       )}
                     </div>
-
-                    <div className="p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-start">
-                        <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 mr-2 mt-0.5 shrink-0" />
-                        <div>
-                          <h4 className="font-medium text-yellow-800 text-sm sm:text-base">
-                            Important Security Notice
-                          </h4>
-                          <ul className="text-xs sm:text-sm text-yellow-700 mt-1 space-y-1">
-                            <li>
-                              • API keys are encrypted and stored securely
-                            </li>
-                            <li>• Never share your API keys publicly</li>
-                            <li>• Monitor API usage for anomalies</li>
-                            <li>
-                              • Tavily API key is used for web search
-                              functionality
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-3">
+                    <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
                       <SaveStatus section="api" />
                       <Button
                         onClick={() => handleSave("api")}
@@ -1211,191 +967,6 @@ const Settings = () => {
                         {saving ? (
                           <>
                             <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
-                            <span className="text-xs sm:text-sm">Saving...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                            <span className="text-xs sm:text-sm">Save Changes</span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Storage Settings Tab */}
-              <TabsContent value="storage" className="space-y-4 mt-4">
-                <Card className="overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base sm:text-lg">
-                      Storage Settings
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Configure file storage, upload limits, and backup settings
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 sm:space-y-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="maxFileSize"
-                          className="text-xs sm:text-sm"
-                        >
-                          Max File Size (MB)
-                        </Label>
-                        <Input
-                          id="maxFileSize"
-                          type="number"
-                          value={settings.maxFileSize}
-                          onChange={(e) =>
-                            handleChange(
-                              "maxFileSize",
-                              parseInt(e.target.value),
-                            )
-                          }
-                          min={1}
-                          max={100}
-                          className="text-sm"
-                        />
-                        <p className="text-xs text-gray-500">
-                          Maximum size for user uploads (1-100 MB)
-                        </p>
-                      </div>
-
-                      <Separator />
-
-                      <div className="space-y-2">
-                        <Label className="text-xs sm:text-sm">
-                          Allowed File Types
-                        </Label>
-                        <div className="flex flex-wrap gap-1 sm:gap-2">
-                          {settings.allowedFileTypes.map((type, index) => (
-                            <Badge
-                              key={index}
-                              variant="secondary"
-                              className="text-xs px-2 py-0.5"
-                            >
-                              .{type}
-                            </Badge>
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Supported file formats for uploads
-                        </p>
-                      </div>
-
-                      <Separator />
-
-                      <div className="space-y-2">
-                        <Label className="text-xs sm:text-sm">
-                          Storage Provider
-                        </Label>
-                        <Select
-                          value={settings.storageProvider}
-                          onValueChange={(value) =>
-                            handleChange("storageProvider", value)
-                          }
-                        >
-                          <SelectTrigger className="text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="local">Local Storage</SelectItem>
-                            <SelectItem value="s3">Amazon S3</SelectItem>
-                            <SelectItem value="gcs">
-                              Google Cloud Storage
-                            </SelectItem>
-                            <SelectItem value="azure">
-                              Azure Blob Storage
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500">
-                          Where to store uploaded files
-                        </p>
-                      </div>
-
-                      {settings.storageProvider === "s3" && (
-                        <>
-                          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor="s3Bucket"
-                                className="text-xs sm:text-sm"
-                              >
-                                S3 Bucket Name
-                              </Label>
-                              <Input
-                                id="s3Bucket"
-                                value={settings.s3Bucket}
-                                onChange={(e) =>
-                                  handleChange("s3Bucket", e.target.value)
-                                }
-                                className="text-sm"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label
-                                htmlFor="s3Region"
-                                className="text-xs sm:text-sm"
-                              >
-                                S3 Region
-                              </Label>
-                              <Input
-                                id="s3Region"
-                                value={settings.s3Region}
-                                onChange={(e) =>
-                                  handleChange("s3Region", e.target.value)
-                                }
-                                className="text-sm"
-                              />
-                            </div>
-                          </div>
-                        </>
-                      )}
-
-                      <Separator />
-
-                      <div className="space-y-2">
-                        <Label className="text-xs sm:text-sm">
-                          Backup Frequency
-                        </Label>
-                        <Select
-                          value={settings.backupFrequency}
-                          onValueChange={(value) =>
-                            handleChange("backupFrequency", value)
-                          }
-                        >
-                          <SelectTrigger className="text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="hourly">Hourly</SelectItem>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                            <SelectItem value="manual">Manual Only</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500">
-                          How often to backup database and files
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
-                      <SaveStatus section="storage" />
-                      <Button
-                        onClick={() => handleSave("storage")}
-                        disabled={saving}
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        {saving ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
                             <span className="text-xs sm:text-sm">
                               Saving...
                             </span>
@@ -1404,451 +975,7 @@ const Settings = () => {
                           <>
                             <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                             <span className="text-xs sm:text-sm">
-                              Save Changes
-                            </span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Maintenance Settings Tab */}
-              <TabsContent value="maintenance" className="space-y-4 mt-4">
-                <Card className="overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base sm:text-lg">
-                      Maintenance Settings
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Configure system maintenance and access control
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 sm:space-y-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="space-y-0.5 flex-1">
-                          <Label className="text-xs sm:text-sm">
-                            Maintenance Mode
-                          </Label>
-                          <p className="text-xs text-gray-500">
-                            Put the site in maintenance mode
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.maintenanceMode}
-                          onCheckedChange={(checked) =>
-                            handleChange("maintenanceMode", checked)
-                          }
-                        />
-                      </div>
-
-                      {settings.maintenanceMode && (
-                        <>
-                          <Separator />
-
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="maintenanceMessage"
-                              className="text-xs sm:text-sm"
-                            >
-                              Maintenance Message
-                            </Label>
-                            <Textarea
-                              id="maintenanceMessage"
-                              value={settings.maintenanceMessage}
-                              onChange={(e) =>
-                                handleChange(
-                                  "maintenanceMessage",
-                                  e.target.value,
-                                )
-                              }
-                              rows={3}
-                              className="text-sm"
-                            />
-                            <p className="text-xs text-gray-500">
-                              Message shown to users during maintenance
-                            </p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="estimatedDowntime"
-                              className="text-xs sm:text-sm"
-                            >
-                              Estimated Downtime
-                            </Label>
-                            <Input
-                              id="estimatedDowntime"
-                              value={settings.estimatedDowntime}
-                              onChange={(e) =>
-                                handleChange(
-                                  "estimatedDowntime",
-                                  e.target.value,
-                                )
-                              }
-                              className="text-sm"
-                            />
-                            <p className="text-xs text-gray-500">
-                              Estimated time for maintenance completion
-                            </p>
-                          </div>
-                        </>
-                      )}
-
-                      <Separator />
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs sm:text-sm">
-                            Allowed IP Addresses
-                          </Label>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={addAllowedIP}
-                            className="h-6 text-xs"
-                          >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Add IP
-                          </Button>
-                        </div>
-                        <div className="space-y-2">
-                          {settings.allowedIPs.map((ip, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                            >
-                              <div className="flex items-center">
-                                <Server className="h-3 w-3 mr-2 text-gray-400" />
-                                <span className="text-sm font-mono">{ip}</span>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 hover:text-red-600"
-                                onClick={() => removeAllowedIP(index)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          IP addresses allowed during maintenance mode
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
-                      <SaveStatus section="maintenance" />
-                      <Button
-                        onClick={() => handleSave("maintenance")}
-                        disabled={saving}
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        {saving ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
-                            <span className="text-xs sm:text-sm">
-                              Saving...
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                            <span className="text-xs sm:text-sm">
-                              Save Changes
-                            </span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* User Settings Tab */}
-              <TabsContent value="users" className="space-y-4 mt-4">
-                <Card className="overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base sm:text-lg">
-                      User Settings
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Configure user registration, roles, and limits
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 sm:space-y-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="space-y-0.5 flex-1">
-                          <Label className="text-xs sm:text-sm">
-                            Allow Registration
-                          </Label>
-                          <p className="text-xs text-gray-500">
-                            Allow new users to register accounts
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.allowRegistration}
-                          onCheckedChange={(checked) =>
-                            handleChange("allowRegistration", checked)
-                          }
-                        />
-                      </div>
-
-                      <Separator />
-
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="space-y-0.5 flex-1">
-                          <Label className="text-xs sm:text-sm">
-                            Require Invitation
-                          </Label>
-                          <p className="text-xs text-gray-500">
-                            Require invitation code for registration
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.requireInvitation}
-                          onCheckedChange={(checked) =>
-                            handleChange("requireInvitation", checked)
-                          }
-                        />
-                      </div>
-
-                      <Separator />
-
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="defaultUserRole"
-                          className="text-xs sm:text-sm"
-                        >
-                          Default User Role
-                        </Label>
-                        <Select
-                          value={settings.defaultUserRole}
-                          onValueChange={(value) =>
-                            handleChange("defaultUserRole", value)
-                          }
-                        >
-                          <SelectTrigger className="text-sm">
-                            <SelectValue placeholder="Select default role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="user">User</SelectItem>
-                            <SelectItem value="premium">
-                              Premium User
-                            </SelectItem>
-                            <SelectItem value="moderator">Moderator</SelectItem>
-                            <SelectItem value="admin">Administrator</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500">
-                          Default role for newly registered users
-                        </p>
-                      </div>
-
-                      <Separator />
-
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="maxUsers"
-                          className="text-xs sm:text-sm"
-                        >
-                          Maximum Users
-                        </Label>
-                        <Input
-                          id="maxUsers"
-                          type="number"
-                          value={settings.maxUsers}
-                          onChange={(e) =>
-                            handleChange("maxUsers", parseInt(e.target.value))
-                          }
-                          min={1}
-                          max={100000}
-                          className="text-sm"
-                        />
-                        <p className="text-xs text-gray-500">
-                          Maximum number of users allowed (0 = unlimited)
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
-                      <SaveStatus section="users" />
-                      <Button
-                        onClick={() => handleSave("users")}
-                        disabled={saving}
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        {saving ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
-                            <span className="text-xs sm:text-sm">
-                              Saving...
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                            <span className="text-xs sm:text-sm">
-                              Save Changes
-                            </span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* Performance Settings Tab */}
-              <TabsContent value="performance" className="space-y-4 mt-4">
-                <Card className="overflow-hidden">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base sm:text-lg">
-                      Performance Settings
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Optimize platform performance and caching
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4 sm:space-y-6">
-                    <div className="space-y-3 sm:space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="space-y-0.5 flex-1">
-                          <Label className="text-xs sm:text-sm">
-                            Enable Caching
-                          </Label>
-                          <p className="text-xs text-gray-500">
-                            Cache responses for better performance
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.cacheEnabled}
-                          onCheckedChange={(checked) =>
-                            handleChange("cacheEnabled", checked)
-                          }
-                        />
-                      </div>
-
-                      {settings.cacheEnabled && (
-                        <>
-                          <div className="space-y-2">
-                            <Label
-                              htmlFor="cacheDuration"
-                              className="text-xs sm:text-sm"
-                            >
-                              Cache Duration (seconds)
-                            </Label>
-                            <Input
-                              id="cacheDuration"
-                              type="number"
-                              value={settings.cacheDuration}
-                              onChange={(e) =>
-                                handleChange(
-                                  "cacheDuration",
-                                  parseInt(e.target.value),
-                                )
-                              }
-                              min={60}
-                              max={86400}
-                              className="text-sm"
-                            />
-                            <p className="text-xs text-gray-500">
-                              How long to cache responses (60-86400 seconds)
-                            </p>
-                          </div>
-                        </>
-                      )}
-
-                      <Separator />
-
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="space-y-0.5 flex-1">
-                          <Label className="text-xs sm:text-sm">
-                            Enable CDN
-                          </Label>
-                          <p className="text-xs text-gray-500">
-                            Use Content Delivery Network for static assets
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.cdnEnabled}
-                          onCheckedChange={(checked) =>
-                            handleChange("cdnEnabled", checked)
-                          }
-                        />
-                      </div>
-
-                      {settings.cdnEnabled && (
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="cdnUrl"
-                            className="text-xs sm:text-sm"
-                          >
-                            CDN URL
-                          </Label>
-                          <Input
-                            id="cdnUrl"
-                            value={settings.cdnUrl}
-                            onChange={(e) =>
-                              handleChange("cdnUrl", e.target.value)
-                            }
-                            placeholder="https://cdn.yourdomain.com"
-                            className="text-sm"
-                          />
-                          <p className="text-xs text-gray-500">
-                            Base URL for CDN assets
-                          </p>
-                        </div>
-                      )}
-
-                      <Separator />
-
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="space-y-0.5 flex-1">
-                          <Label className="text-xs sm:text-sm">
-                            Enable Compression
-                          </Label>
-                          <p className="text-xs text-gray-500">
-                            Compress responses for faster loading
-                          </p>
-                        </div>
-                        <Switch
-                          checked={settings.compressionEnabled}
-                          onCheckedChange={(checked) =>
-                            handleChange("compressionEnabled", checked)
-                          }
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
-                      <SaveStatus section="performance" />
-                      <Button
-                        onClick={() => handleSave("performance")}
-                        disabled={saving}
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        {saving ? (
-                          <>
-                            <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2"></div>
-                            <span className="text-xs sm:text-sm">
-                              Saving...
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                            <span className="text-xs sm:text-sm">
-                              Save Changes
+                              Save changes
                             </span>
                           </>
                         )}
@@ -1866,4 +993,3 @@ const Settings = () => {
 };
 
 export default Settings;
-
