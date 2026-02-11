@@ -61,9 +61,9 @@ const LandingPage = () => {
                   </Button>
                 )}
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90vh] p-0 rounded-lg overflow-hidden">
+              <DialogContent className="max-w-[95vw] sm:max-w-md max-h-[90dvh] p-0 rounded-lg overflow-hidden">
                 {/* Scrollable container */}
-                <div className="h-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+                <div className="h-full max-h-[90dvh] overflow-y-auto custom-scrollbar">
                   <div className="p-5 pb-6">
                     <DialogHeader className="mb-6">
                       <DialogTitle className="text-xl sm:text-2xl text-center">

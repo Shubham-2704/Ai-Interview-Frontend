@@ -651,25 +651,6 @@ const CreateUser = () => {
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1 mr-4">
                       <Label className="text-sm sm:text-base truncate">
-                        Send Welcome Email
-                      </Label>
-                      <p className="text-xs sm:text-sm text-gray-500 truncate">
-                        Send account creation notification to user
-                      </p>
-                    </div>
-                    <Switch
-                      checked={formData.sendWelcomeEmail}
-                      onCheckedChange={(checked) =>
-                        handleChange("sendWelcomeEmail", checked)
-                      }
-                      disabled={loading}
-                      className="shrink-0"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0 flex-1 mr-4">
-                      <Label className="text-sm sm:text-base truncate">
                         Account Active
                       </Label>
                       <p className="text-xs sm:text-sm text-gray-500 truncate">
