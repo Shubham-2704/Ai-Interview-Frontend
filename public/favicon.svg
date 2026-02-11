@@ -1,0 +1,27 @@
+<svg width="512" height="512" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="interviaGrad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+  </defs>
+
+  <rect x="2" y="2" width="20" height="20" rx="5" fill="url(#interviaGrad)"/>
+
+  <path 
+    d="m12 8-9.04 9.06a2.82 2.82 0 1 0 3.98 3.98L16 12" 
+    stroke="white" 
+    stroke-width="2.5" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+  <circle 
+    cx="17" 
+    cy="7" 
+    r="5" 
+    stroke="white" 
+    stroke-width="2.5" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"
+  />
+</svg>

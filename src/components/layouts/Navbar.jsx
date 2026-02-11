@@ -7,6 +7,7 @@ import {
 import ProfileInfoCard from "../Cards/ProfileInfoCard";
 import ApiKeyModal from "../ApiKeyModal";
 import SetupGuideModal from "../SetupGuideModal";
+import Logo from "../Logo";
 
 const Navbar = () => {
   return (
@@ -18,7 +19,7 @@ const Navbar = () => {
             to="/dashboard"
             className="text-xl sm:text-xl md:text-2xl font-semibold tracking-tight text-gray-900 hover:text-gray-700 transition-colors"
           >
-            Intervia
+            <Logo />
           </Link>
         </NavigationMenuItem>
 
