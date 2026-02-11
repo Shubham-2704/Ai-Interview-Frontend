@@ -32,8 +32,11 @@ import { API_PATHS } from "@/utils/apiPaths";
 const Settings = () => {
   const [settings, setSettings] = useState({
     // General Settings
-    maintenanceMode: false,
+    sendWelcomeEmail: true,
     allowRegistration: true,
+    maxPasswordResetAttempts: 3,
+    passwordResetBlockDurationHours: 1,
+    passwordResetOtpExpiryMinutes: 5,
 
     // Session Settings
     maxSessionsPerUser: 1, // Default to 1 if not set
@@ -64,27 +67,23 @@ const Settings = () => {
     setSaving(true);
     try {
       if (section === "general") {
-        console.log("Saving general settings:", {
-          maintenanceMode: settings.maintenanceMode,
-          allowRegistration: settings.allowRegistration,
-        });
-
         const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
           settings: {
-            maintenance_mode: settings.maintenanceMode,
+            send_welcome_email: settings.sendWelcomeEmail,
             allow_registration: settings.allowRegistration,
+            max_password_reset_attempts: settings.maxPasswordResetAttempts,
+            password_reset_block_duration_hours:
+              settings.passwordResetBlockDurationHours,
+            password_reset_otp_expiry_minutes:
+              settings.passwordResetOtpExpiryMinutes,
           },
         });
-
-        console.log("Save response:", response.data);
 
         setSaveStatus({ section, success: true });
         setTimeout(() => setSaveStatus(null), 3000);
 
         toast.success("General settings updated!");
       } else if (section === "session") {
-        console.log("Saving session settings:", settings);
-
         const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
           settings: {
             max_sessions_per_user: settings.maxSessionsPerUser,
@@ -94,18 +93,11 @@ const Settings = () => {
           },
         });
 
-        console.log("Save response:", response.data);
-
         setSaveStatus({ section, success: true });
         setTimeout(() => setSaveStatus(null), 3000);
 
         toast.success(`Session settings updated!`);
       } else if (section === "resources") {
-        console.log("Saving resources settings:", {
-          maxStudyMaterials: settings.maxStudyMaterialsPerSession,
-          refreshHours: settings.studyMaterialsRefreshHours,
-        });
-
         const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
           settings: {
             max_study_materials_per_session:
@@ -114,27 +106,17 @@ const Settings = () => {
           },
         });
 
-        console.log("Save response:", response.data);
-
         setSaveStatus({ section, success: true });
         setTimeout(() => setSaveStatus(null), 3000);
 
         toast.success("Resources settings updated successfully!");
       } else if (section === "api") {
-        console.log("Saving API settings:", {
-          geminiApiKey: settings.geminiApiKey,
-          youtubeApiKey: settings.youtubeApiKey,
-          tavilyApiKey: settings.tavilyApiKey,
-        });
-
         const response = await axiosInstance.put(API_PATHS.SETTINGS.UPDATE, {
           settings: {
             gemini_api_key: settings.geminiApiKey,
             tavily_api_key: settings.tavilyApiKey,
           },
         });
-
-        console.log("Save response:", response.data);
 
         setSaveStatus({ section, success: true });
         setTimeout(() => setSaveStatus(null), 3000);
@@ -147,7 +129,6 @@ const Settings = () => {
         toast.success("Settings saved!");
       }
     } catch (error) {
-      console.error("Save error:", error.response?.data || error.message);
       setSaveStatus({ section, success: false });
       toast.error(error.response?.data?.detail || "Failed to save");
     } finally {
@@ -172,28 +153,31 @@ const Settings = () => {
   const loadSettingsFromDatabase = async () => {
     try {
       setLoadingSettings(true);
-      console.log("Fetching settings from:", "/settings/");
 
       const response = await axiosInstance.get(API_PATHS.SETTINGS.GET);
-      console.log("Settings API response:", response.data);
 
       if (response.data.success && response.data.settings) {
         const settingsData = response.data.settings;
-
-        console.log("Setting resources settings:", {
-          maxStudyMaterials: settingsData.max_study_materials_per_session,
-          refreshHours: settingsData.study_materials_refresh_hours,
-        });
 
         setSettings((prev) => ({
           ...prev,
 
           // General settings
-          maintenanceMode: settingsData.maintenance_mode || false,
+          sendWelcomeEmail:
+            settingsData.send_welcome_email !== undefined
+              ? settingsData.send_welcome_email
+              : true, // Default to true if not set
           allowRegistration:
             settingsData.allow_registration !== undefined
               ? settingsData.allow_registration
               : true, // Default to true if not set
+
+          maxPasswordResetAttempts:
+            settingsData.max_password_reset_attempts || 3,
+          passwordResetBlockDurationHours:
+            settingsData.password_reset_block_duration_hours || 1,
+          passwordResetOtpExpiryMinutes:
+            settingsData.password_reset_otp_expiry_minutes || 5,
 
           // Session settings
           maxSessionsPerUser: settingsData.max_sessions_per_user || 1,
@@ -213,11 +197,9 @@ const Settings = () => {
           tavilyApiKey: settingsData.tavily_api_key || "",
         }));
       } else {
-        console.warn("No settings found in response, using default");
+        toast.error("Failed to load settings from server");
       }
     } catch (error) {
-      console.error("Error loading settings:", error);
-      console.error("Error details:", error.response?.data || error.message);
       toast.error("Failed to load settings from server");
     } finally {
       setLoadingSettings(false);
@@ -244,7 +226,6 @@ const Settings = () => {
         toast.error("Failed to fetch Tavily usage data");
       }
     } catch (error) {
-      console.error("Error fetching Tavily usage:", error);
       toast.error(
         error.response?.data?.detail || "Failed to fetch Tavily usage",
       );
@@ -289,7 +270,6 @@ const Settings = () => {
   };
 
   useEffect(() => {
-    console.log("Settings component mounted, loading settings...");
     loadSettingsFromDatabase();
   }, []); // Empty dependency array = run once on mount
 
@@ -389,23 +369,26 @@ const Settings = () => {
                       </div>
                     ) : (
                       <>
+                        {/* Send Welcome Email Setting */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="space-y-0.5 flex-1">
                             <Label className="text-xs sm:text-sm">
-                              Maintenance Mode
+                              Send Welcome Email
                             </Label>
                             <p className="text-xs text-gray-500">
-                              Put the site in maintenance mode
+                              Send welcome email to new users upon registration
                             </p>
                           </div>
                           <Switch
                             className="cursor-pointer"
-                            checked={settings.maintenanceMode}
+                            checked={settings.sendWelcomeEmail}
                             onCheckedChange={(checked) =>
-                              handleChange("maintenanceMode", checked)
+                              handleChange("sendWelcomeEmail", checked)
                             }
                           />
                         </div>
+
+                        {/* Allow Registration Setting */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="space-y-0.5 flex-1">
                             <Label className="text-xs sm:text-sm">
@@ -423,6 +406,99 @@ const Settings = () => {
                             }
                           />
                         </div>
+
+                        {/* ✅ ADD THIS SEPARATOR AND NEW SECURITY SETTINGS SECTION */}
+                        <Separator />
+
+                        {/* Password Reset Security Settings */}
+                        <div className="space-y-4">
+                          <h3 className="text-sm font-medium text-gray-900">
+                            Password Reset Security
+                          </h3>
+
+                          {/* Max Password Reset Attempts */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="space-y-0.5 flex-1">
+                              <Label className="text-xs sm:text-sm">
+                                Max Password Reset Attempts
+                              </Label>
+                              <p className="text-xs text-gray-500">
+                                Maximum wrong OTP attempts before blocking user
+                              </p>
+                            </div>
+                            <div className="w-24">
+                              <Input
+                                type="number"
+                                value={settings.maxPasswordResetAttempts}
+                                onChange={(e) =>
+                                  handleChange(
+                                    "maxPasswordResetAttempts",
+                                    parseInt(e.target.value) || 3,
+                                  )
+                                }
+                                min={1}
+                                max={10}
+                                className="text-sm text-center"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Block Duration */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="space-y-0.5 flex-1">
+                              <Label className="text-xs sm:text-sm">
+                                Block Duration (Hours)
+                              </Label>
+                              <p className="text-xs text-gray-500">
+                                Hours user is blocked after max attempts
+                              </p>
+                            </div>
+                            <div className="w-24">
+                              <Input
+                                type="number"
+                                value={settings.passwordResetBlockDurationHours}
+                                onChange={(e) =>
+                                  handleChange(
+                                    "passwordResetBlockDurationHours",
+                                    parseInt(e.target.value) || 1,
+                                  )
+                                }
+                                min={1}
+                                max={72}
+                                className="text-sm text-center"
+                              />
+                            </div>
+                          </div>
+
+                          {/* OTP Expiry */}
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="space-y-0.5 flex-1">
+                              <Label className="text-xs sm:text-sm">
+                                OTP Expiry (Minutes)
+                              </Label>
+                              <p className="text-xs text-gray-500">
+                                Minutes before OTP expires
+                              </p>
+                            </div>
+                            <div className="w-24">
+                              <Input
+                                type="number"
+                                value={settings.passwordResetOtpExpiryMinutes}
+                                onChange={(e) =>
+                                  handleChange(
+                                    "passwordResetOtpExpiryMinutes",
+                                    parseInt(e.target.value) || 5,
+                                  )
+                                }
+                                min={1}
+                                max={60}
+                                className="text-sm text-center"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Save Button */}
                         <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t">
                           <SaveStatus section="general" />
                           <Button

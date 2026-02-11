@@ -30,7 +30,6 @@ export const SettingsProvider = ({ children }) => {
         if (response.data.success) {
           setSettings({
             allowRegistration: response.data.allow_registration ?? true,
-            maintenanceMode: response.data.maintenance_mode ?? false,
           });
         }
       } catch (error) {
@@ -40,7 +39,6 @@ export const SettingsProvider = ({ children }) => {
           setSettings({
             allowRegistration:
               response.data.settings.allow_registration ?? true,
-            maintenanceMode: response.data.settings.maintenance_mode ?? false,
           });
         }
       }
