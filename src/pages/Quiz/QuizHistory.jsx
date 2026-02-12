@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { toast as hotToast } from "react-hot-toast";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,7 +59,7 @@ const QuizHistory = () => {
       );
       setQuizzes(response.data || []);
     } catch (error) {
-      hotToast.error("Failed to load quiz history", { position: "bottom-right" });
+      toast.error("Failed to load quiz history", { position: "bottom-right" });
     } finally {
       setLoading(false);
     }
@@ -88,10 +87,10 @@ const QuizHistory = () => {
     setDeleting(true); // Start loading
     try {
       await axiosInstance.delete(API_PATHS.QUIZ.DELETE(quizToDelete));
-      hotToast.success("Quiz deleted successfully", { position: "top-center" });
+      toast.success("Quiz deleted successfully", { position: "top-center" });
       fetchQuizHistory();
     } catch (error) {
-      hotToast.error("Failed to delete quiz", { position: "bottom-right" });
+      toast.error("Failed to delete quiz", { position: "bottom-right" });
     } finally {
       setDeleting(false); // Stop loading
       setDeleteDialogOpen(false);
@@ -171,7 +170,7 @@ const QuizHistory = () => {
 
   const handleExportAll = async () => {
     if (quizzes.length === 0) {
-      hotToast.success("No quizzes to export", { position: "bottom-right", icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",},});
+      toast.info("No quizzes to export", { position: "bottom-right" });
       return;
     }
 
@@ -202,9 +201,9 @@ const QuizHistory = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      hotToast.success(`Exported ${quizzes.length} quiz attempts!`, { position: "top-center" });
+      toast.success(`Exported ${quizzes.length} quiz attempts!`, { position: "top-center" });
     } catch (error) {
-      hotToast.error("Failed to export quiz history", { position: "bottom-right" });
+      toast.error("Failed to export quiz history", { position: "bottom-right" });
     }
   };
 
@@ -482,9 +481,9 @@ const QuizHistory = () => {
                                     link.download = `quiz-${quiz._id}-${new Date(quiz.createdAt).toISOString().split("T")[0]}.json`;
                                     link.click();
                                     URL.revokeObjectURL(url);
-                                    hotToast.success("Quiz exported!", { position: "top-center" });
+                                    toast.success("Quiz exported!", { position: "top-center" });
                                   } catch (error) {
-                                    hotToast.error("Failed to export quiz", { position: "bottom-right" });
+                                    toast.error("Failed to export quiz", { position: "bottom-right" });
                                   }
                                 }}
                                 className="gap-1"
