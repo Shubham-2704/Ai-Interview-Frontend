@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import CreateSessionForm from "./CreateSessionForm";
 import { toast as hotToast } from "react-hot-toast";
+import { toast } from "sonner";
 import DashboardSkeleton from "./components/DashboardSkeleton";
 
 const Dashboard = () => {
@@ -26,7 +27,13 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
-  const [sessionLimit, setSessionLimit] = useState(0);
+  const [sessionLimit, setSessionLimit] = useState({
+    can_create: true,
+    limit: 0,
+    current: 0,
+    remaining: 0,
+    message: "",
+  });
 
   const navigate = useNavigate();
 
@@ -59,13 +66,12 @@ const Dashboard = () => {
 
   const checkSessionLimit = async () => {
     try {
-      // Make sure this URL is correct
-      const response = await axiosInstance.get(API_PATHS.SESSION.CHECK_SESSION_LIMIT);
+      const response = await axiosInstance.get(
+        API_PATHS.SESSION.CHECK_SESSION_LIMIT,
+      );
 
       if (response.data.success) {
         setSessionLimit(response.data.data);
-        !response.data.data.can_create &&
-          hotToast.success(response.data.data.message, { position: "bottom-center", icon: "⚠️", style: {border: "1px solid #f59e0b", background: "#fffbeb", color: "#92400e",},});
       } else {
         setSessionLimit({
           can_create: true,
@@ -84,6 +90,24 @@ const Dashboard = () => {
         message: "",
       });
     }
+  };
+
+  const handleCreateClick = () => {
+    if (!sessionLimit.can_create && sessionLimit.limit > 0) {
+      // Show toast message
+      toast.error(sessionLimit.message, {
+        position: "bottom-center",
+        // duration: 5000,
+      });
+
+      // WebSocket notification is already sent from backend middleware
+      // No need to send from frontend
+
+      return; // Don't open dialog
+    }
+
+    // If can create, open the dialog
+    setOpenCreateModel(true);
   };
 
   useEffect(() => {
@@ -107,18 +131,14 @@ const Dashboard = () => {
               <p className="text-base text-gray-500 mb-6 max-w-md">
                 Create a new session to get started!
               </p>
-              <Button
-                onClick={() => setOpenCreateModel(true)}
-                className="px-6"
-                size="lg"
-              >
+              <Button onClick={handleCreateClick} className="px-6" size="lg">
                 <Plus className="mr-2 h-5 w-5" />
                 Create Session
               </Button>
             </div>
           ) : (
             <div className="w-full">
-              {/* Simple responsive grid - 1 column on mobile, 2 on tablet, 3 on desktop */}
+              {/* Simple responsive grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                 {sessions?.map((session, index) => (
                   <div key={session?._id} className="h-full">
@@ -138,30 +158,19 @@ const Dashboard = () => {
             </div>
           )}
 
-          {/* Floating Action Button */}
+          {/* Floating Action Button - ALWAYS ENABLED */}
           <Dialog open={openCreateModel} onOpenChange={setOpenCreateModel}>
-            <DialogTrigger asChild>
-              {sessions.length !== 0 && (
-                <Button
-                  size="lg"
-                  disabled={!sessionLimit.can_create && sessionLimit.limit > 0}
-                  className={`font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 fixed z-40 
-  bottom-6 right-6 
-  sm:bottom-8 sm:right-8 ${!sessionLimit.can_create ? "opacity-50 cursor-not-allowed" : ""}`}
-                  onClick={() => {
-                    if (!sessionLimit.can_create) {
-                      hotToast.error(sessionLimit.message, { position: "bottom-center" });
-                      return;
-                    }
-                    setOpenCreateModel(true);
-                  }}
-                >
-                  <Plus className="h-5 w-5 mr-2" />
-                  Add New
-                  {` (${sessionLimit.current}/${sessionLimit.limit})`}
-                </Button>
-              )}
-            </DialogTrigger>
+            {sessions.length !== 0 && (
+              <Button
+                size="lg"
+                className="font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 fixed z-40 bottom-6 right-6 sm:bottom-8 sm:right-8"
+                onClick={handleCreateClick}
+              >
+                <Plus className="h-5 w-5 mr-2" />
+                Add New
+                {` (${sessionLimit.current}/${sessionLimit.limit})`}
+              </Button>
+            )}
             <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="text-xl">

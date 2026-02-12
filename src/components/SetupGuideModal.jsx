@@ -81,7 +81,7 @@ const SetupGuideModal = () => {
 
       <DialogContent className="max-w-[95vw] sm:max-w-lg max-h-[90vh] p-0 rounded-lg overflow-hidden">
         {/* Main container with custom scrollbar */}
-        <div className="h-full max-h-[90vh] overflow-y-auto custom-scrollbar p-1">
+        <div className="h-full max-h-[90dvh] overflow-y-auto custom-scrollbar p-1">
           <div className="p-5 pb-4">
             <DialogHeader className="mb-4">
               <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
@@ -137,7 +137,7 @@ const SetupGuideModal = () => {
                     onClick={() =>
                       window.open(
                         "https://www.youtube.com/watch?v=RVGbLSVFtIk&t=19s",
-                        "_blank"
+                        "_blank",
                       )
                     }
                   >
@@ -231,7 +231,7 @@ const SetupGuideModal = () => {
                   onClick={() =>
                     window.open(
                       "https://ai.google.dev/gemini-api/docs/quickstart",
-                      "_blank"
+                      "_blank",
                     )
                   }
                 >
