@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { toast as hotToast } from "react-hot-toast";
+import { toast  } from "sonner";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,7 @@ const QuizAnalytics = () => {
 
         if (!hasData) {
           // Show info toast if no data
-          hotToast.success("No analytics data available yet. Take quizzes to see your performance.", { position: "bottom-right", icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",},});
+          toast.info("No analytics data available yet. Take quizzes to see your performance.", { position: "bottom-right"});
         }
 
         // Fetch topic performance separately
@@ -131,7 +131,7 @@ const QuizAnalytics = () => {
 
   const handleExportAnalytics = () => {
     if (!analytics || !hasRealData) {
-      hotToast.success("No analytics data to export", { position: "bottom-right", icon: "ℹ️", style: {border: "1px solid #3b82f6", background: "#eff6ff", color: "#1e40af",},});
+      toast.info("No analytics data to export", { position: "bottom-right" });
       return;
     }
 
@@ -152,9 +152,9 @@ const QuizAnalytics = () => {
       link.click();
       URL.revokeObjectURL(url);
 
-      hotToast.success("Analytics exported successfully!", { position: "top-center" });
+      toast.success("Analytics exported successfully!", { position: "top-center" });
     } catch (error) {
-      hotToast.error("Failed to export analytics", { position: "bottom-right" });
+      toast.error("Failed to export analytics", { position: "bottom-right" });
     }
   };
 

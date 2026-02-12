@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 import { UserContext } from "@/context/UserContext";
-import { toast as hotToast } from "react-hot-toast";
+import {toast} from "sonner"
 import {
   Dialog,
   DialogContent,
@@ -66,7 +66,7 @@ const EditProfileModal = ({ open, setOpen }) => {
           const uploadRes = await uploadImage(profilePic);
           profileImageUrl = uploadRes.imageUrl;
         } catch (uploadError) {
-          hotToast.error("Failed to upload new profile image. Keeping existing one.", { position: "bottom-right" });
+          toast.error("Failed to upload new profile image. Keeping existing one.", { position: "bottom-right" });
         }
       }
 
@@ -89,7 +89,7 @@ const EditProfileModal = ({ open, setOpen }) => {
         ...response.data,
         token: localStorage.getItem("token"),
       });
-      hotToast.success("Profile updated successfully!", { position: "top-center" });
+      toast.success("Profile updated successfully!", { position: "top-center" });
       setOpen(false);
     } catch (error) {
       
@@ -100,7 +100,7 @@ const EditProfileModal = ({ open, setOpen }) => {
       const errorMessage = error.response?.data?.message || 
                           error.response?.data?.detail || 
                           "Failed to update profile.";
-      hotToast.error(errorMessage, { position: "bottom-right" });
+      toast.error(errorMessage, { position: "bottom-right" });
     } finally {
       setIsSubmitting(false);
     }

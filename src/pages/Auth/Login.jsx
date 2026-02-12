@@ -40,7 +40,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 import { toast } from "sonner";
-import { toast as hotToast } from "react-hot-toast";
 
 const Login = ({ onChangePage }) => {
   const [loading, setLoading] = useState(false);
@@ -104,7 +103,7 @@ const Login = ({ onChangePage }) => {
         } else {
           // Regular user - navigate to dashboard
           navigate("/dashboard");
-          hotToast.success("Logged in successfully!", {
+          toast.success("Logged in successfully!", {
             position: "top-center",
           });
         }
@@ -119,12 +118,12 @@ const Login = ({ onChangePage }) => {
           // Show the popup dialog
           setShowRegistrationPopup(true);
         } else {
-          hotToast.error(error.response.data.message, {
+          toast.error(error.response.data.message, {
             position: "bottom-center",
           });
         }
       } else {
-        hotToast.error("Failed to login with Google. Please try again.", {
+        toast.error("Failed to login with Google. Please try again.", {
           position: "bottom-right",
         });
       }
@@ -134,7 +133,7 @@ const Login = ({ onChangePage }) => {
   };
 
   const handleGoogleError = () => {
-    hotToast.error("Google login failed. Please try again.", {
+    toast.error("Google login failed. Please try again.", {
       position: "bottom-right",
     });
   };
@@ -164,18 +163,18 @@ const Login = ({ onChangePage }) => {
         } else {
           // Regular user - navigate to dashboard
           navigate("/dashboard");
-          hotToast.success("Logged in successfully!", {
+          toast.success("Logged in successfully!", {
             position: "top-center",
           });
         }
       }
     } catch (error) {
       if (error.response && error.response.data.message) {
-        hotToast.error(error.response.data.message, {
+        toast.error(error.response.data.message, {
           position: "bottom-center",
         });
       } else {
-        hotToast.error("Something went wrong. Please try again.", {
+        toast.error("Something went wrong. Please try again.", {
           position: "bottom-right",
         });
       }

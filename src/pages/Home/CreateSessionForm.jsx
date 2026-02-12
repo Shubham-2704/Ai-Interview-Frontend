@@ -17,7 +17,6 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { sessionSchema } from "@/lib/schema";
 import { toast } from "sonner";
-import { toast as hotToast } from "react-hot-toast";
 import { UserContext } from "@/context/UserContext";
 
 const CreateSessionForm = () => {
@@ -52,7 +51,7 @@ const CreateSessionForm = () => {
         }
       } catch (error) {
         // Keep default 10 if fetch fails
-        hotToast.error("Failed to load session", { position: "bottom-right" });
+        toast.error("Failed to load session", { position: "bottom-right" });
       } finally {
         setLoadingQuestionsCount(false);
       }
@@ -97,7 +96,7 @@ const CreateSessionForm = () => {
           position: "bottom-right",
         });
       } else {
-        hotToast.error("Something went wrong. Please try again.", {
+        toast.error("Something went wrong. Please try again.", {
           position: "bottom-right",
         });
       }

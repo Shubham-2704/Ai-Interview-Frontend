@@ -17,7 +17,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import CreateSessionForm from "./CreateSessionForm";
-import { toast as hotToast } from "react-hot-toast";
 import { toast } from "sonner";
 import DashboardSkeleton from "./components/DashboardSkeleton";
 
@@ -43,7 +42,7 @@ const Dashboard = () => {
       const response = await axiosInstance.get(API_PATHS.SESSION.GET_ALL);
       setSessions(response.data);
     } catch (error) {
-      hotToast.error("Failed to fetch sessions.", { position: "bottom-right" });
+      toast.error("Failed to fetch sessions.", { position: "bottom-right" });
     } finally {
       setLoading(false);
     }
@@ -55,12 +54,12 @@ const Dashboard = () => {
         API_PATHS.SESSION.DELETE(sessionId),
       );
 
-      hotToast.success(response.data.message, { position: "top-center" });
+      toast.success(response.data.message, { position: "top-center" });
 
       setOpenDeleteAlert(false);
       fetchAllSessions();
     } catch (error) {
-      hotToast.error("Failed to delete session.", { position: "bottom-right" });
+      toast.error("Failed to delete session.", { position: "bottom-right" });
     }
   };
 
