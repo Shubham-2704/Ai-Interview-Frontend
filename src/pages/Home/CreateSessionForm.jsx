@@ -4,7 +4,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
-
+import { SocketContext } from "@/context/SocketContext";
 import {
   Field,
   FieldDescription,
@@ -16,10 +16,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { sessionSchema } from "@/lib/schema";
+import { toast } from "sonner";
 import { toast as hotToast } from "react-hot-toast";
 import { UserContext } from "@/context/UserContext";
 
 const CreateSessionForm = () => {
+  const { sessionCreated } = useContext(SocketContext);
   const [loading, setLoading] = useState(false);
   const [questionsCount, setQuestionsCount] = useState(10); // State for questions count
   const [loadingQuestionsCount, setLoadingQuestionsCount] = useState(false); // Loading state for fetching count
@@ -91,9 +93,13 @@ const CreateSessionForm = () => {
       }
     } catch (error) {
       if (error.response && error.response.data.message) {
-        hotToast.error(error.response.data.message, { position: "bottom-right" });
+        toast.error(error.response.data.message, {
+          position: "bottom-right",
+        });
       } else {
-        hotToast.error("Something went wrong. Please try again.", { position: "bottom-right" });
+        hotToast.error("Something went wrong. Please try again.", {
+          position: "bottom-right",
+        });
       }
     } finally {
       setLoading(false);
