@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { toast  } from "sonner";
+import { toast } from "sonner";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   Brain,
   ChevronDown,
   FileText,
+  Loader2,
 } from "lucide-react";
 import {
   LineChart,
@@ -46,6 +47,50 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Constants
+const CHART_COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#f97316", "#ef4444"];
+
+const PERFORMANCE_MESSAGES = {
+  EXCEPTIONAL: "Exceptional! You're mastering the material.",
+  GREAT: "Great work! You're performing very well.",
+  GOOD: "Good progress! Keep practicing.",
+  FAIR: "You're getting there! Focus on weak areas.",
+  NEEDS_IMPROVEMENT: "Keep going! Review the basics and practice regularly.",
+};
+
+const PERFORMANCE_THRESHOLDS = {
+  EXCEPTIONAL: 90,
+  GREAT: 80,
+  GOOD: 70,
+  FAIR: 60,
+};
+
+const TIME_RANGES = {
+  WEEK: "week",
+  MONTH: "month",
+  ALL: "all",
+};
+
+const PIE_CHART_SLICES = [
+  { name: "90-100%", index: 0 },
+  { name: "80-89%", index: 1 },
+  { name: "70-79%", index: 2 },
+  { name: "60-69%", index: 3 },
+  { name: "Below 60%", index: 4 },
+];
+
+const RECOMMENDATIONS = [
+  "Focus on topics with scores below 70%",
+  "Take quizzes regularly to maintain progress",
+  "Review explanations for incorrect answers",
+];
+
+const TIME_RANGE_OPTIONS = [
+  { value: TIME_RANGES.WEEK, label: "This Week" },
+  { value: TIME_RANGES.MONTH, label: "This Month" },
+  { value: TIME_RANGES.ALL, label: "All Time" },
+];
+
 const QuizAnalytics = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
@@ -53,40 +98,43 @@ const QuizAnalytics = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sessionInfo, setSessionInfo] = useState(null);
-  const [timeRange, setTimeRange] = useState("all");
+  const [timeRange, setTimeRange] = useState(TIME_RANGES.ALL);
   const [hasRealData, setHasRealData] = useState(false);
-
-  const COLORS = ["#10b981", "#3b82f6", "#f59e0b", "#f97316", "#ef4444"];
 
   const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {
       const response = await axiosInstance.get(
-        `/quiz/session/${sessionId}/analytics?range=${timeRange}`,
+        API_PATHS.QUIZ.SESSION_ANALYTICS(sessionId, timeRange),
       );
 
       if (response.data) {
-        // Check if we have real data (not empty arrays or zeros)
-        const hasData = 
-          (response.data.totalQuizzes && response.data.totalQuizzes > 0) ||
-          (response.data.dailyPerformance && response.data.dailyPerformance.length > 0) ||
-          (response.data.topicPerformance && response.data.topicPerformance.length > 0);
-        
+        const data = response.data;
+
+        // Check if we have real data
+        const hasData = Boolean(
+          (data.totalQuizzes && data.totalQuizzes > 0) ||
+          data.dailyPerformance?.length > 0 ||
+          data.topicPerformance?.length > 0,
+        );
+
         setHasRealData(hasData);
-        setAnalytics(response.data);
+        setAnalytics(data);
 
         if (!hasData) {
-          // Show info toast if no data
-          toast.info("No analytics data available yet. Take quizzes to see your performance.", { position: "bottom-right"});
+          toast.info(
+            "No analytics data available yet. Take quizzes to see your performance.",
+            { position: "bottom-right" },
+          );
         }
 
         // Fetch topic performance separately
         try {
           const topicResponse = await axiosInstance.get(
-            `/quiz/session/${sessionId}/topics`,
+            API_PATHS.QUIZ.SESSION_TOPICS(sessionId),
           );
 
-          if (topicResponse.data?.topicPerformance && topicResponse.data.topicPerformance.length > 0) {
+          if (topicResponse.data?.topicPerformance?.length > 0) {
             setAnalytics((prev) => ({
               ...prev,
               topicPerformance: topicResponse.data.topicPerformance,
@@ -94,11 +142,10 @@ const QuizAnalytics = () => {
             setHasRealData(true);
           }
         } catch (topicError) {
+          // Silently fail - optional data
         }
       }
     } catch (error) {
-      
-      // Don't set dummy data - just show empty state
       setHasRealData(false);
       setAnalytics(null);
     } finally {
@@ -110,7 +157,7 @@ const QuizAnalytics = () => {
     fetchAnalytics();
   }, [fetchAnalytics]);
 
-  const formatTime = (seconds) => {
+  const formatTime = useCallback((seconds) => {
     if (!seconds) return "0m";
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -119,17 +166,19 @@ const QuizAnalytics = () => {
       return `${hours}h ${minutes}m`;
     }
     return `${minutes}m`;
-  };
+  }, []);
 
-  const getPerformanceMessage = (score) => {
-    if (score >= 90) return "Exceptional! You're mastering the material.";
-    if (score >= 80) return "Great work! You're performing very well.";
-    if (score >= 70) return "Good progress! Keep practicing.";
-    if (score >= 60) return "You're getting there! Focus on weak areas.";
-    return "Keep going! Review the basics and practice regularly.";
-  };
+  const getPerformanceMessage = useCallback((score) => {
+    if (score >= PERFORMANCE_THRESHOLDS.EXCEPTIONAL)
+      return PERFORMANCE_MESSAGES.EXCEPTIONAL;
+    if (score >= PERFORMANCE_THRESHOLDS.GREAT)
+      return PERFORMANCE_MESSAGES.GREAT;
+    if (score >= PERFORMANCE_THRESHOLDS.GOOD) return PERFORMANCE_MESSAGES.GOOD;
+    if (score >= PERFORMANCE_THRESHOLDS.FAIR) return PERFORMANCE_MESSAGES.FAIR;
+    return PERFORMANCE_MESSAGES.NEEDS_IMPROVEMENT;
+  }, []);
 
-  const handleExportAnalytics = () => {
+  const handleExportAnalytics = useCallback(() => {
     if (!analytics || !hasRealData) {
       toast.info("No analytics data to export", { position: "bottom-right" });
       return;
@@ -139,8 +188,8 @@ const QuizAnalytics = () => {
       const exportData = {
         session: sessionInfo?.role || "Interview Preparation",
         exportDate: new Date().toISOString(),
-        timeRange: timeRange,
-        analytics: analytics,
+        timeRange,
+        analytics,
       };
 
       const dataStr = JSON.stringify(exportData, null, 2);
@@ -152,57 +201,128 @@ const QuizAnalytics = () => {
       link.click();
       URL.revokeObjectURL(url);
 
-      toast.success("Analytics exported successfully!", { position: "top-center" });
+      toast.success("Analytics exported successfully!", {
+        position: "top-center",
+      });
     } catch (error) {
       toast.error("Failed to export analytics", { position: "bottom-right" });
     }
-  };
+  }, [analytics, sessionInfo, timeRange, hasRealData]);
 
-  // Prepare pie chart data
-  const getPieChartData = () => {
+  const pieChartData = useMemo(() => {
     if (!analytics?.scoreDistribution || !hasRealData) return [];
 
-    return [
-      { name: "90-100%", value: analytics.scoreDistribution[0] || 0 },
-      { name: "80-89%", value: analytics.scoreDistribution[1] || 0 },
-      { name: "70-79%", value: analytics.scoreDistribution[2] || 0 },
-      { name: "60-69%", value: analytics.scoreDistribution[3] || 0 },
-      { name: "Below 60%", value: analytics.scoreDistribution[4] || 0 },
-    ];
-  };
+    return PIE_CHART_SLICES.map(({ name, index }) => ({
+      name,
+      value: analytics.scoreDistribution[index] || 0,
+    }));
+  }, [analytics, hasRealData]);
 
-  const pieChartData = getPieChartData();
-  const hasPieChartData = pieChartData.some((item) => item.value > 0);
-
-  // Check if there's any data to show in charts
-  const hasChartData = hasRealData && (
-    (analytics.dailyPerformance && analytics.dailyPerformance.length > 0) ||
-    (analytics.topicPerformance && analytics.topicPerformance.length > 0) ||
-    hasPieChartData
+  const hasPieChartData = useMemo(
+    () => pieChartData.some((item) => item.value > 0),
+    [pieChartData],
   );
+
+  const hasChartData = useMemo(
+    () =>
+      hasRealData &&
+      Boolean(
+        analytics?.dailyPerformance?.length > 0 ||
+        analytics?.topicPerformance?.length > 0 ||
+        hasPieChartData,
+      ),
+    [analytics, hasRealData, hasPieChartData],
+  );
+
+  const currentTimeRangeLabel = useMemo(
+    () =>
+      TIME_RANGE_OPTIONS.find((opt) => opt.value === timeRange)?.label ||
+      "All Time",
+    [timeRange],
+  );
+
+  const pieChartTotal = useMemo(
+    () => pieChartData.reduce((sum, item) => sum + item.value, 0),
+    [pieChartData],
+  );
+
+  const renderPieChartLabel = useCallback(
+    ({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
+      const RADIAN = Math.PI / 180;
+      const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+      return (
+        <text
+          x={x}
+          y={y}
+          fill="white"
+          textAnchor={x > cx ? "start" : "end"}
+          dominantBaseline="central"
+          fontSize={12}
+          fontWeight="bold"
+        >
+          {`${(percent * 100).toFixed(0)}%`}
+        </text>
+      );
+    },
+    [],
+  );
+
+  const renderPieChartTooltip = useCallback(
+    ({ payload }) => {
+      if (!payload?.length) return null;
+      const item = payload[0].payload;
+      const percentage =
+        pieChartTotal > 0 ? ((item.value / pieChartTotal) * 100).toFixed(1) : 0;
+      return (
+        <div className="bg-white p-2 border rounded shadow">
+          <p className="font-medium">{item.name}</p>
+          <p className="text-sm">
+            {item.value} quizzes ({percentage}%)
+          </p>
+        </div>
+      );
+    },
+    [pieChartTotal],
+  );
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="container mx-auto px-4 py-20 max-w-4xl text-center">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+          <p className="mt-2 text-muted-foreground">
+            Loading Analytics...
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-8 max-w-[1400px]">
         {/* Header */}
         <div className="flex justify-between mb-8 gap-4">
-          <div>
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/interview-prep/${sessionId}`)}
-              className="gap-2 mb-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <p className="hidden md:block">Back to Session</p>
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            onClick={() => navigate(`/interview-prep/${sessionId}`)}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <p className="hidden md:block">Back to Session</p>
+          </Button>
+
           <div className="flex gap-2">
-            <h1 className="text-3xl font-bold hidden md:block">Quiz </h1>
-            <h1 className="text-3xl font-bold hidden md:block"> Analytics</h1>
+            <h1 className="text-3xl font-bold hidden md:block">
+              Quiz Analytics
+            </h1>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Desktop: Tabs (hidden on mobile) - only show if we have data */}
+            {/* Desktop: Tabs */}
             {hasRealData && (
               <div className="hidden md:block">
                 <Tabs
@@ -211,21 +331,21 @@ const QuizAnalytics = () => {
                   className="w-auto"
                 >
                   <TabsList>
-                    <TabsTrigger value="week" className="cursor-pointer">
-                      This Week
-                    </TabsTrigger>
-                    <TabsTrigger value="month" className="cursor-pointer">
-                      This Month
-                    </TabsTrigger>
-                    <TabsTrigger value="all" className="cursor-pointer">
-                      All Time
-                    </TabsTrigger>
+                    {TIME_RANGE_OPTIONS.map(({ value, label }) => (
+                      <TabsTrigger
+                        key={value}
+                        value={value}
+                        className="cursor-pointer"
+                      >
+                        {label}
+                      </TabsTrigger>
+                    ))}
                   </TabsList>
                 </Tabs>
               </div>
             )}
 
-            {/* Mobile: Dropdown (visible on mobile) - only show if we have data */}
+            {/* Mobile: Dropdown */}
             {hasRealData && (
               <div className="md:hidden">
                 <DropdownMenu>
@@ -234,31 +354,20 @@ const QuizAnalytics = () => {
                       variant="outline"
                       className="w-[120px] justify-between"
                     >
-                      {timeRange === "week" && "This Week"}
-                      {timeRange === "month" && "This Month"}
-                      {timeRange === "all" && "All Time"}
+                      {currentTimeRangeLabel}
                       <ChevronDown className="ml-2 h-4 w-4 cursor-pointer" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-[120px]">
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onClick={() => setTimeRange("week")}
-                    >
-                      This Week
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onClick={() => setTimeRange("month")}
-                    >
-                      This Month
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="cursor-pointer"
-                      onClick={() => setTimeRange("all")}
-                    >
-                      All Time
-                    </DropdownMenuItem>
+                    {TIME_RANGE_OPTIONS.map(({ value, label }) => (
+                      <DropdownMenuItem
+                        key={value}
+                        className="cursor-pointer"
+                        onClick={() => setTimeRange(value)}
+                      >
+                        {label}
+                      </DropdownMenuItem>
+                    ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -277,15 +386,11 @@ const QuizAnalytics = () => {
           </div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-muted-foreground">Loading analytics...</p>
-          </div>
-        ) : hasRealData ? (
+        {hasRealData ? (
           <>
             {/* Key Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {/* Average Score Card */}
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -315,6 +420,7 @@ const QuizAnalytics = () => {
                 </CardContent>
               </Card>
 
+              {/* Best Score Card */}
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -338,6 +444,7 @@ const QuizAnalytics = () => {
                 </CardContent>
               </Card>
 
+              {/* Total Quizzes Card */}
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -362,6 +469,7 @@ const QuizAnalytics = () => {
                 </CardContent>
               </Card>
 
+              {/* Total Time Card */}
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -391,7 +499,7 @@ const QuizAnalytics = () => {
             {hasChartData ? (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
                 {/* Score Trend Chart */}
-                {analytics.dailyPerformance && analytics.dailyPerformance.length > 0 && (
+                {analytics.dailyPerformance?.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -441,7 +549,7 @@ const QuizAnalytics = () => {
                 )}
 
                 {/* Topic Performance */}
-                {analytics.topicPerformance && analytics.topicPerformance.length > 0 && (
+                {analytics.topicPerformance?.length > 0 && (
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -495,7 +603,8 @@ const QuizAnalytics = () => {
                       No Chart Data Yet
                     </h3>
                     <p className="text-muted-foreground mb-6">
-                      Complete more quizzes to generate performance charts and trends.
+                      Complete more quizzes to generate performance charts and
+                      trends.
                     </p>
                   </div>
                 </CardContent>
@@ -503,7 +612,7 @@ const QuizAnalytics = () => {
             )}
 
             {/* Score Distribution */}
-            {hasPieChartData ? (
+            {hasPieChartData && (
               <Card className="mb-8">
                 <CardHeader>
                   <CardTitle>Score Distribution</CardTitle>
@@ -521,26 +630,7 @@ const QuizAnalytics = () => {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                            const RADIAN = Math.PI / 180;
-                            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                            const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                            const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                            
-                            return (
-                              <text
-                                x={x}
-                                y={y}
-                                fill="white"
-                                textAnchor={x > cx ? "start" : "end"}
-                                dominantBaseline="central"
-                                fontSize={12}
-                                fontWeight="bold"
-                              >
-                                {`${(percent * 100).toFixed(0)}%`}
-                              </text>
-                            );
-                          }}
+                          label={renderPieChartLabel}
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="value"
@@ -549,33 +639,18 @@ const QuizAnalytics = () => {
                           {pieChartData.map((entry, index) => (
                             <Cell
                               key={`cell-${index}`}
-                              fill={COLORS[index % COLORS.length]}
+                              fill={CHART_COLORS[index % CHART_COLORS.length]}
                             />
                           ))}
                         </Pie>
-                        <Tooltip
-                          formatter={(value, name, props) => {
-                            const total = pieChartData.reduce(
-                              (sum, item) => sum + item.value,
-                              0,
-                            );
-                            const percentage =
-                              total > 0
-                                ? ((value / total) * 100).toFixed(1)
-                                : 0;
-                            return [
-                              `${value} quizzes (${percentage}%)`,
-                              props.payload.name,
-                            ];
-                          }}
-                        />
+                        <Tooltip content={renderPieChartTooltip} />
                         <Legend />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>
-            ) : null}
+            )}
 
             {/* Performance Insights */}
             <Card>
@@ -616,20 +691,12 @@ const QuizAnalytics = () => {
                     <div className="space-y-4">
                       <h4 className="font-semibold">Recommendations</h4>
                       <ul className="space-y-2">
-                        <li className="flex items-start gap-2">
-                          <div className="h-2 w-2 bg-green-500 rounded-full mt-2"></div>
-                          <span>Focus on topics with scores below 70%</span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="h-2 w-2 bg-green-500 rounded-full mt-2"></div>
-                          <span>
-                            Take quizzes regularly to maintain progress
-                          </span>
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <div className="h-2 w-2 bg-green-500 rounded-full mt-2"></div>
-                          <span>Review explanations for incorrect answers</span>
-                        </li>
+                        {RECOMMENDATIONS.map((rec, index) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <div className="h-2 w-2 bg-green-500 rounded-full mt-2" />
+                            <span>{rec}</span>
+                          </li>
+                        ))}
                       </ul>
                     </div>
 
@@ -678,7 +745,7 @@ const QuizAnalytics = () => {
                 track your progress over time.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button 
+                <Button
                   onClick={() => navigate(`/quiz/${sessionId}`)}
                   size="lg"
                 >

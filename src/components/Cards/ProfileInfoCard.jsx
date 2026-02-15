@@ -66,7 +66,9 @@ const ProfileInfoCard = () => {
             <ItemContent>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <ItemTitle className="font-bold">{user.name}</ItemTitle>
+                  <ItemTitle className="font-bold block max-w-[60px] overflow-hidden text-ellipsis whitespace-nowrap">
+                  {user.name.split(" ")[0]}
+                </ItemTitle>
                 </TooltipTrigger>
                 <TooltipContent>Click to edit profile</TooltipContent>
               </Tooltip>

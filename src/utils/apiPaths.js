@@ -100,7 +100,10 @@ export const API_PATHS = {
     RESULTS: (quizId) => `/quiz/${quizId}/results`,
     SESSION_QUIZZES: (sessionId) => `/quiz/session/${sessionId}`,
     DELETE: (quizId) => `/quiz/${quizId}`,
-    ANALYTICS: (sessionId) => `/quiz/session/${sessionId}/analytics`,
+    // Added missing analytics endpoints
+    SESSION_ANALYTICS: (sessionId, range = "all") =>
+      `/quiz/session/${sessionId}/analytics?range=${range}`,
+    SESSION_TOPICS: (sessionId) => `/quiz/session/${sessionId}/topics`,
     TRACK_TIME: (quizId) => `/quiz/${quizId}/track-time`,
   },
 
