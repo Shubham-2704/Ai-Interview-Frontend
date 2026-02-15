@@ -200,47 +200,51 @@ const LandingPage = () => {
         <div className="w-[40vw] md:w-[500px] h-[500px] bg-orange-200/20 blur-[65px] absolute top-20 right-0" />
 
         {/* Fixed Header - Now with EXACT same padding as footer */}
+        {/* Fixed Header - UPDATED for better responsiveness */}
         <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-amber-100">
-          <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 mx-auto   h-full">
-            <div className="flex justify-between items-center h-16 sm:h-20">
-              <Logo />
+          <div className="w-full px-4 sm:px-6 lg:px-8 mx-auto">
+            <div className="flex justify-between items-center min-h-[64px] sm:min-h-[72px] md:min-h-[80px]">
+              {/* Logo - responsive sizing */}
+              <div className="flex-shrink-0">
+                <Logo />
+              </div>
 
-              {/* Desktop Navigation */}
-              <nav className="hidden md:flex items-center gap-4 lg:gap-6 xl:gap-8">
+              {/* Desktop Navigation - Better spacing for all screen sizes */}
+              <nav className="hidden md:flex items-center gap-2 lg:gap-4 xl:gap-6 mx-2 lg:mx-4">
                 <a
                   href="#features"
-                  className="text-xs sm:text-sm lg:text-base font-medium text-gray-700 hover:text-amber-600 transition-colors whitespace-nowrap"
+                  className="px-2 lg:px-3 py-2 text-sm lg:text-base font-medium text-gray-700 hover:text-amber-600 transition-colors whitespace-nowrap rounded-md hover:bg-amber-50"
                 >
                   Features
                 </a>
                 <a
                   href="#how-it-works"
-                  className="text-xs sm:text-sm lg:text-base font-medium text-gray-700 hover:text-amber-600 transition-colors whitespace-nowrap"
+                  className="px-2 lg:px-3 py-2 text-sm lg:text-base font-medium text-gray-700 hover:text-amber-600 transition-colors whitespace-nowrap rounded-md hover:bg-amber-50"
                 >
                   How It Works
                 </a>
                 <a
                   href="#testimonials"
-                  className="text-xs sm:text-sm lg:text-base font-medium text-gray-700 hover:text-amber-600 transition-colors whitespace-nowrap"
+                  className="px-2 lg:px-3 py-2 text-sm lg:text-base font-medium text-gray-700 hover:text-amber-600 transition-colors whitespace-nowrap rounded-md hover:bg-amber-50"
                 >
                   Testimonials
                 </a>
                 <a
                   href="#faq"
-                  className="text-xs sm:text-sm lg:text-base font-medium text-gray-700 hover:text-amber-600 transition-colors whitespace-nowrap"
+                  className="px-2 lg:px-3 py-2 text-sm lg:text-base font-medium text-gray-700 hover:text-amber-600 transition-colors whitespace-nowrap rounded-md hover:bg-amber-50"
                 >
                   FAQ
                 </a>
               </nav>
 
               {/* Auth Button - Desktop */}
-              <div className="hidden md:block">
+              <div className="hidden md:block flex-shrink-0">
                 {user ? (
                   <ProfileInfoCard />
                 ) : (
                   <Button
                     onClick={handleCTA}
-                    className="bg-linear-to-r from-[#FF9324] to-[#E99A4b] text-white rounded-full font-semibold px-4 lg:px-6 py-1.5 lg:py-2 text-xs sm:text-sm lg:text-base hover:shadow-lg hover:scale-105 transition-all duration-200 whitespace-nowrap"
+                    className="bg-gradient-to-r from-[#FF9324] to-[#E99A4b] text-white rounded-full font-semibold px-4 lg:px-5 xl:px-6 py-1.5 lg:py-2 text-sm lg:text-base hover:shadow-lg hover:scale-105 transition-all duration-200 whitespace-nowrap"
                   >
                     Get Started Free
                   </Button>
@@ -250,57 +254,57 @@ const LandingPage = () => {
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 text-gray-700 hover:text-amber-600 transition-colors focus:outline-none"
+                className="md:hidden p-2 text-gray-700 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors focus:outline-none"
                 aria-label="Toggle menu"
               >
                 {mobileMenuOpen ? (
-                  <X className="size-5 sm:size-6" />
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 ) : (
-                  <Menu className="size-5 sm:size-6" />
+                  <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
                 )}
               </button>
             </div>
 
-            {/* Mobile Menu - Full width with same padding as footer */}
+            {/* Mobile Menu - Full width with proper padding */}
             {mobileMenuOpen && (
-              <div className="md:hidden fixed inset-x-0 top-16 sm:top-20 bg-white/95 backdrop-blur-md border-b border-amber-100 shadow-lg animate-slideDown">
-                <div className="px-4 sm:px-6 lg:px-8 py-6">
-                  <nav className="flex flex-col gap-4">
+              <div className="md:hidden fixed inset-x-0 top-[64px] sm:top-[72px] bg-white/95 backdrop-blur-md border-b border-amber-100 shadow-lg animate-slideDown">
+                <div className="px-4 sm:px-6 py-4 sm:py-6">
+                  <nav className="flex flex-col gap-2">
                     <a
                       href="#features"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="text-base sm:text-lg font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 transition-colors py-2 px-3 rounded-lg"
+                      className="text-base sm:text-lg font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 transition-colors py-3 px-4 rounded-lg"
                     >
                       Features
                     </a>
                     <a
                       href="#how-it-works"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="text-base sm:text-lg font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 transition-colors py-2 px-3 rounded-lg"
+                      className="text-base sm:text-lg font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 transition-colors py-3 px-4 rounded-lg"
                     >
                       How It Works
                     </a>
                     <a
                       href="#testimonials"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="text-base sm:text-lg font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 transition-colors py-2 px-3 rounded-lg"
+                      className="text-base sm:text-lg font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 transition-colors py-3 px-4 rounded-lg"
                     >
                       Testimonials
                     </a>
                     <a
                       href="#faq"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="text-base sm:text-lg font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 transition-colors py-2 px-3 rounded-lg"
+                      className="text-base sm:text-lg font-medium text-gray-700 hover:text-amber-600 hover:bg-amber-50 transition-colors py-3 px-4 rounded-lg"
                     >
                       FAQ
                     </a>
 
                     {/* Divider */}
-                    <div className="border-t border-amber-100 my-2"></div>
+                    <div className="border-t border-amber-100 my-3"></div>
 
                     {/* Mobile Auth Button */}
                     {user ? (
-                      <div className="px-3">
+                      <div className="px-2">
                         <ProfileInfoCard />
                       </div>
                     ) : (
@@ -309,7 +313,7 @@ const LandingPage = () => {
                           handleCTA();
                           setMobileMenuOpen(false);
                         }}
-                        className="w-full bg-linear-to-r from-[#FF9324] to-[#E99A4b] text-white rounded-full font-semibold px-4 py-3 text-base hover:shadow-lg transition-all duration-200"
+                        className="w-full bg-gradient-to-r from-[#FF9324] to-[#E99A4b] text-white rounded-full font-semibold px-4 py-3.5 text-base hover:shadow-lg transition-all duration-200"
                       >
                         Get Started Free
                       </Button>

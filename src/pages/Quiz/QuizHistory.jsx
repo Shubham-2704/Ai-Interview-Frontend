@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
@@ -17,7 +17,7 @@ import {
   Eye,
   Plus,
   Loader2,
-  Info, // Added Loader2 for loading spinner
+  Info,
 } from "lucide-react";
 import {
   Table,
@@ -41,6 +41,31 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
+// Constants
+const PERFORMANCE_THRESHOLDS = {
+  EXCELLENT: 80,
+  GOOD: 60,
+  EXCELLENT_LABEL: "Excellent",
+  GREAT_LABEL: "Great",
+  GOOD_LABEL: "Good",
+  FAIR_LABEL: "Fair",
+  NEEDS_PRACTICE_LABEL: "Needs Practice",
+};
+
+const PERFORMANCE_COLORS = {
+  EXCELLENT: "bg-green-100 text-green-800",
+  GREAT: "bg-blue-100 text-blue-800",
+  GOOD: "bg-yellow-100 text-yellow-800",
+  FAIR: "bg-orange-100 text-orange-800",
+  NEEDS_PRACTICE: "bg-red-100 text-red-800",
+};
+
+const BAR_CHART_COLORS = {
+  HIGH: "#10b981",
+  MEDIUM: "#f59e0b",
+  LOW: "#ef4444",
+};
+
 const QuizHistory = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
@@ -50,7 +75,7 @@ const QuizHistory = () => {
   const [sessionInfo, setSessionInfo] = useState(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [quizToDelete, setQuizToDelete] = useState(null);
-  const [deleting, setDeleting] = useState(false); // Added deleting state
+  const [deleting, setDeleting] = useState(false);
 
   const fetchQuizHistory = useCallback(async () => {
     try {
@@ -65,20 +90,8 @@ const QuizHistory = () => {
     }
   }, [sessionId]);
 
-  //   const fetchSessionInfo = useCallback(async () => {
-  //     try {
-  //       const response = await axiosInstance.get(`/api/sessions/${sessionId}`);
-  //       if (response.data?.session) {
-  //         setSessionInfo(response.data.session);
-  //       }
-  //     } catch (error) {
-  //       console.error("Failed to fetch session info:", error);
-  //     }
-  //   }, [sessionId]);
-
   useEffect(() => {
     fetchQuizHistory();
-    // fetchSessionInfo();
   }, [fetchQuizHistory]);
 
   const handleDeleteQuiz = async () => {
@@ -98,65 +111,73 @@ const QuizHistory = () => {
     }
   };
 
-  const getPerformanceColor = (percentage) => {
-    if (percentage >= 80) return "text-green-600";
-    if (percentage >= 60) return "text-yellow-600";
+  const getPerformanceColor = useCallback((percentage) => {
+    if (percentage >= PERFORMANCE_THRESHOLDS.EXCELLENT) return "text-green-600";
+    if (percentage >= PERFORMANCE_THRESHOLDS.GOOD) return "text-yellow-600";
     return "text-red-600";
-  };
+  }, []);
 
-  const getPerformanceBadge = (percentage) => {
-    if (percentage >= 90)
+  const getPerformanceBadge = useCallback((percentage) => {
+    if (percentage >= 90) {
       return {
-        label: "Excellent",
+        label: PERFORMANCE_THRESHOLDS.EXCELLENT_LABEL,
         variant: "default",
-        color: "bg-green-100 text-green-800",
+        color: PERFORMANCE_COLORS.EXCELLENT,
       };
-    if (percentage >= 80)
+    }
+    if (percentage >= 80) {
       return {
-        label: "Great",
+        label: PERFORMANCE_THRESHOLDS.GREAT_LABEL,
         variant: "default",
-        color: "bg-blue-100 text-blue-800",
+        color: PERFORMANCE_COLORS.GREAT,
       };
-    if (percentage >= 70)
+    }
+    if (percentage >= 70) {
       return {
-        label: "Good",
+        label: PERFORMANCE_THRESHOLDS.GOOD_LABEL,
         variant: "secondary",
-        color: "bg-yellow-100 text-yellow-800",
+        color: PERFORMANCE_COLORS.GOOD,
       };
-    if (percentage >= 60)
+    }
+    if (percentage >= 60) {
       return {
-        label: "Fair",
+        label: PERFORMANCE_THRESHOLDS.FAIR_LABEL,
         variant: "outline",
-        color: "bg-orange-100 text-orange-800",
+        color: PERFORMANCE_COLORS.FAIR,
       };
+    }
     return {
-      label: "Needs Practice",
+      label: PERFORMANCE_THRESHOLDS.NEEDS_PRACTICE_LABEL,
       variant: "destructive",
-      color: "bg-red-100 text-red-800",
+      color: PERFORMANCE_COLORS.NEEDS_PRACTICE,
     };
-  };
+  }, []);
 
-  const formatTimeSpent = (seconds) => {
+  const formatTimeSpent = useCallback((seconds) => {
     if (!seconds || seconds === 0) return "N/A";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}m ${secs}s`;
-  };
+  }, []);
 
-  const calculateStats = () => {
+  const formatDateTime = useCallback(
+    (date) => ({
+      date: format(new Date(date), "MMM dd, yyyy"),
+      time: format(new Date(date), "hh:mm a"),
+      shortDate: format(new Date(date), "MM/dd"),
+    }),
+    [],
+  );
+
+  const stats = useMemo(() => {
     if (quizzes.length === 0) return null;
 
     const totalQuizzes = quizzes.length;
-    const totalScore = quizzes.reduce(
-      (sum, quiz) => sum + (quiz.percentage || 0),
-      0,
-    );
+    const percentages = quizzes.map((q) => q.percentage || 0);
+    const totalScore = percentages.reduce((sum, p) => sum + p, 0);
     const averageScore = totalScore / totalQuizzes;
-    const bestScore = Math.max(...quizzes.map((q) => q.percentage || 0));
-    const totalTime = quizzes.reduce(
-      (sum, quiz) => sum + (quiz.timeSpent || 0),
-      0,
-    );
+    const bestScore = Math.max(...percentages);
+    const totalTime = quizzes.reduce((sum, q) => sum + (q.timeSpent || 0), 0);
 
     return {
       totalQuizzes,
@@ -164,11 +185,22 @@ const QuizHistory = () => {
       bestScore,
       totalTime,
     };
-  };
+  }, [quizzes]);
 
-  const stats = calculateStats();
+  const recentStats = useMemo(() => {
+    if (quizzes.length === 0) return null;
 
-  const handleExportAll = async () => {
+    const recentQuizzes = quizzes.slice(0, Math.min(quizzes.length, 5));
+    const percentages = recentQuizzes.map((q) => q.percentage || 0);
+    const avgScore =
+      percentages.reduce((sum, p) => sum + p, 0) / recentQuizzes.length;
+    const highestScore = Math.max(...percentages);
+    const lowestScore = Math.min(...percentages);
+
+    return { avgScore, highestScore, lowestScore };
+  }, [quizzes]);
+
+  const handleExportAll = useCallback(async () => {
     if (quizzes.length === 0) {
       toast.info("No quizzes to export", { position: "bottom-right" });
       return;
@@ -179,15 +211,25 @@ const QuizHistory = () => {
         session: sessionInfo?.role || "Interview Preparation",
         totalQuizzes: quizzes.length,
         exportDate: new Date().toISOString(),
-        quizzes: quizzes.map((quiz) => ({
-          id: quiz._id,
-          date: quiz.createdAt,
-          score: quiz.score,
-          total: quiz.totalQuestions,
-          percentage: quiz.percentage,
-          timeSpent: quiz.timeSpent,
-          status: quiz.status,
-        })),
+        quizzes: quizzes.map(
+          ({
+            _id,
+            createdAt,
+            score,
+            totalQuestions,
+            percentage,
+            timeSpent,
+            status,
+          }) => ({
+            id: _id,
+            date: createdAt,
+            score,
+            total: totalQuestions,
+            percentage,
+            timeSpent,
+            status,
+          }),
+        ),
       };
 
       const dataStr = JSON.stringify(exportData, null, 2);
@@ -201,27 +243,62 @@ const QuizHistory = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success(`Exported ${quizzes.length} quiz attempts!`, { position: "top-center" });
+      toast.success(`Exported ${quizzes.length} quiz attempts!`, {
+        position: "top-center",
+      });
     } catch (error) {
-      toast.error("Failed to export quiz history", { position: "bottom-right" });
+      toast.error("Failed to export quiz history", {
+        position: "bottom-right",
+      });
     }
-  };
+  }, [quizzes, sessionInfo]);
+
+  const handleExportSingle = useCallback(async (quiz) => {
+    try {
+      const response = await axiosInstance.get(
+        API_PATHS.QUIZ.RESULTS(quiz._id),
+      );
+      const dataStr = JSON.stringify(response.data, null, 2);
+      const dataBlob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `quiz-${quiz._id}-${new Date(quiz.createdAt).toISOString().split("T")[0]}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success("Quiz exported!", { position: "top-center" });
+    } catch (error) {
+      toast.error("Failed to export quiz", { position: "bottom-right" });
+    }
+  }, []);
+
+  const handleDeleteClick = useCallback((quizId) => {
+    setQuizToDelete(quizId);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const getBarColor = useCallback((percentage) => {
+    if (percentage >= PERFORMANCE_THRESHOLDS.EXCELLENT)
+      return BAR_CHART_COLORS.HIGH;
+    if (percentage >= PERFORMANCE_THRESHOLDS.GOOD)
+      return BAR_CHART_COLORS.MEDIUM;
+    return BAR_CHART_COLORS.LOW;
+  }, []);
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-4 md:py-8 max-w-[1400px]">
+      <div className="container mx-auto px-4 py-2 md:py-4 max-w-[1400px]">
         {/* Header */}
-        <div className="flex justify-between mb-4 md:mb-8 gap-4">
-          <div>
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/interview-prep/${sessionId}`)}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <p className="hidden md:block">Back to Session</p>
-            </Button>
-          </div>
+        <div className="flex justify-between mb-4 md:mb-4 gap-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(`/interview-prep/${sessionId}`)}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <p className="hidden md:block">Back to Session</p>
+          </Button>
+
           <div className="flex gap-2">
             <h1 className="text-3xl font-bold hidden md:block">Quiz</h1>
             <h1 className="text-2xl md:text-3xl font-bold hidden md:block">
@@ -231,17 +308,17 @@ const QuizHistory = () => {
 
           <div className="flex items-center gap-3">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => navigate(`/quiz/${sessionId}`)}
-              className="gap-2 text-orange-500 bg:orange-100 hover:bg-orange-200 hover:text-orange-500"
+              className="gap-2 text-orange-500 bg:orange-100 hover:bg-orange-200 hover:text-black"
             >
               <Plus className="h-4 w-4" />
               New Quiz
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => navigate(`/quiz/${sessionId}/analytics`)}
-              className="gap-2  text-blue-500 bg:blue-100 hover:bg-blue-200 hover:text-blue-500"
+              className="gap-2 text-blue-500 bg:blue-100 hover:bg-blue-200 hover:text-black"
             >
               <BarChart3 className="h-4 w-4" />
               Analytics
@@ -254,17 +331,15 @@ const QuizHistory = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <Card>
               <CardContent className="p-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Total Attempts
-                      </p>
-                      <p className="text-3xl font-bold">{stats.totalQuizzes}</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <FileText className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Total Attempts
+                    </p>
+                    <p className="text-3xl font-bold">{stats.totalQuizzes}</p>
                   </div>
                 </div>
               </CardContent>
@@ -293,19 +368,15 @@ const QuizHistory = () => {
 
             <Card>
               <CardContent className="p-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-yellow-100 rounded-lg">
-                      <Trophy className="h-5 w-5 text-yellow-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Best Score
-                      </p>
-                      <p className="text-3xl font-bold">
-                        {stats.bestScore.toFixed(1)}%
-                      </p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <Trophy className="h-5 w-5 text-yellow-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Best Score</p>
+                    <p className="text-3xl font-bold">
+                      {stats.bestScore.toFixed(1)}%
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -313,19 +384,15 @@ const QuizHistory = () => {
 
             <Card>
               <CardContent className="p-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Clock className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Total Time
-                      </p>
-                      <p className="text-3xl font-bold">
-                        {Math.floor(stats.totalTime / 60)}m
-                      </p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <Clock className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Time</p>
+                    <p className="text-3xl font-bold">
+                      {Math.floor(stats.totalTime / 60)}m
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -354,7 +421,7 @@ const QuizHistory = () => {
           <CardContent>
             {loading ? (
               <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
                 <p className="mt-4 text-muted-foreground">
                   Loading quiz history...
                 </p>
@@ -391,19 +458,15 @@ const QuizHistory = () => {
                       const performance = getPerformanceBadge(
                         quiz.percentage || 0,
                       );
+                      const dateTime = formatDateTime(quiz.createdAt);
                       return (
                         <TableRow key={quiz._id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
-                              <span>
-                                {format(
-                                  new Date(quiz.createdAt),
-                                  "MMM dd, yyyy",
-                                )}
-                              </span>
+                              <span>{dateTime.date}</span>
                               <span className="text-muted-foreground text-sm">
-                                {format(new Date(quiz.createdAt), "hh:mm a")}
+                                {dateTime.time}
                               </span>
                             </div>
                           </TableCell>
@@ -462,30 +525,7 @@ const QuizHistory = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={async () => {
-                                  try {
-                                    const response = await axiosInstance.get(
-                                      API_PATHS.QUIZ.RESULTS(quiz._id),
-                                    );
-                                    const dataStr = JSON.stringify(
-                                      response.data,
-                                      null,
-                                      2,
-                                    );
-                                    const dataBlob = new Blob([dataStr], {
-                                      type: "application/json",
-                                    });
-                                    const url = URL.createObjectURL(dataBlob);
-                                    const link = document.createElement("a");
-                                    link.href = url;
-                                    link.download = `quiz-${quiz._id}-${new Date(quiz.createdAt).toISOString().split("T")[0]}.json`;
-                                    link.click();
-                                    URL.revokeObjectURL(url);
-                                    toast.success("Quiz exported!", { position: "top-center" });
-                                  } catch (error) {
-                                    toast.error("Failed to export quiz", { position: "bottom-right" });
-                                  }
-                                }}
+                                onClick={() => handleExportSingle(quiz)}
                                 className="gap-1"
                               >
                                 <Download className="h-3 w-3" />
@@ -493,10 +533,7 @@ const QuizHistory = () => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                  setQuizToDelete(quiz._id);
-                                  setDeleteDialogOpen(true);
-                                }}
+                                onClick={() => handleDeleteClick(quiz._id)}
                                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               >
                                 <Trash2 className="h-3 w-3" />
@@ -514,7 +551,7 @@ const QuizHistory = () => {
         </Card>
 
         {/* Performance Trends Section */}
-        {quizzes.length > 1 && (
+        {quizzes.length > 1 && recentStats && (
           <Card className="mt-8">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -555,56 +592,53 @@ const QuizHistory = () => {
 
                   {/* Bars */}
                   <div className="ml-8 flex-1 flex items-end gap-2">
-                    {quizzes.slice(0, 10).map((quiz, index) => (
-                      <div
-                        key={index}
-                        className="flex-1 flex flex-col items-center group relative"
-                      >
-                        {/* Bar */}
+                    {quizzes.slice(0, 10).map((quiz, index) => {
+                      const dateTime = formatDateTime(quiz.createdAt);
+                      const percentage = quiz.percentage || 0;
+
+                      return (
                         <div
-                          className="w-full rounded-t-lg transition-all duration-200 hover:opacity-90 relative"
-                          style={{
-                            height: `${(quiz.percentage || 0) * 0.6}px`,
-                            backgroundColor:
-                              quiz.percentage >= 80
-                                ? "#10b981"
-                                : quiz.percentage >= 60
-                                  ? "#f59e0b"
-                                  : "#ef4444",
-                          }}
+                          key={quiz._id}
+                          className="flex-1 flex flex-col items-center group relative"
                         >
-                          {/* Hover Tooltip */}
-                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
-                            <div className="font-semibold">
-                              {quiz.percentage?.toFixed(1) || 0}%
-                            </div>
-                            <div className="text-gray-300">
-                              {format(new Date(quiz.createdAt), "MMM dd, yyyy")}
-                            </div>
-                            <div className="text-gray-300">
-                              Score: {quiz.score || 0}/
-                              {quiz.totalQuestions || 0}
-                            </div>
-                            <div className="text-gray-300">
-                              Time:{" "}
-                              {quiz.timeSpent
-                                ? `${Math.floor(quiz.timeSpent / 60)}m ${quiz.timeSpent % 60}s`
-                                : "N/A"}
+                          {/* Bar */}
+                          <div
+                            className="w-full rounded-t-lg transition-all duration-200 hover:opacity-90 relative"
+                            style={{
+                              height: `${percentage * 0.6}px`,
+                              backgroundColor: getBarColor(percentage),
+                            }}
+                          >
+                            {/* Hover Tooltip */}
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-lg">
+                              <div className="font-semibold">
+                                {percentage.toFixed(1)}%
+                              </div>
+                              <div className="text-gray-300">
+                                {dateTime.date}
+                              </div>
+                              <div className="text-gray-300">
+                                Score: {quiz.score || 0}/
+                                {quiz.totalQuestions || 0}
+                              </div>
+                              <div className="text-gray-300">
+                                Time: {formatTimeSpent(quiz.timeSpent)}
+                              </div>
                             </div>
                           </div>
-                        </div>
 
-                        {/* Date Label */}
-                        <div className="text-xs text-muted-foreground mt-2">
-                          {format(new Date(quiz.createdAt), "MM/dd")}
-                        </div>
+                          {/* Date Label */}
+                          <div className="text-xs text-muted-foreground mt-2">
+                            {dateTime.shortDate}
+                          </div>
 
-                        {/* Attempt Number */}
-                        <div className="text-xs text-gray-500 mt-1">
-                          #{quizzes.length - index}
+                          {/* Attempt Number */}
+                          <div className="text-xs text-gray-500 mt-1">
+                            #{quizzes.length - index}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -628,52 +662,30 @@ const QuizHistory = () => {
 
                 {/* Performance Summary */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-                  {(() => {
-                    const recentQuizzes = quizzes.slice(
-                      0,
-                      Math.min(quizzes.length, 5),
-                    );
-                    const avgScore =
-                      recentQuizzes.reduce(
-                        (sum, q) => sum + (q.percentage || 0),
-                        0,
-                      ) / recentQuizzes.length;
-                    const highestScore = Math.max(
-                      ...recentQuizzes.map((q) => q.percentage || 0),
-                    );
-                    const lowestScore = Math.min(
-                      ...recentQuizzes.map((q) => q.percentage || 0),
-                    );
-
-                    return (
-                      <>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-gray-900">
-                            {avgScore.toFixed(1)}%
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Avg Score (Last 5)
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-green-600">
-                            {highestScore.toFixed(1)}%
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Best Score
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-red-600">
-                            {lowestScore.toFixed(1)}%
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Lowest Score
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {recentStats.avgScore.toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Avg Score (Last 5)
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {recentStats.highestScore.toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Best Score
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">
+                      {recentStats.lowestScore.toFixed(1)}%
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Lowest Score
+                    </div>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -694,16 +706,16 @@ const QuizHistory = () => {
               <Button
                 variant="outline"
                 onClick={() => setDeleteDialogOpen(false)}
-                disabled={deleting} // Disable cancel button during delete
+                disabled={deleting}
               >
                 Cancel
               </Button>
               <Button
                 variant="destructive"
                 onClick={handleDeleteQuiz}
-                disabled={deleting} // Disable delete button during delete
+                disabled={deleting}
               >
-                {deleting ? ( // Show loading spinner when deleting
+                {deleting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Deleting...
