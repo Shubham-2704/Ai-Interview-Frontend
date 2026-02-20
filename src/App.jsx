@@ -22,9 +22,9 @@ import SessionResources from "./pages/Admin/SessionResources";
 import QuizPage from "./pages/Quiz/QuizPage";
 import QuizHistory from "./pages/Quiz/QuizHistory";
 import QuizAnalytics from "./pages/Quiz/QuizAnalytics";
-import QuizHistoryPage from "@/pages/admin/QuizHistoryPage";
-import { SettingsProvider } from "@/context/SettingsContext";
-import SocketProvider from "@/context/SocketContext";
+import QuizHistoryPage from "./pages/admin/QuizHistoryPage";
+import { SettingsProvider } from "./context/SettingsContext";
+import SocketProvider from "./context/SocketContext";
 
 function App() {
   return (
