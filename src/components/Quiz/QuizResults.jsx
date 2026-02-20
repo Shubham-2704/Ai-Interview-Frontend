@@ -28,37 +28,52 @@ const QuizResults = ({
   timeSpent,
   totalTimeLimit,
   timePerQuestion = [],
-  timeExtensions = [], // Add timeExtensions prop to track added time
+  timeExtensions = [],
 }) => {
+  // Add null check for results
+  if (!results) {
+    return (
+      <Card className="p-8 text-center">
+        <p>No results available</p>
+      </Card>
+    );
+  }
+
   const { score, total, percentage, questions, feedback, submissionType } =
     results;
 
+  // Add safe defaults
+  const safeScore = score || 0;
+  const safeTotal = total || 0;
+  const safePercentage = percentage || 0;
+  const safeQuestions = questions || [];
+
   // Calculate total extended time (time added through extensions)
   const totalExtendedTime = timeExtensions.reduce(
-    (sum, ext) => sum + ext.seconds,
+    (sum, ext) => sum + (ext?.seconds || 0),
     0,
   );
 
   // Calculate actual time spent including extensions
-  const actualTimeSpent = timeSpent + totalExtendedTime;
+  const actualTimeSpent = (timeSpent || 0) + totalExtendedTime;
 
   // Get correct, wrong, and unanswered question numbers
   const correctQuestions = [];
   const wrongQuestions = [];
   const unansweredQuestions = [];
 
-  questions.forEach((q, index) => {
-    const questionNumber = q.number || index + 1;
+  safeQuestions.forEach((q, index) => {
+    const questionNumber = q?.number || index + 1;
 
     // Check if question was answered (userAnswer is not null/undefined and not -1)
     const isAnswered =
-      q.userAnswer !== null &&
-      q.userAnswer !== undefined &&
-      q.userAnswer !== -1;
+      q?.userAnswer !== null &&
+      q?.userAnswer !== undefined &&
+      q?.userAnswer !== -1;
 
     if (!isAnswered) {
       unansweredQuestions.push(questionNumber);
-    } else if (q.isCorrect) {
+    } else if (q?.isCorrect) {
       correctQuestions.push(questionNumber);
     } else {
       wrongQuestions.push(questionNumber);
@@ -66,35 +81,37 @@ const QuizResults = ({
   });
 
   const getPerformanceColor = (percentage) => {
-    if (percentage >= 90) return "text-green-600 dark:text-green-400";
-    if (percentage >= 80) return "text-blue-600 dark:text-blue-400";
-    if (percentage >= 70) return "text-yellow-600 dark:text-yellow-400";
-    if (percentage >= 60) return "text-orange-600 dark:text-orange-400";
+    const safePerc = percentage || 0;
+    if (safePerc >= 90) return "text-green-600 dark:text-green-400";
+    if (safePerc >= 80) return "text-blue-600 dark:text-blue-400";
+    if (safePerc >= 70) return "text-yellow-600 dark:text-yellow-400";
+    if (safePerc >= 60) return "text-orange-600 dark:text-orange-400";
     return "text-red-600 dark:text-red-400";
   };
 
   const getPerformanceLevel = (percentage) => {
-    if (percentage >= 90)
+    const safePerc = percentage || 0;
+    if (safePerc >= 90)
       return {
         level: "Excellent",
         emoji: "🎯",
         color:
           "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
       };
-    if (percentage >= 80)
+    if (safePerc >= 80)
       return {
         level: "Great",
         emoji: "✨",
         color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
       };
-    if (percentage >= 70)
+    if (safePerc >= 70)
       return {
         level: "Good",
         emoji: "👍",
         color:
           "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
       };
-    if (percentage >= 60)
+    if (safePerc >= 60)
       return {
         level: "Fair",
         emoji: "💪",
@@ -131,7 +148,7 @@ const QuizResults = ({
       ? Math.min(100, Math.round((actualTimeSpent / totalTimeLimit) * 100))
       : 0;
 
-  const performance = getPerformanceLevel(percentage);
+  const performance = getPerformanceLevel(safePercentage);
 
   return (
     <motion.div
@@ -174,18 +191,18 @@ const QuizResults = ({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="text-center p-6 border-2">
               <div className="text-5xl font-bold mb-2">
-                <span className={getPerformanceColor(percentage)}>
-                  {score}/{total}
+                <span className={getPerformanceColor(safePercentage)}>
+                  {safeScore}/{safeTotal}
                 </span>
               </div>
-              <Progress value={percentage} className="h-2 mb-2" />
+              <Progress value={safePercentage} className="h-2 mb-2" />
               <p className="text-sm text-muted-foreground">Correct Answers</p>
             </Card>
 
             <Card className="text-center p-6 border-2">
               <div className="text-5xl font-bold mb-2">
-                <span className={getPerformanceColor(percentage)}>
-                  {percentage.toFixed(1)}%
+                <span className={getPerformanceColor(safePercentage)}>
+                  {safePercentage.toFixed(1)}%
                 </span>
               </div>
               <div className="flex items-center justify-center gap-1 mt-2">
@@ -238,10 +255,9 @@ const QuizResults = ({
                   Original Limit
                 </div>
               </div>
-              {/* // In the Detailed Time Analysis section, change the 3rd card: */}
               <div className="text-center p-4 border rounded-lg">
                 <div className="text-3xl font-bold">
-                  {formatTime(Math.max(0, actualTimeSpent - totalTimeLimit))}
+                  {formatTime(Math.max(0, actualTimeSpent - (totalTimeLimit || 0)))}
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Time Extended
@@ -286,11 +302,11 @@ const QuizResults = ({
                       className="flex items-center justify-between text-sm"
                     >
                       <span className="text-gray-700 dark:text-gray-300">
-                        Question {ext.questionNumber + 1}: +{ext.seconds}{" "}
+                        Question {ext?.questionNumber + 1 || index + 1}: +{ext?.seconds || 0}{" "}
                         seconds
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {ext.timestamp
+                        {ext?.timestamp
                           ? new Date(ext.timestamp).toLocaleTimeString()
                           : ""}
                       </span>
@@ -314,7 +330,7 @@ const QuizResults = ({
                   <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{score}</div>
+                  <div className="text-2xl font-bold">{correctQuestions.length}</div>
                   <div className="text-sm text-muted-foreground">
                     Correct Answers
                   </div>
@@ -441,7 +457,7 @@ const QuizResults = ({
               <p className="text-lg font-medium">
                 {performance.emoji}{" "}
                 {feedback ||
-                  `You scored ${percentage.toFixed(1)}% on this quiz.`}
+                  `You scored ${safePercentage.toFixed(1)}% on this quiz.`}
               </p>
 
               <div className="space-y-2">
@@ -537,15 +553,6 @@ const QuizResults = ({
             >
               <RefreshCw className="h-4 w-4" />
               Try Another Quiz
-            </Button>
-            <Button
-              onClick={onDownload}
-              variant="outline"
-              size="lg"
-              className="gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Download Results
             </Button>
           </div>
 
