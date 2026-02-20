@@ -372,17 +372,6 @@ const QuizAnalytics = () => {
                 </DropdownMenu>
               </div>
             )}
-
-            {hasRealData && (
-              <Button
-                variant="outline"
-                onClick={handleExportAnalytics}
-                className="gap-2"
-              >
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">Export</span>
-              </Button>
-            )}
           </div>
         </div>
 

@@ -19,7 +19,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -43,25 +42,53 @@ import {
   ChevronRight,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   Clock,
+  LogOut,
 } from "lucide-react";
 import axiosInstance from "@/utils/axiosInstance";
 import { API_PATHS } from "@/utils/apiPaths";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Constants
-const QUESTION_TIME_LIMIT = 180; // 3 minutes per question
+const QUESTION_TIME_LIMIT = 180;
 const SUBMIT_DIALOG_DELAY = 500;
 const SUBMIT_SUCCESS_DELAY = 1500;
-const TIME_WARNING_THRESHOLD = 60; // 1 minute
+const TIME_WARNING_THRESHOLD = 60;
+
+const SUBMISSION_TYPE = {
+  MANUAL: "manual",
+  AUTO: "auto",
+  BACK_BUTTON: "back_button",
+};
+
+const STATUS_CONFIG = {
+  [SUBMISSION_TYPE.MANUAL]: {
+    label: "Completed",
+    icon: CheckCircle2,
+    iconColor: "text-green-500",
+    bgColor: "bg-green-100",
+    textColor: "text-green-800",
+  },
+  [SUBMISSION_TYPE.AUTO]: {
+    label: "Auto-Submitted",
+    icon: Clock,
+    iconColor: "text-orange-500",
+    bgColor: "bg-orange-100",
+    textColor: "text-orange-800",
+  },
+  [SUBMISSION_TYPE.BACK_BUTTON]: {
+    label: "Navigation Submitted",
+    icon: LogOut,
+    iconColor: "text-purple-500",
+    bgColor: "bg-purple-100",
+    textColor: "text-purple-800",
+  }
+};
 
 const QuizPage = () => {
   const { sessionId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // State
   const [quizState, setQuizState] = useState("start");
   const [showStartDialog, setShowStartDialog] = useState(true);
   const [quizData, setQuizData] = useState(null);
@@ -81,10 +108,14 @@ const QuizPage = () => {
   const [showNavigationDialog, setShowNavigationDialog] = useState(false);
   const [showRefreshDialog, setShowRefreshDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingForUnload, setIsSubmittingForUnload] = useState(false);
+  const [submissionType, setSubmissionType] = useState(SUBMISSION_TYPE.MANUAL);
 
-  // Refs
   const submitTimeoutRef = useRef(null);
   const successTimeoutRef = useRef(null);
+  const beforeUnloadHandlerRef = useRef(null);
+  const unloadSubmittedRef = useRef(false);
+  
   const unansweredCount = useMemo(
     () => userAnswers.filter((a) => a == null).length,
     [userAnswers],
@@ -95,45 +126,110 @@ const QuizPage = () => {
   );
 
   const reviewQuizId = searchParams.get("review");
+  
+  const prepareAnswersForSubmission = useCallback(
+    (answers) => answers.map((answer) => (answer == null ? -1 : answer)),
+    [],
+  );
 
-  // Cleanup timeouts
+  const getSubmissionStatusBadge = useCallback(() => {
+    if (!results) return null;
+    
+    const type = results.submissionType || submissionType;
+    const config = STATUS_CONFIG[type] || STATUS_CONFIG[SUBMISSION_TYPE.MANUAL];
+    const Icon = config.icon;
+
+    return (
+      <span className={`px-3 py-1 rounded-full text-sm flex items-center gap-1 ${config.bgColor} ${config.textColor}`}>
+        <Icon className={`h-3 w-3 ${config.iconColor}`} />
+        {config.label}
+      </span>
+    );
+  }, [results, submissionType]);
+
   useEffect(
     () => () => {
       if (submitTimeoutRef.current) clearTimeout(submitTimeoutRef.current);
       if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+      if (beforeUnloadHandlerRef.current) {
+        window.removeEventListener("beforeunload", beforeUnloadHandlerRef.current);
+      }
     },
     [],
   );
 
-  // Navigation warning effect
-  // Navigation warning effect - handles both back button AND refresh
   useEffect(() => {
     if (quizState !== "active") return;
 
-    let refreshAttempted = false;
+    const handleBeforeUnload = (e) => {
+      setSubmissionType(SUBMISSION_TYPE.MANUAL);
+      e.preventDefault();
+      e.returnValue = "You have an ongoing quiz. Are you sure you want to leave? Your quiz will be submitted automatically.";
+      setIsSubmittingForUnload(true);
+      return e.returnValue;
+    };
 
-    // Handle keyboard shortcuts for refresh
-    const handleKeyDown = (e) => {
-      // Check for F5 or Ctrl+R / Cmd+R
-      if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key === 'r')) {
-        e.preventDefault();
-        refreshAttempted = true;
-        setIsTimerActive(false);
-        setShowRefreshDialog(true); // Show SAME dialog as back button
+    beforeUnloadHandlerRef.current = handleBeforeUnload;
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [quizState]);
+
+  useEffect(() => {
+    if (quizState !== "active") return;
+
+    const handleUnload = () => {
+      if (isSubmittingForUnload && !unloadSubmittedRef.current && quizData?.quizId) {
+        unloadSubmittedRef.current = true;
+        
+        const submitData = {
+          quizId: quizData.quizId,
+          answers: prepareAnswersForSubmission(userAnswers),
+          timeSpent: timeSpent,
+          submissionType: submissionType,
+          isAutoSubmit: true,
+        };
+        
+        const blob = new Blob([JSON.stringify(submitData)], {
+          type: 'application/json'
+        });
+        
+        navigator.sendBeacon(
+          `${API_PATHS.QUIZ.SUBMIT(quizData.quizId)}`, 
+          blob
+        );
       }
     };
 
-    // Handle browser back button
+    window.addEventListener("unload", handleUnload);
+
+    return () => {
+      window.removeEventListener("unload", handleUnload);
+    };
+  }, [quizState, quizData, userAnswers, timeSpent, isSubmittingForUnload, prepareAnswersForSubmission, submissionType]);
+
+  useEffect(() => {
+    if (quizState !== "active") return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key === 'r')) {
+        e.preventDefault();
+        setIsTimerActive(false);
+        setSubmissionType(SUBMISSION_TYPE.MANUAL);
+        setShowRefreshDialog(true);
+      }
+    };
+
     const handlePopState = () => {
       setIsTimerActive(false);
-      setShowNavigationDialog(true); // Your existing back button dialog
+      setSubmissionType(SUBMISSION_TYPE.BACK_BUTTON);
+      setShowNavigationDialog(true);
       window.history.pushState(null, "", window.location.pathname);
     };
 
-    // Push initial state for back button
     window.history.pushState(null, "", window.location.pathname);
-
-    // Add event listeners
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("popstate", handlePopState);
 
@@ -143,14 +239,18 @@ const QuizPage = () => {
     };
   }, [quizState]);
 
-  // Load quiz for review
+  useEffect(() => {
+    if (!showRefreshDialog && !showNavigationDialog) {
+      setIsSubmittingForUnload(false);
+    }
+  }, [showRefreshDialog, showNavigationDialog]);
+
   useEffect(() => {
     if (reviewQuizId) {
       loadQuizForReview(reviewQuizId);
     }
   }, [reviewQuizId]);
 
-  // Setup timer when quiz starts
   useEffect(() => {
     if (quizData?.totalQuestions && quizState === "active") {
       setTotalQuizTimeLimit(quizData.totalQuestions * QUESTION_TIME_LIMIT);
@@ -158,7 +258,6 @@ const QuizPage = () => {
     }
   }, [quizData, quizState]);
 
-  // Auto-submit check
   useEffect(() => {
     if (
       quizState === "active" &&
@@ -167,10 +266,10 @@ const QuizPage = () => {
       !autoSubmitTriggered
     ) {
       setAutoSubmitTriggered(true);
+      setSubmissionType(SUBMISSION_TYPE.AUTO);
       handleAutoSubmit();
     }
 
-    // Show warning when 1 minute remaining
     if (
       totalQuizTimeLimit > 0 &&
       timeSpent >= totalQuizTimeLimit - TIME_WARNING_THRESHOLD &&
@@ -193,7 +292,6 @@ const QuizPage = () => {
     timeWarningShown,
   ]);
 
-  // Handle submission dialog timeout
   useEffect(() => {
     if (showSubmitDialog && !autoSubmitTriggered && !isSubmitting) {
       submitTimeoutRef.current = setTimeout(() => {
@@ -244,7 +342,7 @@ const QuizPage = () => {
             timeSpentOnQuestion: q.timeSpentOnQuestion || 0,
           })),
         feedback: quiz.feedback || "",
-        submissionType: quiz.submissionType || "manual",
+        submissionType: quiz.submissionType || SUBMISSION_TYPE.MANUAL,
         totalTimeLimit: quiz.totalTimeLimit,
         timeLimitPerQuestion: quiz.timeLimitPerQuestion,
         timePerQuestion: quiz.timePerQuestion || [],
@@ -270,9 +368,7 @@ const QuizPage = () => {
         await axiosInstance.post(API_PATHS.QUIZ.TRACK_TIME(quizData.quizId), {
           questionIndex,
         });
-      } catch (error) {
-        // Silently fail - don't show error to user
-      }
+      } catch (error) {}
     },
     [quizData?.quizId],
   );
@@ -296,6 +392,7 @@ const QuizPage = () => {
 
         setQuizData({
           ...response.data,
+          quizId: response.data._id || response.data.quizId,
           totalTimeLimit: totalTime,
           timeLimitPerQuestion: QUESTION_TIME_LIMIT,
         });
@@ -310,6 +407,7 @@ const QuizPage = () => {
         setShowSubmitDialog(false);
         setShowConfirmDialog(false);
         setTotalQuizTimeLimit(totalTime);
+        setSubmissionType(SUBMISSION_TYPE.MANUAL);
 
         toast.success(
           `Quiz started! You have ${questionCount * 3} minutes total.`,
@@ -340,11 +438,6 @@ const QuizPage = () => {
     [currentQuestion],
   );
 
-  const prepareAnswersForSubmission = useCallback(
-    (answers) => answers.map((answer) => (answer == null ? -1 : answer)),
-    [],
-  );
-
   const submitQuiz = useCallback(async () => {
     if (isSubmitting || !quizData?.quizId) return;
 
@@ -358,6 +451,7 @@ const QuizPage = () => {
           quizId: quizData.quizId,
           answers: prepareAnswersForSubmission(userAnswers),
           timeSpent: autoSubmitTriggered ? totalQuizTimeLimit : timeSpent,
+          submissionType: autoSubmitTriggered ? SUBMISSION_TYPE.AUTO : submissionType,
           isAutoSubmit: autoSubmitTriggered,
         },
       );
@@ -369,9 +463,14 @@ const QuizPage = () => {
         setShowSubmitDialog(false);
         setIsSubmitting(false);
 
-        const message = autoSubmitTriggered
-          ? "⏰ Time's up! Quiz auto-submitted."
-          : "Quiz submitted! View your results.";
+        let message = "";
+        if (autoSubmitTriggered) {
+          message = "⏰ Time's up! Quiz auto-submitted.";
+        } else if (submissionType === SUBMISSION_TYPE.BACK_BUTTON) {
+          message = "Quiz submitted due to navigation.";
+        } else {
+          message = "Quiz submitted! View your results.";
+        }
 
         toast.success(message, { position: "top-center" });
       }, SUBMIT_SUCCESS_DELAY);
@@ -389,6 +488,7 @@ const QuizPage = () => {
     timeSpent,
     totalQuizTimeLimit,
     autoSubmitTriggered,
+    submissionType,
     prepareAnswersForSubmission,
     isSubmitting,
   ]);
@@ -413,6 +513,7 @@ const QuizPage = () => {
           quizId: quizData.quizId,
           answers: prepareAnswersForSubmission(userAnswers),
           timeSpent: totalQuizTimeLimit,
+          submissionType: SUBMISSION_TYPE.AUTO,
           isAutoSubmit: true,
         },
       );
@@ -451,56 +552,88 @@ const QuizPage = () => {
 
     setIsSubmitting(true);
     setIsTimerActive(false);
+    setShowSubmitDialog(true);
 
     try {
-      setShowSubmitDialog(true);
-
       const response = await axiosInstance.post(
         API_PATHS.QUIZ.SUBMIT(quizData.quizId),
         {
           quizId: quizData.quizId,
           answers: prepareAnswersForSubmission(userAnswers),
           timeSpent,
+          submissionType: submissionType,
           isAutoSubmit: true,
         },
       );
 
       setResults(response.data);
-      setQuizState("results");
+      
+      setShowSubmitDialog(false);
+      setShowNavigationDialog(false);
+      setIsSubmitting(false);
+      
+      if (submissionType === SUBMISSION_TYPE.BACK_BUTTON) {
+        navigate(-1);
+      } else {
+        setQuizState("results");
+      }
 
-      successTimeoutRef.current = setTimeout(() => {
-        setShowSubmitDialog(false);
-        setShowNavigationDialog(false);
-        setIsSubmitting(false);
-        toast.info("Quiz submitted successfully!", { position: "top-center" });
-      }, SUBMIT_SUCCESS_DELAY);
+      let message = "";
+      if (submissionType === SUBMISSION_TYPE.BACK_BUTTON) {
+        message = "Quiz submitted due to navigation.";
+      } else {
+        message = "Quiz submitted successfully!";
+      }
+
+      toast.success(message, { position: "top-center" });
     } catch (error) {
       setShowSubmitDialog(false);
       setShowNavigationDialog(false);
       setIsTimerActive(true);
       setIsSubmitting(false);
-      toast.error("Failed to submit quiz", { position: "bottom-right" });
+      
+      toast.error("Failed to submit quiz. Please try again or continue with your quiz.", { 
+        position: "bottom-right",
+        duration: 5000
+      });
     }
   }, [
     quizData,
     userAnswers,
     timeSpent,
+    submissionType,
     prepareAnswersForSubmission,
     isSubmitting,
+    navigate
   ]);
 
-  const handleRefreshConfirm = useCallback(async (action) => {
+  const handleRefreshConfirm = useCallback((action) => {
     if (action === "stay") {
       setShowRefreshDialog(false);
       setIsTimerActive(true);
+      setIsSubmittingForUnload(false);
+      setSubmissionType(SUBMISSION_TYPE.MANUAL);
     } else if (action === "submit") {
       setShowRefreshDialog(false);
-      await handleLeaveAndSubmit(); // Use your EXISTING submit function
+      setSubmissionType(SUBMISSION_TYPE.MANUAL);
+      setIsSubmittingForUnload(true);
+      window.location.reload();
+    }
+  }, []);
+
+  const handleNavigationConfirm = useCallback(async (action) => {
+    if (action === "stay") {
+      setShowNavigationDialog(false);
+      setIsTimerActive(true);
+      setSubmissionType(SUBMISSION_TYPE.MANUAL);
+    } else if (action === "leave") {
+      await handleLeaveAndSubmit();
     }
   }, [handleLeaveAndSubmit]);
 
   const initiateSubmit = useCallback(() => {
     setIsTimerActive(false);
+    setSubmissionType(SUBMISSION_TYPE.MANUAL);
 
     if (unansweredCount > 0) {
       setShowConfirmDialog(true);
@@ -555,6 +688,9 @@ const QuizPage = () => {
     setShowSubmitDialog(false);
     setShowConfirmDialog(false);
     setIsSubmitting(false);
+    setIsSubmittingForUnload(false);
+    setSubmissionType(SUBMISSION_TYPE.MANUAL);
+    unloadSubmittedRef.current = false;
   }, []);
 
   const handleDownloadResults = useCallback(async () => {
@@ -574,7 +710,7 @@ const QuizPage = () => {
         total: results.total,
         percentage: results.percentage,
         feedback: results.feedback,
-        submissionType: results.submissionType || "manual",
+        submissionType: results.submissionType || submissionType,
         questions: results.questions.map((q, i) => ({
           number: i + 1,
           question: q.question,
@@ -603,9 +739,8 @@ const QuizPage = () => {
     } catch (error) {
       toast.error("Failed to download results", { position: "bottom-right" });
     }
-  }, [results, quizData, sessionInfo, timeSpent, totalQuizTimeLimit]);
+  }, [results, quizData, sessionInfo, timeSpent, totalQuizTimeLimit, submissionType]);
 
-  // Loading state
   if (isLoading && !quizData) {
     return (
       <DashboardLayout>
@@ -620,7 +755,6 @@ const QuizPage = () => {
     );
   }
 
-  // Active quiz state
   if (quizState === "active" && quizData) {
     const currentQ = quizData.questions[currentQuestion];
     const isDisabled =
@@ -631,7 +765,6 @@ const QuizPage = () => {
 
     return (
       <DashboardLayout>
-        {/* Confirmation Dialog */}
         <AlertDialog
           open={showConfirmDialog}
           onOpenChange={setShowConfirmDialog}
@@ -668,7 +801,6 @@ const QuizPage = () => {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Submit Dialog */}
         <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
@@ -696,7 +828,6 @@ const QuizPage = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Navigation Dialog */}
         <AlertDialog
           open={showNavigationDialog}
           onOpenChange={setShowNavigationDialog}
@@ -711,7 +842,7 @@ const QuizPage = () => {
                 </p>
                 <p>If you leave now:</p>
                 <ul className="list-disc pl-6 space-y-1">
-                  <li>Your quiz will be automatically submitted</li>
+                  <li>Your quiz will be marked as "Navigation Submitted"</li>
                   <li>Unanswered questions will be marked as incorrect</li>
                   <li>You can view results in quiz history</li>
                 </ul>
@@ -719,15 +850,12 @@ const QuizPage = () => {
             </AlertDialogHeader>
             <AlertDialogFooter className="gap-2">
               <AlertDialogCancel
-                onClick={() => {
-                  setIsTimerActive(true);
-                  setShowNavigationDialog(false);
-                }}
+                onClick={() => handleNavigationConfirm("stay")}
               >
                 Stay on Quiz
               </AlertDialogCancel>
               <AlertDialogAction
-                onClick={handleLeaveAndSubmit}
+                onClick={() => handleNavigationConfirm("leave")}
                 disabled={isSubmitting}
                 className="bg-orange-600 hover:bg-orange-700"
               >
@@ -744,7 +872,6 @@ const QuizPage = () => {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Refresh Dialog - EXACT same as your Navigation Dialog */}
         <AlertDialog
           open={showRefreshDialog}
           onOpenChange={setShowRefreshDialog}
@@ -758,9 +885,9 @@ const QuizPage = () => {
                 </p>
                 <p>If you refresh now:</p>
                 <ul className="list-disc pl-6 space-y-1">
-                  <li>Your quiz will be automatically submitted</li>
-                  <li>Unanswered questions will be marked as incorrect</li>
-                  <li>You can view results in quiz history</li>
+                  <li>A browser warning will appear</li>
+                  <li>If you confirm, your quiz will be submitted</li>
+                  <li>If you cancel, you'll stay on this page</li>
                 </ul>
               </AlertDialogDescription>
             </AlertDialogHeader>
@@ -772,24 +899,15 @@ const QuizPage = () => {
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => handleRefreshConfirm("submit")}
-                disabled={isSubmitting}
                 className="bg-orange-600 hover:bg-orange-700"
               >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  "Submit & Refresh"
-                )}
+                Continue to Refresh
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
         <div className="container mx-auto px-2 py-4 max-w-[1400px]">
-          {/* Header */}
           <div className="flex flex-col justify-between mb-4 gap-4">
             <div className="flex items-center gap-4 justify-center">
               <div>
@@ -798,7 +916,6 @@ const QuizPage = () => {
             </div>
           </div>
 
-          {/* Quiz Stats Bar */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <QuizTimer
               onTimeUpdate={handleTimeUpdate}
@@ -841,7 +958,6 @@ const QuizPage = () => {
             </Card>
           </div>
 
-          {/* Question Navigation */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">
@@ -869,7 +985,6 @@ const QuizPage = () => {
               </span>
             </div>
 
-            {/* Question Dots Navigation */}
             <div className="flex flex-wrap gap-2 mb-6">
               {quizData.questions.map((_, index) => (
                 <button
@@ -890,7 +1005,6 @@ const QuizPage = () => {
             </div>
           </div>
 
-          {/* Current Question */}
           <AnimatePresence mode="wait">
             <motion.div
               key={currentQuestion}
@@ -909,7 +1023,6 @@ const QuizPage = () => {
             </motion.div>
           </AnimatePresence>
 
-          {/* Navigation Buttons */}
           <div className="flex justify-between items-center mt-8">
             <div className="flex items-center gap-3">
               <Button
@@ -967,7 +1080,6 @@ const QuizPage = () => {
             </div>
           </div>
 
-          {/* Auto-submit warning */}
           {autoSubmitTriggered && !showSubmitDialog && (
             <div className="mt-6 p-4 bg-orange-100 border border-orange-300 rounded-lg text-center">
               <div className="flex items-center justify-center gap-2">
@@ -983,7 +1095,6 @@ const QuizPage = () => {
     );
   }
 
-  // Results state
   if (quizState === "results" && results) {
     return (
       <DashboardLayout>
@@ -1027,17 +1138,11 @@ const QuizPage = () => {
             timePerQuestion={results.timePerQuestion}
           />
 
-          {/* Detailed Review */}
           <div className="mt-12">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold">Detailed Review</h2>
               <div className="flex items-center gap-4">
-                {results.submissionType === "auto" && (
-                  <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    Auto-Submitted
-                  </span>
-                )}
+                {getSubmissionStatusBadge()}
                 <div className="text-sm text-muted-foreground">
                   {results.score} correct out of {results.total}
                 </div>
@@ -1069,7 +1174,6 @@ const QuizPage = () => {
     );
   }
 
-  // Start Screen
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-8 max-w-4xl">
