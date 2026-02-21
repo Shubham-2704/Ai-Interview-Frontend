@@ -260,16 +260,19 @@ const Login = ({ onChangePage }) => {
           </Button>
         ) : (
           <GoogleLogin
-            onSuccess={handleGoogleLogin}
-            onError={handleGoogleError}
-            text="signin_with"
-            size="large"
-            width="100%"
-            theme="outline"
-            shape="rectangular"
-            logo_alignment="left"
-            useOneTap={false}
-          />
+          onSuccess={handleGoogleLogin}
+          onError={handleGoogleError}
+          text="signin_with"  // or "continue_with"
+          size="large"
+          width="100%"
+          theme="outline"
+          shape="rectangular"
+          logo_alignment="left"
+          useOneTap={false}
+          auto_select={false}  // ADD THIS - prevents auto account selection
+          cancel_on_tap_outside={true}  // ADD THIS
+          context="signin"  // ADD THIS - explicitly set to signin context
+        />
         )}
       </div>
 
