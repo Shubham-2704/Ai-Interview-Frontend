@@ -40,7 +40,6 @@ export const useSystemStatus = (autoRefresh = true) => {
         });
       }
     } catch (error) {
-      console.error('Error fetching system status:', error);
       setSystemStatus(prev => ({ ...prev, loading: false, status: 'error' }));
     }
   }, []);

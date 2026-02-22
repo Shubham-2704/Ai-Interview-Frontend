@@ -104,7 +104,6 @@ const QuestionCard = memo(
 
       // 3️⃣ Call parent function on the next tick
       requestAnimationFrame(() => {
-        console.log("📞 Calling onStudyMaterials from parent...");
         onStudyMaterials();
       });
 
@@ -119,12 +118,6 @@ const QuestionCard = memo(
 
     // Effect to sync local loading states with parent
     useEffect(() => {
-      console.log("🔄 Parent loading states changed:", {
-        isLoading,
-        studyMaterialsLoading,
-        isLocalLoading,
-        isLocalMaterialsLoading,
-      });
 
       if (!isLoading && isLocalLoading) {
         setIsLocalLoading(false);
@@ -132,7 +125,6 @@ const QuestionCard = memo(
       }
 
       if (!studyMaterialsLoading && isLocalMaterialsLoading) {
-        console.log("✅ Parent finished loading, clearing local loading...");
         setIsLocalMaterialsLoading(false);
         isProcessingStudyMaterials.current = false;
       }

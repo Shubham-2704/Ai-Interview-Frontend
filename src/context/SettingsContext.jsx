@@ -43,7 +43,6 @@ export const SettingsProvider = ({ children }) => {
         }
       }
     } catch (error) {
-      console.error("Error fetching settings:", error);
       // Keep default settings if fetch fails
       setSettings({
         allowRegistration: true,

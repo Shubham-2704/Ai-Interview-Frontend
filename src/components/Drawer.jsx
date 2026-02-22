@@ -64,7 +64,6 @@ const saveToStorage = (key, data) => {
     localStorage.setItem(key, JSON.stringify(storageData));
     return true;
   } catch (error) {
-    console.error("Error saving to localStorage:", error);
     return false;
   }
 };
@@ -86,7 +85,6 @@ const loadFromStorage = (key) => {
 
     return data;
   } catch (error) {
-    console.error("Error loading from localStorage:", error);
     localStorage.removeItem(key); // Clear corrupted data
     return null;
   }
@@ -203,7 +201,6 @@ const ChatInput = memo(({ onAskQuestion, isChatLoading }) => {
 
         setLocalInput(response.data?.correctedText || text);
       } catch (err) {
-        console.error("Grammar enhance failed:", err);
 
         // Validate via Zod (prevents crashes)
         const parsed = GrammarErrorSchema.safeParse(err?.response?.data);
@@ -433,7 +430,6 @@ const Drawer = ({
       toast.error(
         error?.response?.data?.message || "Error getting AI response"
       );
-      console.error("Error asking followup:", error);
     } finally {
       setIsChatLoading(false);
     }

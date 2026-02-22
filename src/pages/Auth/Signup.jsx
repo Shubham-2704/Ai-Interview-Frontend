@@ -195,6 +195,7 @@ const Signup = ({ onChangePage }) => {
             shape="rectangular"
             logo_alignment="left"
             useOneTap={false}
+            auto_select={false}
           />
         )}
       </div>

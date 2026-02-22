@@ -25,7 +25,7 @@ import QuizAnalytics from "./pages/Quiz/QuizAnalytics";
 import QuizHistoryPage from "./pages/Admin/QuizHistoryPage";
 import { SettingsProvider } from "./context/SettingsContext";
 import SocketProvider from "./context/SocketContext";
-
+import NotFound from "./pages/NotFound"; 
 function App() {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
@@ -77,7 +77,6 @@ function App() {
                       path="sessions/:sessionId/resources"
                       element={<SessionResources />}
                     />
-                    {/* ADD THIS LINE FOR QUIZ HISTORY PAGE */}
                     <Route
                       path="sessions/:sessionId/quiz-history"
                       element={<QuizHistoryPage />}
@@ -89,37 +88,21 @@ function App() {
                     {/* Settings */}
                     <Route path="settings" element={<Settings />} />
 
-                    {/* 404 for admin routes */}
-                    <Route path="*" element={<div>Admin Page Not Found</div>} />
+                    {/* 404 for admin routes - This will catch any unmatched admin routes */}
+                    <Route path="*" element={<NotFound />} />
                   </Route>
                 </Route>
+
+                {/* 404 for all other routes - This must be the last route */}
+                <Route path="*" element={<NotFound />} />
               </Routes>
+              
               {/* Global Toaster for Sonner */}
               <Toaster richColors />
 
-              {/* Global Toaster for React Hot Toast */}
+              {/* Global Toaster for React Hot Toast - Only one instance needed with multiple positions */}
               <HotToaster
                 position="top-right"
-                toastOptions={{ duration: 4000 }}
-              />
-              <HotToaster
-                position="bottom-right"
-                toastOptions={{ duration: 4000 }}
-              />
-              <HotToaster
-                position="top-center"
-                toastOptions={{ duration: 4000 }}
-              />
-              <HotToaster
-                position="bottom-center"
-                toastOptions={{ duration: 4000 }}
-              />
-              <HotToaster
-                position="top-left"
-                toastOptions={{ duration: 4000 }}
-              />
-              <HotToaster
-                position="bottom-left"
                 toastOptions={{ duration: 4000 }}
               />
             </Router>

@@ -80,7 +80,6 @@ const MaximizeChatModal = ({
       setChatHistory((prev) => [...prev, aiResponse]);
     } catch (error) {
       toast.error("Failed to send message");
-      console.error("Error sending message:", error);
       // Remove the user message if error
       setChatHistory((prev) => prev.filter((msg) => msg.id !== userMessage.id));
     } finally {

@@ -11,7 +11,6 @@ const SocketProvider = ({ children }) => {
   useEffect(() => {
     // Only create WebSocket if token exists
     if (!token) {
-      console.log("⏸️ No token, skipping WebSocket connection");
       return;
     }
 
@@ -21,23 +20,19 @@ const SocketProvider = ({ children }) => {
 
     const handleOpen = () => {
       setIsConnected(true);
-      console.log("✅ WebSocket connected");
     };
 
     const handleClose = () => {
       setIsConnected(false);
-      console.log("❌ WebSocket disconnected");
     };
 
     const handleError = (error) => {
-      console.error("WebSocket error:", error);
     };
 
     const handleMessage = (event) => {
       const data = JSON.parse(event.data);
 
       if (data.type === "NOTIFICATION") {
-        console.log("📨 Notification received:", data);
 
         if (Notification.permission === "granted") {
           new Notification(data.title, {

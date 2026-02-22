@@ -129,8 +129,8 @@ const LandingPage = () => {
   ];
 
   const stats = [
-    { number: "10K+", label: "Questions Generated", icon: MessageSquare },
-    { number: "5K+", label: "Active Users", icon: Users },
+    { number: "1K+", label: "Questions Generated", icon: MessageSquare },
+    { number: "50+", label: "Active Users", icon: Users },
     { number: "95%", label: "Success Rate", icon: Award },
     { number: "24/7", label: "AI Available", icon: Clock },
   ];
@@ -373,7 +373,7 @@ const LandingPage = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="size-5 text-green-500" />
-                    <span>5000+ users</span>
+                    <span>100+ users</span>
                   </div>
                 </div>
               </div>
@@ -421,7 +421,7 @@ const LandingPage = () => {
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="text-lg font-bold text-amber-600">
-                          8.0K+
+                          1K+
                         </span>
                         <span className="text-xs text-gray-500">questions</span>
                       </div>
@@ -441,7 +441,7 @@ const LandingPage = () => {
 
                     <div className="mt-4 text-right">
                       <span className="text-xs text-gray-400">
-                        aiinterviewplatform.com
+                        intervia.cloud
                       </span>
                     </div>
                   </div>
@@ -723,38 +723,30 @@ const LandingPage = () => {
 
               {/* Company Links */}
               <div>
-                <h3 className="font-semibold text-white mb-4">Company</h3>
+                <h3 className="font-semibold text-white mb-4">Social Media</h3>
                 <ul className="space-y-2">
                   <li>
                     <a
-                      href="#"
+                      href="https://github.com/Shubham-2704"
                       className="hover:text-amber-400 transition-colors"
                     >
-                      About Us
+                      Github
                     </a>
                   </li>
                   <li>
                     <a
-                      href="#"
+                      href="https://www.linkedin.com/in/shubham-badresiya/"
                       className="hover:text-amber-400 transition-colors"
                     >
-                      Contact
+                      Linkedln
                     </a>
                   </li>
                   <li>
                     <a
-                      href="#"
+                      href="https://www.instagram.com/btwitzsp"
                       className="hover:text-amber-400 transition-colors"
                     >
-                      Privacy Policy
-                    </a>
-                  </li>
-                  <li>
-                    <a
-                      href="#"
-                      className="hover:text-amber-400 transition-colors"
-                    >
-                      Terms of Service
+                      Instagram
                     </a>
                   </li>
                 </ul>
