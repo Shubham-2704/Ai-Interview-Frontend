@@ -264,21 +264,13 @@ const Login = ({ onChangePage }) => {
             onError={handleGoogleError}
             text="signin_with"
             size="large"
-            width="100%"
             theme="outline"
             shape="rectangular"
             logo_alignment="left"
-            useOneTap={false}
-            auto_select={false}
-            // Add these props for better production handling
             ux_mode="popup"
-            cancel_on_tap_outside={false}
-            // Optional: Use current origin for redirect
-            redirect_uri={window.location.origin}
           />
         )}
       </div>
-
       {/* Divider */}
       <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center">

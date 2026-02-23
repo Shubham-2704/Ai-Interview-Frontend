@@ -190,17 +190,10 @@ const Signup = ({ onChangePage }) => {
             onError={handleGoogleError}
             text="signup_with"
             size="large"
-            width="100%"
             theme="outline"
             shape="rectangular"
             logo_alignment="left"
-            useOneTap={false}
-            auto_select={false}
-            // Add these props for better production handling
             ux_mode="popup"
-            cancel_on_tap_outside={false}
-            // Optional: Use current origin for redirect
-            redirect_uri={window.location.origin}
           />
         )}
       </div>
