@@ -57,7 +57,12 @@ const Dashboard = () => {
       toast.success(response.data.message, { position: "top-center" });
 
       setOpenDeleteAlert(false);
-      fetchAllSessions();
+      
+      // Call both functions to refresh data
+        fetchAllSessions(),  // Refresh sessions list
+        checkSessionLimit()   // Refresh session limit immediately
+
+      
     } catch (error) {
       toast.error("Failed to delete session.", { position: "bottom-right" });
     }

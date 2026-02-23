@@ -91,8 +91,6 @@ const QuestionCard = memo(
       // Prevent multiple clicks while processing
       if (isProcessingStudyMaterials.current) return;
 
-      console.log("📞 Study Materials clicked, calling parent function...");
-
       // 1️⃣ IMMEDIATELY set local loading state
       setIsLocalMaterialsLoading(true);
       isProcessingStudyMaterials.current = true;

@@ -2,9 +2,7 @@ import React, { useContext, useState, useEffect } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signupSchema } from "@/lib/schema";
-import { useNavigate } from "react-router-dom";
-import { UserContext } from "@/context/UserContext";
-import { GoogleLogin } from "@react-oauth/google";
+import { useGoogleLogin } from "@react-oauth/google";
 
 import {
   Field,
@@ -22,6 +20,8 @@ import { API_PATHS } from "@/utils/apiPaths";
 import uploadImage from "@/utils/uploadImage";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import { useNavigate } from "react-router-dom";
+import { UserContext } from "@/context/UserContext";
 
 const Signup = ({ onChangePage }) => {
   const [profilePic, setProfilePic] = useState(null);
@@ -118,7 +118,7 @@ const Signup = ({ onChangePage }) => {
     setGoogleLoading(true);
     try {
       const response = await axiosInstance.post(API_PATHS.AUTH.GOOGLE_SIGNUP, {
-        token: credentialResponse.credential,
+        token: credentialResponse.access_token,
       });
 
       const { token } = response.data;
@@ -142,6 +142,12 @@ const Signup = ({ onChangePage }) => {
   const handleGoogleError = () => {
     toast.error("Google signup failed. Please try again.");
   };
+
+  const googleSignup = useGoogleLogin({
+  onSuccess: handleGoogleSignup,
+  onError: handleGoogleError,
+  ux_mode: "popup",
+  });
 
   const validationRules = [
     {
@@ -181,20 +187,22 @@ const Signup = ({ onChangePage }) => {
             className="w-full flex items-center justify-center gap-2 py-6 border-gray-300"
             disabled
           >
-            <Spinner size="sm" />
+            <Spinner size={16} />
             Signing up with Google...
           </Button>
         ) : (
-          <GoogleLogin
-            onSuccess={handleGoogleSignup}
-            onError={handleGoogleError}
-            text="signup_with"
-            size="large"
-            theme="outline"
-            shape="rectangular"
-            logo_alignment="left"
-            ux_mode="popup"
-          />
+          <Button
+            onClick={() => googleSignup()}
+            variant="outline"
+            className="w-full flex items-center justify-center gap-2 py-6 border-gray-300"
+          >
+            <img
+              src="https://developers.google.com/identity/images/g-logo.png"
+              alt="Google"
+              className="w-5 h-5"
+            />
+            Sign up with Google
+          </Button>
         )}
       </div>
 

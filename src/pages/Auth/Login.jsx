@@ -6,7 +6,7 @@ import { loginSchema } from "@/lib/schema";
 import { useNavigate } from "react-router-dom";
 import { UserContext } from "@/context/UserContext";
 import ForgotPasswordDialog from "./ForgotPasswordPage";
-import { GoogleLogin } from "@react-oauth/google";
+import { useGoogleLogin } from "@react-oauth/google";
 import {
   Dialog,
   DialogContent,
@@ -84,7 +84,7 @@ const Login = ({ onChangePage }) => {
     setGoogleLoading(true);
     try {
       const response = await axiosInstance.post(API_PATHS.AUTH.GOOGLE_SIGNUP, {
-        token: credentialResponse.credential,
+        token: credentialResponse.access_token,
       });
 
       const { token, role } = response.data;
@@ -137,6 +137,12 @@ const Login = ({ onChangePage }) => {
       position: "bottom-right",
     });
   };
+
+  const googleLogin = useGoogleLogin({
+  onSuccess: handleGoogleLogin,
+  onError: handleGoogleError,
+  ux_mode: "popup",
+  });
 
   async function onSubmit(data) {
     setLoading(true);
@@ -255,20 +261,22 @@ const Login = ({ onChangePage }) => {
             className="w-full flex items-center justify-center gap-2 py-6 border-gray-300"
             disabled
           >
-            <Spinner size="sm" />
+            <Spinner size={16} />
             Signing in with Google...
           </Button>
         ) : (
-          <GoogleLogin
-            onSuccess={handleGoogleLogin}
-            onError={handleGoogleError}
-            text="signin_with"
-            size="large"
-            theme="outline"
-            shape="rectangular"
-            logo_alignment="left"
-            ux_mode="popup"
-          />
+          <Button
+            onClick={() => googleLogin()}
+            variant="outline"
+            className="w-full flex items-center justify-center gap-2 py-6 border-gray-300"
+          >
+            <img
+              src="https://developers.google.com/identity/images/g-logo.png"
+              alt="Google"
+              className="w-5 h-5"
+            />
+            Sign in with Google
+          </Button>
         )}
       </div>
       {/* Divider */}

@@ -37,7 +37,6 @@ const SocketProvider = ({ children }) => {
         if (Notification.permission === "granted") {
           new Notification(data.title, {
             body: data.message,
-            icon: "/favicon.ico",
           });
         } else if (Notification.permission !== "denied") {
           Notification.requestPermission();
